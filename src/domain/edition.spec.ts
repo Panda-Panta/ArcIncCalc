@@ -3,12 +3,12 @@ import { createDefaultConfig } from './defaults'
 import { EDITION } from './edition'
 
 describe('calculator edition', () => {
-  it('uses the non-shift-run defaults on the standard branch', () => {
+  it('uses shift-run defaults on the shift-run branch', () => {
     const config = createDefaultConfig()
     const tradingRooms = config.rooms.filter((room) => room.type === 'trading')
 
-    expect(EDITION.id).toBe('standard')
-    expect(EDITION.allowShiftRun).toBe(false)
-    expect(tradingRooms.every((room) => room.specialOrder === 'none')).toBe(true)
+    expect(EDITION.id).toBe('shift-run')
+    expect(EDITION.allowShiftRun).toBe(true)
+    expect(tradingRooms.every((room) => room.specialOrder === 'shiftRun')).toBe(true)
   })
 })

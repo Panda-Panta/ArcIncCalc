@@ -11,11 +11,11 @@ export interface CalculatorEdition {
 }
 
 export const EDITION: CalculatorEdition = {
-  id: 'standard',
-  label: '常规排班版',
-  description: '以持续进驻和常规订单为核心，不启用跑单。',
-  storageNamespace: 'standard',
-  allowShiftRun: false,
-  importLegacyConfig: true,
-  defaultSpecialOrder: 'none',
+  id: 'shift-run',
+  label: '跑单排班版',
+  description: '以但书与龙舌兰换入跑单为核心，贸易站默认启用跑单。',
+  storageNamespace: 'shift-run',
+  allowShiftRun: true,
+  importLegacyConfig: false,
+  defaultSpecialOrder: 'shiftRun',
 }
