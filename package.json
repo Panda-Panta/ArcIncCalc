@@ -1,0 +1,26 @@
+{
+  "name": "arknights-arc-income-calculator",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "audit:data": "node scripts/audit-riic-data.mjs \"C:/Users/Panda-Panta/Downloads/Compressed/ArknightsGameData-master/zh_CN/gamedata/excel\"",
+    "test": "vitest run",
+    "typecheck": "vue-tsc -b"
+  },
+  "dependencies": {
+    "vue": "^3.5.22"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.0",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "@vue/tsconfig": "^0.8.1",
+    "typescript": "~5.9.3",
+    "vite": "^7.1.12",
+    "vitest": "^3.2.4",
+    "vue-tsc": "^3.1.3"
+  },
+  "packageManager": "pnpm@11.19.0"
+}

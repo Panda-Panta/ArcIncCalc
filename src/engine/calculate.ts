@@ -1,0 +1,276 @@
+import type {
+  AppConfig,
+  CalculationReport,
+  ManufactureProduct,
+  OutputRoom,
+  QualityRule,
+  SpecialOrder,
+  TradeResult,
+} from '../domain/types'
+import { ROOM_LIMITS } from '../domain/defaults'
+import { evaluateOperators } from './operatorRules'
+import { simulateMorale } from './morale'
+
+const OUTPUT_POWER_USE = { 1: 10, 2: 30, 3: 60 } as const
+const POWER_GENERATION = { 1: 60, 2: 130, 3: 270 } as const
+const STANDARD_POWER_USE = { 1: 10, 2: 30, 3: 60 } as const
+const DORM_POWER_USE = { 1: 10, 2: 20, 3: 30, 4: 45, 5: 65 } as const
+
+const MANUFACTURE_FORMULAS: Record<
+  ManufactureProduct,
+  { minutes: number; value: number }
+> = {
+  gold: { minutes: 72, value: 500 },
+  exp: { minutes: 180, value: 1000 },
+  fragment: { minutes: 60, value: 0 },
+}
+
+interface OrderTemplate {
+  probability: number
+  cost: number
+  reward: number
+  minutes: number
+  efficiencyAffected: boolean
+}
+
+function distribution(level: number, quality: QualityRule): OrderTemplate[] {
+  if (level === 1) {
+    return [{ probability: 1, cost: 2, reward: 1000, minutes: 144, efficiencyAffected: true }]
+  }
+  if (level === 2) {
+    return [
+      { probability: 0.6, cost: 2, reward: 1000, minutes: 144, efficiencyAffected: true },
+      { probability: 0.4, cost: 3, reward: 1500, minutes: 210, efficiencyAffected: true },
+    ]
+  }
+  const probabilities =
+    quality === 'beta' ? [0.05, 0.1, 0.85] : quality === 'alpha' ? [0.15, 0.3, 0.55] : [0.3, 0.5, 0.2]
+  return [
+    { probability: probabilities[0]!, cost: 2, reward: 1000, minutes: 144, efficiencyAffected: true },
+    { probability: probabilities[1]!, cost: 3, reward: 1500, minutes: 210, efficiencyAffected: true },
+    { probability: probabilities[2]!, cost: 4, reward: 2000, minutes: 276, efficiencyAffected: true },
+  ]
+}
+
+function transformSpecial(template: OrderTemplate, special: SpecialOrder, roomLevel: number): OrderTemplate {
+  switch (special) {
+    case 'pepe':
+      return { probability: template.probability, cost: 0, reward: 1000, minutes: 270, efficiencyAffected: false }
+    case 'closure':
+      return { probability: template.probability, cost: 2, reward: 1200, minutes: 144, efficiencyAffected: true }
+    case 'uofficial':
+      return { ...template, cost: 2, reward: 1000 }
+    case 'provisoAlpha':
+      return { ...template, cost: template.cost + 1, reward: template.reward + 500 }
+    case 'provisoBeta':
+      return { ...template, cost: template.cost + 2, reward: template.reward + 1000 }
+    case 'tequilaAlpha':
+      return { ...template, reward: template.reward + 250 }
+    case 'tequilaBeta':
+      return { ...template, reward: template.reward + 500 }
+    case 'shiftRun':
+      return {
+        ...template,
+        cost: template.cost + 2,
+        reward: template.reward + (roomLevel >= 3 ? 1500 : 1000),
+      }
+    default:
+      return template
+  }
+}
+
+function outputRoomPower(room: OutputRoom): number {
+  return room.type === 'power' ? 0 : OUTPUT_POWER_USE[room.level]
+}
+
+function calculatePower(config: AppConfig) {
+  const generation = config.rooms
+    .filter((room) => room.type === 'power')
+    .reduce((sum, room) => sum + POWER_GENERATION[room.level], 0)
+  const outputConsumption = config.rooms.reduce((sum, room) => sum + outputRoomPower(room), 0)
+  const facilities = config.facilities
+  const functionConsumption =
+    STANDARD_POWER_USE[facilities.reception] +
+    STANDARD_POWER_USE[facilities.office] +
+    STANDARD_POWER_USE[facilities.training] +
+    10 +
+    facilities.dormitories.reduce((sum, level) => sum + DORM_POWER_USE[level], 0)
+  const consumption = outputConsumption + functionConsumption
+  return {
+    generation,
+    consumption,
+    margin: generation - consumption,
+    sufficient: generation >= consumption,
+  }
+}
+
+function calculateDrones(config: AppConfig, averagePowerBonusPercent: number): number {
+  const plants = config.rooms.filter((room) => room.type === 'power')
+  if (plants.length === 0) return 0
+  return (config.hours * 60) / 6 * (1 + averagePowerBonusPercent / 100)
+}
+
+function expectedGoldOrder(room: OutputRoom, quality: QualityRule, specialOrder: SpecialOrder) {
+  const transformed = distribution(room.level, quality).map((template) =>
+    transformSpecial(template, specialOrder, room.level),
+  )
+  return {
+    minutes: transformed.reduce((sum, item) => sum + item.probability * item.minutes, 0),
+    reward: transformed.reduce((sum, item) => sum + item.probability * item.reward, 0),
+    cost: transformed.reduce((sum, item) => sum + item.probability * item.cost, 0),
+    efficiencyAffected: transformed.some((item) => item.efficiencyAffected),
+  }
+}
+
+function calculateTrade(
+  room: OutputRoom,
+  config: AppConfig,
+  hours: number,
+  droneMinutes: number,
+  averageEfficiencyPercent: number,
+): TradeResult {
+  const operatorResult = evaluateOperators(room, config)
+  const efficiency = averageEfficiencyPercent / 100
+  const buffDetails = [...operatorResult.details]
+  if (Math.abs(averageEfficiencyPercent - operatorResult.efficiencyPercent) > 0.01) {
+    buffDetails.push(`计入心情耗尽后的时段平均：${averageEfficiencyPercent.toFixed(1)}%`)
+  }
+  if (room.strategy === 'orundum') {
+    if (room.level < 3) {
+      return {
+        roomId: room.id,
+        strategy: room.strategy,
+        efficiency,
+        orders: 0,
+        lmd: 0,
+        goldConsumed: 0,
+        orundum: 0,
+        fragmentsConsumed: 0,
+        droneExtraOrders: 0,
+        operatorNames: operatorResult.operatorNames,
+        buffDetails,
+        unquantifiedSkills: operatorResult.unquantifiedSkills,
+      }
+    }
+    const orders = (hours * 60 * efficiency) / 120
+    const extra = droneMinutes / 120
+    return {
+      roomId: room.id,
+      strategy: room.strategy,
+      efficiency,
+      orders: orders + extra,
+      lmd: 0,
+      goldConsumed: 0,
+      orundum: (orders + extra) * 20,
+      fragmentsConsumed: (orders + extra) * 2,
+      droneExtraOrders: extra,
+      operatorNames: operatorResult.operatorNames,
+      buffDetails,
+      unquantifiedSkills: operatorResult.unquantifiedSkills,
+    }
+  }
+
+  const expected = expectedGoldOrder(room, operatorResult.quality, operatorResult.specialOrder)
+  const naturalMinutes = hours * 60 * (expected.efficiencyAffected ? efficiency : 1)
+  const orders = naturalMinutes / expected.minutes
+  const extra = droneMinutes / expected.minutes
+  return {
+    roomId: room.id,
+    strategy: room.strategy,
+    efficiency,
+    orders: orders + extra,
+    lmd: (orders + extra) * expected.reward,
+    goldConsumed: (orders + extra) * expected.cost,
+    orundum: 0,
+    fragmentsConsumed: 0,
+    droneExtraOrders: extra,
+    operatorNames: operatorResult.operatorNames,
+    buffDetails,
+    unquantifiedSkills: operatorResult.unquantifiedSkills,
+  }
+}
+
+function validateLayout(config: AppConfig): string[] {
+  const messages: string[] = []
+  if (config.rooms.length !== 9) messages.push('制造站、贸易站与发电站的总数必须为 9。')
+  for (const type of ['manufacture', 'trading', 'power'] as const) {
+    const count = config.rooms.filter((room) => room.type === type).length
+    if (count > ROOM_LIMITS[type]) messages.push(`${type} 数量超过上限 ${ROOM_LIMITS[type]}。`)
+  }
+  for (const room of config.rooms) {
+    const capacity = room.type === 'power' ? 1 : room.level
+    if (room.operatorIds.length > capacity) messages.push(`${room.id} 的进驻人数超过当前等级工位上限。`)
+    if (room.type === 'trading' && room.strategy === 'orundum' && room.level < 3) {
+      messages.push(`${room.id} 必须升至 3 级才能使用开采协力。`)
+    }
+  }
+  if (config.controlOperatorIds.length > 5) messages.push('控制中枢进驻人数不能超过 5。')
+  const assignments = [...config.controlOperatorIds, ...config.rooms.flatMap((room) => room.operatorIds)]
+  if (new Set(assignments).size !== assignments.length) messages.push('同一干员不能同时进驻多个设施。')
+  return messages
+}
+
+export function calculate(config: AppConfig): CalculationReport {
+  const validationMessages = validateLayout(config)
+  const power = calculatePower(config)
+  const layoutValid = validationMessages.length === 0
+  const morale = simulateMorale(config)
+  const drones = calculateDrones(config, morale.averagePowerBonusPercent)
+  const droneMinutes = drones * 3
+
+  const manufacture = config.rooms
+    .filter((room) => room.type === 'manufacture')
+    .map((room) => {
+      const formula = MANUFACTURE_FORMULAS[room.product]
+      const operatorResult = evaluateOperators(room, config)
+      const averageEfficiencyPercent = morale.averageEfficiencyPercent[room.id] ?? 100
+      const efficiency = averageEfficiencyPercent / 100
+      const naturalCount = (config.hours * 60 * efficiency) / formula.minutes
+      const droneExtra = config.droneTarget === room.id ? droneMinutes / formula.minutes : 0
+      return {
+        roomId: room.id,
+        product: room.product,
+        efficiency,
+        count: naturalCount + droneExtra,
+        value: (naturalCount + droneExtra) * formula.value,
+        droneExtra,
+        operatorNames: operatorResult.operatorNames,
+        buffDetails:
+          Math.abs(averageEfficiencyPercent - operatorResult.efficiencyPercent) > 0.01
+            ? [
+                ...operatorResult.details,
+                `计入心情耗尽后的时段平均：${averageEfficiencyPercent.toFixed(1)}%`,
+              ]
+            : operatorResult.details,
+        unquantifiedSkills: operatorResult.unquantifiedSkills,
+      }
+    })
+
+  const trading = config.rooms
+    .filter((room) => room.type === 'trading')
+    .map((room) =>
+      calculateTrade(
+        room,
+        config,
+        config.hours,
+        config.droneTarget === room.id ? droneMinutes : 0,
+        morale.averageEfficiencyPercent[room.id] ?? 100,
+      ),
+    )
+
+  if (!power.sufficient || !layoutValid) {
+    return { power, layoutValid, validationMessages, manufacture, trading, drones, morale: morale.operators, summary: null }
+  }
+
+  const summary = {
+    exp: manufacture.filter((item) => item.product === 'exp').reduce((sum, item) => sum + item.value, 0),
+    goldCount: manufacture.filter((item) => item.product === 'gold').reduce((sum, item) => sum + item.count, 0),
+    goldValue: manufacture.filter((item) => item.product === 'gold').reduce((sum, item) => sum + item.value, 0),
+    orderLmd: trading.reduce((sum, item) => sum + item.lmd, 0),
+    fragments: manufacture.filter((item) => item.product === 'fragment').reduce((sum, item) => sum + item.count, 0),
+    orundum: trading.reduce((sum, item) => sum + item.orundum, 0),
+    goldConsumed: trading.reduce((sum, item) => sum + item.goldConsumed, 0),
+    fragmentsConsumed: trading.reduce((sum, item) => sum + item.fragmentsConsumed, 0),
+  }
+  return { power, layoutValid, validationMessages, manufacture, trading, drones, morale: morale.operators, summary }
+}
