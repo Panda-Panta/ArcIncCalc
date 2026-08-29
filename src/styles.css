@@ -84,7 +84,9 @@ option { background: #101c22; }
 
 h1, h2, h3, p { margin-top: 0; }
 h1 { margin-bottom: 0; font-size: 23px; letter-spacing: .02em; }
+h1 small { margin-left: 8px; padding: 3px 6px; color: var(--cyan); border: 1px solid rgba(66,214,199,.28); font-size: 9px; vertical-align: middle; }
 h2 { margin-bottom: 0; font-size: 18px; }
+.edition-description { margin: 4px 0 0; color: #61767c; font-size: 9px; }
 
 .top-actions { display: flex; align-items: flex-end; gap: 12px; }
 .plan-name { display: grid; gap: 5px; }

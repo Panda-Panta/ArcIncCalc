@@ -1,4 +1,5 @@
 import type { AppConfig, OutputRoom, RoomType } from './types'
+import { EDITION } from './edition'
 
 export const ROOM_LABELS: Record<RoomType, string> = {
   manufacture: '制造站',
@@ -23,7 +24,7 @@ export function createRoom(id: string, type: RoomType): OutputRoom {
     product: 'gold',
     strategy: 'gold',
     quality: 'normal',
-    specialOrder: 'none',
+    specialOrder: type === 'trading' ? EDITION.defaultSpecialOrder : 'none',
     powerStaffed: false,
   }
 }

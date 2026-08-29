@@ -2,16 +2,23 @@
 import { computed, reactive, ref, watch } from 'vue'
 import OperatorPicker from './components/OperatorPicker.vue'
 import { createDefaultConfig, createRoom, ROOM_LABELS, ROOM_LIMITS } from './domain/defaults'
+import { EDITION } from './domain/edition'
 import { GAME_DATA_VERSION, OPERATOR_MAP, OPERATOR_PROFILE_COUNT } from './domain/operators'
-import type { AppConfig, OperatorGroup, OutputRoom, RoomType } from './domain/types'
+import type { AppConfig, OperatorGroup, OutputRoom, RoomType, SpecialOrder } from './domain/types'
 import { calculate } from './engine/calculate'
 
-const STORAGE_KEY = 'arc-income-calculator-config-v5'
-const LEGACY_STORAGE_KEY = 'arc-income-calculator-config-v4'
+const STORAGE_KEY = `arc-income-calculator-config-v5-${EDITION.storageNamespace}`
+const LEGACY_STORAGE_KEYS = [
+  'arc-income-calculator-config-v5',
+  'arc-income-calculator-config-v4',
+]
 
 function loadConfig(): AppConfig {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY)
+    const legacyStored = EDITION.importLegacyConfig
+      ? LEGACY_STORAGE_KEYS.map((key) => localStorage.getItem(key)).find(Boolean)
+      : null
+    const stored = localStorage.getItem(STORAGE_KEY) ?? legacyStored
     if (stored) {
       const parsed = JSON.parse(stored) as {
         schemaVersion?: number
@@ -22,6 +29,11 @@ function loadConfig(): AppConfig {
         migrated.schemaVersion = 5
         migrated.dormitoryOccupantCount ??= 0
         migrated.operatorGroups ??= []
+        if (!EDITION.allowShiftRun) {
+          for (const room of migrated.rooms) {
+            if (room.specialOrder === 'shiftRun') room.specialOrder = 'none'
+          }
+        }
         return migrated
       }
     }
@@ -217,7 +229,7 @@ const qualityLabels = {
   beta: 'β 峰值',
 }
 
-const specialLabels = {
+const specialLabels: Partial<Record<SpecialOrder, string>> = {
   none: '普通订单',
   pepe: '佩佩特别独占',
   closure: '可露希尔特别订单',
@@ -226,8 +238,8 @@ const specialLabels = {
   provisoBeta: '但书·β',
   tequilaAlpha: '龙舌兰·α',
   tequilaBeta: '龙舌兰·β',
-  shiftRun: '跑单（自动换入但书/龙舌兰）',
 }
+if (EDITION.allowShiftRun) specialLabels.shiftRun = '跑单（自动换入但书/龙舌兰）'
 </script>
 
 <template>
@@ -237,7 +249,8 @@ const specialLabels = {
         <div class="brand-mark">R</div>
         <div>
           <p class="eyebrow">RHODES ISLAND · INFRASTRUCTURE</p>
-          <h1>基建收益预测终端</h1>
+          <h1>基建收益预测终端 <small>{{ EDITION.label }}</small></h1>
+          <p class="edition-description">{{ EDITION.description }}</p>
         </div>
       </div>
       <div class="top-actions">
@@ -640,7 +653,7 @@ const specialLabels = {
     </main>
 
     <footer>
-      <span>组合规则引擎 v0.3.0</span>
+      <span>{{ EDITION.label }} · 组合规则引擎 v0.3.0</span>
       <span>本地保存 · 不上传配置</span>
       <span>GameData {{ GAME_DATA_VERSION }} · {{ OPERATOR_PROFILE_COUNT }} 份基建档案</span>
     </footer>
