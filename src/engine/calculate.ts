@@ -10,6 +10,7 @@ import type {
 import { ROOM_LIMITS } from '../domain/defaults'
 import { evaluateOperators } from './operatorRules'
 import { simulateMorale } from './morale'
+import { buildRiicGlobalContext, type RiicGlobalContext } from './globalContext'
 
 const OUTPUT_POWER_USE = { 1: 10, 2: 30, 3: 60 } as const
 const POWER_GENERATION = { 1: 60, 2: 130, 3: 270 } as const
@@ -107,7 +108,7 @@ function calculatePower(config: AppConfig) {
 function calculateDrones(config: AppConfig, averagePowerBonusPercent: number): number {
   const plants = config.rooms.filter((room) => room.type === 'power')
   if (plants.length === 0) return 0
-  return (config.hours * 60) / 6 * (1 + averagePowerBonusPercent / 100)
+  return (24 * 60) / 6 * (1 + averagePowerBonusPercent / 100)
 }
 
 function expectedGoldOrder(room: OutputRoom, quality: QualityRule, specialOrder: SpecialOrder) {
@@ -128,10 +129,12 @@ function calculateTrade(
   hours: number,
   droneMinutes: number,
   averageEfficiencyPercent: number,
+  shiftDetails: string[],
+  globalContext: RiicGlobalContext,
 ): TradeResult {
-  const operatorResult = evaluateOperators(room, config)
+  const operatorResult = evaluateOperators(room, config, undefined, undefined, globalContext)
   const efficiency = averageEfficiencyPercent / 100
-  const buffDetails = [...operatorResult.details]
+  const buffDetails = [...operatorResult.details, ...shiftDetails]
   if (Math.abs(averageEfficiencyPercent - operatorResult.efficiencyPercent) > 0.01) {
     buffDetails.push(`计入心情耗尽后的时段平均：${averageEfficiencyPercent.toFixed(1)}%`)
   }
@@ -207,6 +210,24 @@ function validateLayout(config: AppConfig): string[] {
   if (config.controlOperatorIds.length > 5) messages.push('控制中枢进驻人数不能超过 5。')
   const assignments = [...config.controlOperatorIds, ...config.rooms.flatMap((room) => room.operatorIds)]
   if (new Set(assignments).size !== assignments.length) messages.push('同一干员不能同时进驻多个设施。')
+  const primaryIds = new Set(assignments)
+  const backups = assignments
+    .map((primaryId) => ({ primaryId, backupId: config.operatorBackups[primaryId] }))
+  for (const { primaryId, backupId } of backups) {
+    if (!backupId) {
+      messages.push(`${primaryId} 尚未设置替补干员。`)
+      continue
+    }
+    if (primaryIds.has(backupId)) {
+      messages.push(`${primaryId} 的替补不能同时作为主力进驻。`)
+    }
+  }
+  const assignedBackups = backups
+    .map((item) => item.backupId)
+    .filter((id): id is string => Boolean(id))
+  if (new Set(assignedBackups).size !== assignedBackups.length) {
+    messages.push('同一替补干员不能同时接替多个主力工位。')
+  }
   return messages
 }
 
@@ -214,18 +235,23 @@ export function calculate(config: AppConfig): CalculationReport {
   const validationMessages = validateLayout(config)
   const power = calculatePower(config)
   const layoutValid = validationMessages.length === 0
-  const morale = simulateMorale(config)
+  const morale = simulateMorale(config, {
+    warmupHours: 24 * 30,
+    sampleHours: 24 * 90,
+  })
+  const globalContext = buildRiicGlobalContext(config)
   const drones = calculateDrones(config, morale.averagePowerBonusPercent)
   const droneMinutes = drones * 3
+  const dailyHours = 24
 
   const manufacture = config.rooms
     .filter((room) => room.type === 'manufacture')
     .map((room) => {
       const formula = MANUFACTURE_FORMULAS[room.product]
-      const operatorResult = evaluateOperators(room, config)
+      const operatorResult = evaluateOperators(room, config, undefined, undefined, globalContext)
       const averageEfficiencyPercent = morale.averageEfficiencyPercent[room.id] ?? 100
       const efficiency = averageEfficiencyPercent / 100
-      const naturalCount = (config.hours * 60 * efficiency) / formula.minutes
+      const naturalCount = (dailyHours * 60 * efficiency) / formula.minutes
       const droneExtra = config.droneTarget === room.id ? droneMinutes / formula.minutes : 0
       return {
         roomId: room.id,
@@ -240,8 +266,9 @@ export function calculate(config: AppConfig): CalculationReport {
             ? [
                 ...operatorResult.details,
                 `计入心情耗尽后的时段平均：${averageEfficiencyPercent.toFixed(1)}%`,
+                ...(morale.roomShiftDetails[room.id] ?? []),
               ]
-            : operatorResult.details,
+            : [...operatorResult.details, ...(morale.roomShiftDetails[room.id] ?? [])],
         unquantifiedSkills: operatorResult.unquantifiedSkills,
       }
     })
@@ -252,14 +279,26 @@ export function calculate(config: AppConfig): CalculationReport {
       calculateTrade(
         room,
         config,
-        config.hours,
+        dailyHours,
         config.droneTarget === room.id ? droneMinutes : 0,
         morale.averageEfficiencyPercent[room.id] ?? 100,
+        morale.roomShiftDetails[room.id] ?? [],
+        globalContext,
       ),
     )
 
   if (!power.sufficient || !layoutValid) {
-    return { power, layoutValid, validationMessages, manufacture, trading, drones, morale: morale.operators, summary: null }
+    return {
+      power,
+      layoutValid,
+      validationMessages,
+      manufacture,
+      trading,
+      drones,
+      morale: morale.operators,
+      roomShiftDetails: morale.roomShiftDetails,
+      summary: null,
+    }
   }
 
   const summary = {
@@ -272,5 +311,15 @@ export function calculate(config: AppConfig): CalculationReport {
     goldConsumed: trading.reduce((sum, item) => sum + item.goldConsumed, 0),
     fragmentsConsumed: trading.reduce((sum, item) => sum + item.fragmentsConsumed, 0),
   }
-  return { power, layoutValid, validationMessages, manufacture, trading, drones, morale: morale.operators, summary }
+  return {
+    power,
+    layoutValid,
+    validationMessages,
+    manufacture,
+    trading,
+    drones,
+    morale: morale.operators,
+    roomShiftDetails: morale.roomShiftDetails,
+    summary,
+  }
 }

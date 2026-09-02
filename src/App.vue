@@ -1,14 +1,38 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import OperatorPicker from './components/OperatorPicker.vue'
+import InlineOperatorSelect from './components/InlineOperatorSelect.vue'
 import { createDefaultConfig, createRoom, ROOM_LABELS, ROOM_LIMITS } from './domain/defaults'
 import { EDITION } from './domain/edition'
 import { GAME_DATA_VERSION, OPERATOR_MAP, OPERATOR_PROFILE_COUNT } from './domain/operators'
-import type { AppConfig, OperatorGroup, OutputRoom, RoomType, SpecialOrder } from './domain/types'
+import type { AppConfig, OutputRoom, RoomType, SpecialOrder } from './domain/types'
 import { calculate } from './engine/calculate'
+import { assignOperatorToNamedGroup, setRosterSlot } from './engine/rosterEditor'
 
-const STORAGE_KEY = `arc-income-calculator-config-v5-${EDITION.storageNamespace}`
+type FacilityKind = 'output' | 'control' | 'dormitory' | 'support'
+type FacilityRoomType =
+  | RoomType
+  | 'control'
+  | 'dormitory'
+  | 'meeting'
+  | 'workshop'
+  | 'training'
+  | 'hire'
+
+interface FacilityTarget {
+  id: string
+  label: string
+  kind: FacilityKind
+  roomType: FacilityRoomType
+  operatorIds: string[]
+  level: number | null
+  maxLevel: number
+  capacity: number
+}
+
+const STORAGE_KEY = `arc-income-calculator-config-v7-${EDITION.storageNamespace}`
 const LEGACY_STORAGE_KEYS = [
+  `arc-income-calculator-config-v6-${EDITION.storageNamespace}`,
+  `arc-income-calculator-config-v5-${EDITION.storageNamespace}`,
   'arc-income-calculator-config-v5',
   'arc-income-calculator-config-v4',
 ]
@@ -24,11 +48,56 @@ function loadConfig(): AppConfig {
         schemaVersion?: number
         rooms?: OutputRoom[]
       }
-      if ((parsed.schemaVersion === 4 || parsed.schemaVersion === 5) && parsed.rooms?.length === 9) {
+      if (
+        (parsed.schemaVersion === 4 ||
+          parsed.schemaVersion === 5 ||
+          parsed.schemaVersion === 6 ||
+          parsed.schemaVersion === 7) &&
+        parsed.rooms?.length === 9
+      ) {
+        const previousSchemaVersion = parsed.schemaVersion
         const migrated = parsed as unknown as AppConfig
-        migrated.schemaVersion = 5
+        migrated.schemaVersion = 7
         migrated.dormitoryOccupantCount ??= 0
+        const storedEfficiencyResources = migrated.efficiencyResources as
+          | Partial<AppConfig['efficiencyResources']>
+          | undefined
+        migrated.efficiencyResources = {
+          manufacturePerceptionInformation: 0,
+          tradingPerceptionInformation: 0,
+          additionalGoldProductionLines: 0,
+          monsterCuisine: 0,
+          worldlyFireworks: 0,
+          suiFacilities: 0,
+          droneCapacity: 235,
+          extraWorkplaceOperatorIds: [],
+          trainingOperatorIds: [],
+          ...storedEfficiencyResources,
+        }
+        migrated.efficiencyResources.droneCapacity = 235
+        if (previousSchemaVersion < 7) {
+          if (migrated.efficiencyResources.manufacturePerceptionInformation > 0) {
+            migrated.efficiencyResources.manufacturePerceptionInformation +=
+              migrated.dormitoryOccupantCount
+          }
+          if (migrated.efficiencyResources.tradingPerceptionInformation > 0) {
+            migrated.efficiencyResources.tradingPerceptionInformation +=
+              migrated.dormitoryOccupantCount
+          }
+        }
+        migrated.facilityOperatorIds ??= {
+          dormitories: [[], [], [], []],
+          reception: [],
+          workshop: [],
+          office: [],
+          training: [],
+        }
+        migrated.facilityOperatorIds.dormitories = Array.from(
+          { length: migrated.facilities.dormitories.length },
+          (_, index) => migrated.facilityOperatorIds.dormitories[index] ?? [],
+        )
         migrated.operatorGroups ??= []
+        migrated.operatorBackups ??= {}
         if (!EDITION.allowShiftRun) {
           for (const room of migrated.rooms) {
             if (room.specialOrder === 'shiftRun') room.specialOrder = 'none'
@@ -45,14 +114,7 @@ function loadConfig(): AppConfig {
 
 const config = reactive<AppConfig>(loadConfig())
 const notice = ref('')
-const picker = reactive({
-  open: false,
-  targetKey: '',
-  targetLabel: '',
-  roomType: 'manufacture' as RoomType | 'control',
-  capacity: 3,
-  selectedIds: [] as string[],
-})
+const selectedRosterTarget = ref('B1')
 const report = computed(() => calculate(config))
 const counts = computed(() => ({
   manufacture: config.rooms.filter((room) => room.type === 'manufacture').length,
@@ -69,13 +131,61 @@ const assignedTo = computed(() => {
   for (const room of config.rooms) {
     for (const id of room.operatorIds) assignments[id] = room.id
   }
+  config.facilityOperatorIds.dormitories.forEach((operatorIds, index) => {
+    for (const id of operatorIds) assignments[id] = `宿舍 ${index + 1}`
+  })
+  for (const id of config.facilityOperatorIds.reception) assignments[id] = '会客室'
+  for (const id of config.facilityOperatorIds.workshop) assignments[id] = '加工站'
+  for (const id of config.facilityOperatorIds.office) assignments[id] = '办公室'
+  for (const id of config.facilityOperatorIds.training) assignments[id] = '训练室'
   return assignments
 })
-const assignedOperators = computed(() => Object.entries(assignedTo.value).map(([id, location]) => ({
-  id,
-  name: operatorName(id),
-  location,
+const reservedOperators = computed(() => {
+  const reserved = { ...assignedTo.value }
+  for (const [primaryId, backupId] of Object.entries(config.operatorBackups)) {
+    if (backupId) reserved[backupId] ??= `${operatorName(primaryId)} 的替补`
+  }
+  return reserved
+})
+const outputTargets = computed<FacilityTarget[]>(() => config.rooms.map((room) => ({
+  id: room.id,
+  label: `${room.id} · ${ROOM_LABELS[room.type]}`,
+  kind: 'output',
+  roomType: room.type,
+  operatorIds: room.operatorIds,
+  level: room.level,
+  maxLevel: 3,
+  capacity: capacity(room),
 })))
+const centerTargets = computed<FacilityTarget[]>(() => [
+  {
+    id: 'control', label: '控制中枢', kind: 'control', roomType: 'control',
+    operatorIds: config.controlOperatorIds, level: null, maxLevel: 0, capacity: 5,
+  },
+  ...config.facilities.dormitories.map((level, index) => ({
+    id: `dormitory-${index + 1}`,
+    label: `宿舍 ${index + 1}`,
+    kind: 'dormitory' as const,
+    roomType: 'dormitory' as const,
+    operatorIds: config.facilityOperatorIds.dormitories[index] ?? [],
+    level,
+    maxLevel: 5,
+    capacity: 5,
+  })),
+])
+const supportTargets = computed<FacilityTarget[]>(() => [
+  { id: 'reception', label: '会客室', kind: 'support', roomType: 'meeting', operatorIds: config.facilityOperatorIds.reception, level: config.facilities.reception, maxLevel: 3, capacity: 2 },
+  { id: 'workshop', label: '加工站', kind: 'support', roomType: 'workshop', operatorIds: config.facilityOperatorIds.workshop, level: config.facilities.workshop, maxLevel: 3, capacity: 1 },
+  { id: 'office', label: '办公室', kind: 'support', roomType: 'hire', operatorIds: config.facilityOperatorIds.office, level: config.facilities.office, maxLevel: 3, capacity: 1 },
+  { id: 'training', label: '训练室', kind: 'support', roomType: 'training', operatorIds: config.facilityOperatorIds.training, level: config.facilities.training, maxLevel: 3, capacity: 2 },
+])
+const rosterTargets = computed(() => [...outputTargets.value, ...centerTargets.value, ...supportTargets.value])
+const selectedRoster = computed(() => rosterTargets.value.find((target) => target.id === selectedRosterTarget.value) ?? rosterTargets.value[0]!)
+const selectedOutputRoom = computed(() => config.rooms.find((room) => room.id === selectedRoster.value.id) ?? null)
+const selectedRosterSlots = computed(() => Array.from(
+  { length: selectedRoster.value.capacity },
+  (_, index) => selectedRoster.value.operatorIds[index] ?? '',
+))
 const groupMembership = computed(() => {
   const membership: Record<string, string> = {}
   for (const group of config.operatorGroups) {
@@ -126,76 +236,30 @@ function setMorale(id: string, event: Event) {
 }
 
 function pruneZeroMorale() {
-  const assigned = new Set([...config.controlOperatorIds, ...config.rooms.flatMap((item) => item.operatorIds)])
-  config.zeroMoraleOperatorIds = config.zeroMoraleOperatorIds.filter((id) => assigned.has(id))
+  const assigned = new Set([
+    ...config.controlOperatorIds,
+    ...config.rooms.flatMap((item) => item.operatorIds),
+    ...config.facilityOperatorIds.dormitories.flat(),
+    ...config.facilityOperatorIds.reception,
+    ...config.facilityOperatorIds.workshop,
+    ...config.facilityOperatorIds.office,
+    ...config.facilityOperatorIds.training,
+  ])
+  const retainedBackups: Record<string, string> = {}
+  const claimed = new Set<string>()
+  for (const primaryId of assigned) {
+    const backupId = config.operatorBackups[primaryId]
+    if (backupId && !assigned.has(backupId) && !claimed.has(backupId)) {
+      retainedBackups[primaryId] = backupId
+      claimed.add(backupId)
+    }
+  }
+  config.operatorBackups = retainedBackups
+  const scheduled = new Set([...assigned, ...Object.values(retainedBackups)])
+  config.zeroMoraleOperatorIds = config.zeroMoraleOperatorIds.filter((id) => scheduled.has(id))
   for (const group of config.operatorGroups) {
     group.operatorIds = group.operatorIds.filter((id) => assigned.has(id))
   }
-}
-
-function addOperatorGroup() {
-  const sequence = config.operatorGroups.length + 1
-  config.operatorGroups.push({
-    id: `group-${Date.now()}-${sequence}`,
-    name: `组合 ${sequence}`,
-    operatorIds: [],
-  })
-  notice.value = `已创建组合 ${sequence}，请选择至少两名已进驻干员。`
-}
-
-function removeOperatorGroup(group: OperatorGroup) {
-  config.operatorGroups = config.operatorGroups.filter((item) => item.id !== group.id)
-  notice.value = `已删除组合「${group.name || '未命名组合'}」。`
-}
-
-function toggleGroupMember(group: OperatorGroup, operatorId: string, event: Event) {
-  const checked = (event.target as HTMLInputElement).checked
-  if (checked) {
-    if (groupMembership.value[operatorId] && groupMembership.value[operatorId] !== group.id) return
-    if (!group.operatorIds.includes(operatorId)) group.operatorIds.push(operatorId)
-  } else {
-    group.operatorIds = group.operatorIds.filter((id) => id !== operatorId)
-  }
-}
-
-function openRoomPicker(room: OutputRoom) {
-  Object.assign(picker, {
-    open: true,
-    targetKey: room.id,
-    targetLabel: `${room.id} · ${ROOM_LABELS[room.type]}`,
-    roomType: room.type,
-    capacity: capacity(room),
-    selectedIds: [...room.operatorIds],
-  })
-}
-
-function openControlPicker() {
-  Object.assign(picker, {
-    open: true,
-    targetKey: 'control',
-    targetLabel: '控制中枢',
-    roomType: 'control',
-    capacity: 5,
-    selectedIds: [...config.controlOperatorIds],
-  })
-}
-
-function applyOperators(ids: string[]) {
-  if (picker.targetKey === 'control') {
-    config.controlOperatorIds = ids
-    for (const id of ids) config.operatorMorale[id] ??= 24
-    pruneZeroMorale()
-    notice.value = `控制中枢已进驻 ${ids.length} 名干员。`
-    return
-  }
-  const room = config.rooms.find((item) => item.id === picker.targetKey)
-  if (!room) return
-  room.operatorIds = ids
-  for (const id of ids) config.operatorMorale[id] ??= 24
-  pruneZeroMorale()
-  room.operatorCount = ids.length
-  room.powerStaffed = ids.length > 0
-  notice.value = `${room.id} 已进驻 ${ids.map(operatorName).join('、') || '无人'}。`
 }
 
 function resetPlan() {
@@ -208,6 +272,94 @@ function onLevelChange(room: OutputRoom) {
   if (room.operatorIds.length > limit) room.operatorIds = room.operatorIds.slice(0, limit)
   room.operatorCount = room.operatorIds.length
   pruneZeroMorale()
+}
+
+function setSelectedFacilityLevel(event: Event) {
+  const value = Number((event.target as HTMLSelectElement).value)
+  const target = selectedRoster.value
+  if (target.kind === 'output' && selectedOutputRoom.value) {
+    selectedOutputRoom.value.level = value as 1 | 2 | 3
+    onLevelChange(selectedOutputRoom.value)
+    return
+  }
+  if (target.kind === 'dormitory') {
+    const index = Number(target.id.split('-')[1]) - 1
+    config.facilities.dormitories[index] = value as 1 | 2 | 3 | 4 | 5
+    return
+  }
+  if (target.kind !== 'support') return
+  if (target.id === 'reception') config.facilities.reception = value as 1 | 2 | 3
+  if (target.id === 'workshop') config.facilities.workshop = value as 1 | 2 | 3
+  if (target.id === 'office') config.facilities.office = value as 1 | 2 | 3
+  if (target.id === 'training') config.facilities.training = value as 1 | 2 | 3
+}
+
+function setPrimaryAtSlot(slotIndex: number, operatorId: string) {
+  const currentIds = [...selectedRoster.value.operatorIds]
+  const result = setRosterSlot(currentIds, selectedRoster.value.capacity, slotIndex, operatorId)
+  if (selectedRoster.value.kind === 'control') {
+    config.controlOperatorIds = result.operatorIds
+  } else if (selectedOutputRoom.value) {
+    selectedOutputRoom.value.operatorIds = result.operatorIds
+    selectedOutputRoom.value.operatorCount = result.operatorIds.length
+    selectedOutputRoom.value.powerStaffed = result.operatorIds.length > 0
+  } else if (selectedRoster.value.kind === 'dormitory') {
+    const index = Number(selectedRoster.value.id.split('-')[1]) - 1
+    config.facilityOperatorIds.dormitories[index] = result.operatorIds
+  } else if (selectedRoster.value.id === 'reception') {
+    config.facilityOperatorIds.reception = result.operatorIds
+  } else if (selectedRoster.value.id === 'workshop') {
+    config.facilityOperatorIds.workshop = result.operatorIds
+  } else if (selectedRoster.value.id === 'office') {
+    config.facilityOperatorIds.office = result.operatorIds
+  } else if (selectedRoster.value.id === 'training') {
+    config.facilityOperatorIds.training = result.operatorIds
+  }
+  if (result.removedOperatorId) {
+    delete config.operatorBackups[result.removedOperatorId]
+    config.operatorGroups = assignOperatorToNamedGroup(
+      config.operatorGroups,
+      result.removedOperatorId,
+      '',
+      () => '',
+    )
+  }
+  if (operatorId) config.operatorMorale[operatorId] ??= 24
+  pruneZeroMorale()
+}
+
+function setBackupOperator(primaryOperatorId: string, backupOperatorId: string) {
+  if (backupOperatorId) {
+    config.operatorBackups[primaryOperatorId] = backupOperatorId
+    config.operatorMorale[backupOperatorId] ??= 24
+  } else {
+    delete config.operatorBackups[primaryOperatorId]
+  }
+  pruneZeroMorale()
+}
+
+function operatorGroupName(operatorId: string) {
+  const groupId = groupMembership.value[operatorId]
+  return config.operatorGroups.find((group) => group.id === groupId)?.name ?? ''
+}
+
+function setOperatorGroupName(operatorId: string, groupName: string) {
+  config.operatorGroups = assignOperatorToNamedGroup(
+    config.operatorGroups,
+    operatorId,
+    groupName,
+    () => `group-${Date.now()}-${operatorId}`,
+  )
+}
+
+function groupColor(operatorId: string) {
+  const groupId = groupMembership.value[operatorId]
+  const index = config.operatorGroups.findIndex((group) => group.id === groupId)
+  return index < 0 ? 'transparent' : `hsl(${(index * 67 + 168) % 360} 72% 54%)`
+}
+
+function backupOf(primaryId: string) {
+  return config.operatorBackups[primaryId] ?? ''
 }
 
 function format(value: number, digits = 1) {
@@ -271,9 +423,8 @@ if (EDITION.allowShiftRun) specialLabels.shiftRun = '跑单（自动换入但书
           <div class="total-count">总计 {{ config.rooms.length }}/9</div>
         </div>
         <div class="horizon-control">
-          <span>预测时长</span>
-          <input v-model.number="config.hours" type="range" min="1" max="72" step="1" />
-          <strong>{{ config.hours }} 小时</strong>
+          <span>长期日均模拟</span>
+          <strong>预热 30 天 · 统计 90 天</strong>
         </div>
       </section>
 
@@ -281,231 +432,198 @@ if (EDITION.allowShiftRun) specialLabels.shiftRun = '跑单（自动换入但书
 
       <div class="workspace">
         <div class="editor-column">
-          <section class="panel room-panel">
-            <div class="section-heading">
+          <section class="panel base-plan-panel">
+            <div class="section-heading base-plan-heading">
               <div>
-                <p class="section-kicker">OUTPUT GRID</p>
-                <h2>产出设施</h2>
+                <p class="section-kicker">BASE PLAN</p>
+                <h2>基建排班图</h2>
               </div>
-              <p>选择干员后自动计算房间技能、技能类别与控制中枢联动；手动修正用于尚未量化的技能。</p>
+              <p>先从基建平面图选择设施，再在下方同一张表内编辑设施参数、主力、组合与替补。</p>
             </div>
 
-            <div class="room-grid">
-              <article
-                v-for="room in config.rooms"
-                :key="room.id"
-                class="room-card"
-                :class="room.type"
-              >
-                <div class="room-card-head">
-                  <div class="room-code">{{ room.id }}</div>
-                  <select :value="room.type" aria-label="设施类型" @change="handleTypeChange(room, $event)">
-                    <option
-                      v-for="(label, type) in ROOM_LABELS"
-                      :key="type"
-                      :value="type"
-                      :disabled="room.type !== type && counts[type] >= ROOM_LIMITS[type]"
-                    >
-                      {{ label }}
-                    </option>
-                  </select>
-                </div>
+            <div class="base-map" aria-label="基建设施选择器">
+              <div class="base-output-grid">
+                <button
+                  v-for="target in outputTargets"
+                  :key="target.id"
+                  type="button"
+                  class="base-room"
+                  :class="[target.roomType, { selected: selectedRosterTarget === target.id }]"
+                  @click="selectedRosterTarget = target.id"
+                >
+                  <span class="base-room-title"><b>{{ target.id }}</b>{{ ROOM_LABELS[target.roomType as RoomType] }}</span>
+                  <span class="base-room-level">Lv.{{ target.level }}</span>
+                  <span class="base-room-operators">
+                    <i
+                      v-for="id in target.operatorIds"
+                      :key="id"
+                      :style="{ borderBottomColor: groupColor(id) }"
+                      :title="operatorName(id)"
+                    >{{ operatorName(id).slice(0, 2) }}</i>
+                    <em v-if="!target.operatorIds.length">空</em>
+                  </span>
+                </button>
+              </div>
 
-                <div class="field-row">
+              <div class="base-center-stack">
+                <button
+                  v-for="target in centerTargets"
+                  :key="target.id"
+                  type="button"
+                  class="base-room center"
+                  :class="[target.kind, { selected: selectedRosterTarget === target.id }]"
+                  @click="selectedRosterTarget = target.id"
+                >
+                  <span class="base-room-title">{{ target.label }}</span>
+                  <span v-if="target.level" class="base-room-level">Lv.{{ target.level }}</span>
+                  <span class="base-room-operators">
+                    <i
+                      v-for="id in target.operatorIds"
+                      :key="id"
+                      :style="{ borderBottomColor: groupColor(id) }"
+                      :title="operatorName(id)"
+                    >{{ operatorName(id).slice(0, 2) }}</i>
+                    <em v-if="target.kind === 'control' && !target.operatorIds.length">空</em>
+                  </span>
+                </button>
+              </div>
+
+              <div class="base-support-stack">
+                <button
+                  v-for="target in supportTargets"
+                  :key="target.id"
+                  type="button"
+                  class="base-room support"
+                  :class="{ selected: selectedRosterTarget === target.id }"
+                  @click="selectedRosterTarget = target.id"
+                >
+                  <span class="base-room-title">{{ target.label }}</span>
+                  <span class="base-room-level">Lv.{{ target.level }}</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="facility-editor">
+              <div class="facility-editor-head">
+                <div>
+                  <span>正在编辑</span>
+                  <strong>{{ selectedRoster.label }}</strong>
+                </div>
+                <span v-if="selectedRoster.capacity" class="slot-capacity">{{ selectedRoster.operatorIds.length }}/{{ selectedRoster.capacity }} 已进驻</span>
+              </div>
+
+              <div class="facility-parameters">
+                <template v-if="selectedOutputRoom">
+                  <label>
+                    <span>设施类型</span>
+                    <select :value="selectedOutputRoom.type" @change="handleTypeChange(selectedOutputRoom, $event)">
+                      <option
+                        v-for="(label, type) in ROOM_LABELS"
+                        :key="type"
+                        :value="type"
+                        :disabled="selectedOutputRoom.type !== type && counts[type] >= ROOM_LIMITS[type]"
+                      >{{ label }}</option>
+                    </select>
+                  </label>
                   <label>
                     <span>等级</span>
-                    <select v-model.number="room.level" @change="onLevelChange(room)">
-                      <option :value="1">Lv.1</option>
-                      <option :value="2">Lv.2</option>
-                      <option :value="3">Lv.3</option>
+                    <select :value="selectedOutputRoom.level" @change="setSelectedFacilityLevel">
+                      <option v-for="level in 3" :key="level" :value="level">Lv.{{ level }}</option>
                     </select>
                   </label>
-                  <button class="operator-select-button" type="button" @click="openRoomPicker(room)">
-                    <span>选择干员</span>
-                    <b>{{ room.operatorIds.length }}/{{ capacity(room) }}</b>
-                  </button>
-                </div>
-
-                <div class="operator-chips" :class="{ empty: room.operatorIds.length === 0 }">
-                  <template v-if="room.operatorIds.length">
-                    <span v-for="id in room.operatorIds" :key="id" class="operator-chip">{{ operatorName(id) }}</span>
-                  </template>
-                  <span v-else>当前空置</span>
-                </div>
-                <div v-if="room.operatorIds.length" class="morale-inputs">
-                  <label v-for="id in room.operatorIds" :key="id">
-                    <span>{{ operatorName(id) }}</span>
-                    <input type="number" min="0" max="24" step="1" :value="moraleOf(id)" @input="setMorale(id, $event)" />
-                    <b>/24</b>
+                  <label v-if="selectedOutputRoom.type === 'manufacture'">
+                    <span>制造方案</span>
+                    <select v-model="selectedOutputRoom.product">
+                      <option value="gold">赤金 · 72 分钟</option>
+                      <option value="exp">中级作战记录 · 180 分钟</option>
+                      <option value="fragment">源石碎片 · 60 分钟</option>
+                    </select>
                   </label>
-                </div>
-
-                <label v-if="room.type === 'manufacture'" class="wide-field">
-                  <span>制造方案</span>
-                  <select v-model="room.product">
-                    <option value="gold">赤金 · 72 分钟</option>
-                    <option value="exp">中级作战记录 · 180 分钟</option>
-                    <option value="fragment">源石碎片 · 60 分钟</option>
+                  <label v-if="selectedOutputRoom.type === 'trading'">
+                    <span>谈判策略</span>
+                    <select v-model="selectedOutputRoom.strategy">
+                      <option value="gold">龙门商法</option>
+                      <option value="orundum" :disabled="selectedOutputRoom.level < 3">开采协力</option>
+                    </select>
+                  </label>
+                  <label v-if="selectedOutputRoom.type === 'trading' && selectedOutputRoom.strategy === 'gold'">
+                    <span>订单品质</span>
+                    <select v-model="selectedOutputRoom.quality">
+                      <option v-for="(label, key) in qualityLabels" :key="key" :value="key">{{ label }}</option>
+                    </select>
+                  </label>
+                  <label v-if="selectedOutputRoom.type === 'trading' && selectedOutputRoom.strategy === 'gold'">
+                    <span>特殊订单</span>
+                    <select v-model="selectedOutputRoom.specialOrder">
+                      <option v-for="(label, key) in specialLabels" :key="key" :value="key">{{ label }}</option>
+                    </select>
+                  </label>
+                </template>
+                <label v-else-if="selectedRoster.level !== null">
+                  <span>设施等级</span>
+                  <select :value="selectedRoster.level" @change="setSelectedFacilityLevel">
+                    <option v-for="level in selectedRoster.maxLevel" :key="level" :value="level">Lv.{{ level }}</option>
                   </select>
                 </label>
-
-                <template v-if="room.type === 'trading'">
-                  <label class="wide-field">
-                    <span>谈判策略</span>
-                    <select v-model="room.strategy">
-                      <option value="gold">龙门商法</option>
-                      <option value="orundum" :disabled="room.level < 3">开采协力</option>
-                    </select>
-                  </label>
-                  <div v-if="room.strategy === 'gold'" class="field-row">
-                    <label>
-                      <span>订单品质</span>
-                      <select v-model="room.quality">
-                        <option v-for="(label, key) in qualityLabels" :key="key" :value="key">{{ label }}</option>
-                      </select>
-                    </label>
-                    <label>
-                      <span>特殊订单</span>
-                      <select v-model="room.specialOrder">
-                        <option v-for="(label, key) in specialLabels" :key="key" :value="key">{{ label }}</option>
-                      </select>
-                    </label>
-                  </div>
-                </template>
-
-                <label class="bonus-field">
-                  <span>手动效率修正</span>
-                  <div>
-                    <input v-model.number="room.skillBonus" type="number" min="-100" max="400" step="1" />
-                    <b>%</b>
-                  </div>
+                <label v-if="selectedRoster.kind === 'dormitory'">
+                  <span>全部宿舍当前人数</span>
+                  <input
+                    v-model.number="config.dormitoryOccupantCount"
+                    type="number"
+                    min="0"
+                    :max="config.facilities.dormitories.length * 5"
+                    step="1"
+                  />
                 </label>
-              </article>
-            </div>
-          </section>
-
-          <section class="panel group-panel">
-            <div class="section-heading">
-              <div>
-                <p class="section-kicker">SHIFT GROUPS</p>
-                <h2>干员组合</h2>
+                <p v-if="selectedRoster.kind === 'support'" class="parameter-note">功能设施干员会参与跨设施技能与中间资源计算。</p>
               </div>
-              <div class="group-heading-actions">
-                <p>组合可跨越不同设施；预测起点同步进驻，任一成员心情耗尽时全组同步离开。</p>
-                <button class="group-add-button" type="button" @click="addOperatorGroup">+ 新建组合</button>
-              </div>
-            </div>
 
-            <div v-if="config.operatorGroups.length" class="group-list">
-              <article v-for="group in config.operatorGroups" :key="group.id" class="group-card">
-                <div class="group-card-head">
-                  <input v-model.trim="group.name" aria-label="组合名称" maxlength="24" />
-                  <span :class="{ ready: group.operatorIds.length >= 2 }">
-                    {{ group.operatorIds.length >= 2 ? `${group.operatorIds.length} 人 · 已生效` : '至少选择 2 人' }}
-                  </span>
-                  <button type="button" @click="removeOperatorGroup(group)">删除</button>
+              <div v-if="selectedRoster.capacity > 0" class="roster-table">
+                <div class="roster-table-head">
+                  <span>工位</span><span>干员</span><span>组</span><span>替换</span>
                 </div>
-                <div v-if="assignedOperators.length" class="group-member-grid">
-                  <label
-                    v-for="operator in assignedOperators"
-                    :key="operator.id"
-                    class="group-member"
-                    :class="{
-                      selected: group.operatorIds.includes(operator.id),
-                      unavailable: groupMembership[operator.id] && groupMembership[operator.id] !== group.id,
-                    }"
-                  >
-                    <input
-                      type="checkbox"
-                      :checked="group.operatorIds.includes(operator.id)"
-                      :disabled="Boolean(groupMembership[operator.id] && groupMembership[operator.id] !== group.id)"
-                      @change="toggleGroupMember(group, operator.id, $event)"
+                <article v-for="(primaryId, index) in selectedRosterSlots" :key="`${selectedRoster.id}-${index}`" class="roster-table-row">
+                  <span class="slot-index">{{ String(index + 1).padStart(2, '0') }}</span>
+                  <div class="roster-person primary-person" :style="{ borderBottomColor: groupColor(primaryId) }">
+                    <InlineOperatorSelect
+                      :model-value="primaryId"
+                      :room-type="selectedRoster.roomType"
+                      :assigned-to="reservedOperators"
+                      placeholder="选择干员"
+                      @update:model-value="setPrimaryAtSlot(index, $event)"
                     />
-                    <span><b>{{ operator.name }}</b><small>{{ operator.location }}</small></span>
+                    <label v-if="primaryId">心情 <input type="number" min="0" max="24" step="1" :value="moraleOf(primaryId)" @input="setMorale(primaryId, $event)" /></label>
+                  </div>
+                  <label class="group-cell">
+                    <input
+                      :value="operatorGroupName(primaryId)"
+                      :disabled="!primaryId"
+                      :list="`group-options-${selectedRoster.id}-${index}`"
+                      placeholder="组名"
+                      maxlength="24"
+                      @change="setOperatorGroupName(primaryId, ($event.target as HTMLInputElement).value)"
+                    />
+                    <datalist :id="`group-options-${selectedRoster.id}-${index}`">
+                      <option v-for="group in config.operatorGroups" :key="group.id" :value="group.name" />
+                    </datalist>
                   </label>
-                </div>
-                <p v-else class="group-empty">请先向控制中枢或产出设施进驻干员。</p>
-              </article>
-            </div>
-            <div v-else class="group-empty-state">
-              <strong>尚未建立同步组合</strong>
-              <span>组合不会限制设施类型，可将控制中枢、制造站、贸易站和发电站干员编入同一组。</span>
+                  <div class="roster-person backup" :class="{ missing: primaryId && !backupOf(primaryId) }">
+                    <InlineOperatorSelect
+                      :model-value="backupOf(primaryId)"
+                      :room-type="selectedRoster.roomType"
+                      :assigned-to="reservedOperators"
+                      :disabled="!primaryId"
+                      placeholder="选择替补"
+                      @update:model-value="setBackupOperator(primaryId, $event)"
+                    />
+                    <label v-if="backupOf(primaryId)">心情 <input type="number" min="0" max="24" step="1" :value="moraleOf(backupOf(primaryId))" @input="setMorale(backupOf(primaryId), $event)" /></label>
+                  </div>
+                </article>
+                <p class="roster-hint">主力、组名与替补会立即保存；跨设施输入相同组名即可同步排班。</p>
+              </div>
             </div>
           </section>
 
-          <section class="panel facility-panel">
-            <div class="section-heading compact">
-              <div>
-                <p class="section-kicker">FACILITY LOAD</p>
-                <h2>功能设施与宿舍</h2>
-              </div>
-              <p>这些设施暂不折算收益，但会计入电力。</p>
-            </div>
-            <div class="control-assignment">
-              <div>
-                <span class="control-label">控制中枢 · 全局联动</span>
-                <div class="operator-chips" :class="{ empty: config.controlOperatorIds.length === 0 }">
-                  <template v-if="config.controlOperatorIds.length">
-                    <span v-for="id in config.controlOperatorIds" :key="id" class="operator-chip">{{ operatorName(id) }}</span>
-                  </template>
-                  <span v-else>未选择控制中枢干员</span>
-                </div>
-                <div v-if="config.controlOperatorIds.length" class="morale-inputs">
-                  <label v-for="id in config.controlOperatorIds" :key="id">
-                    <span>{{ operatorName(id) }}</span>
-                    <input type="number" min="0" max="24" step="1" :value="moraleOf(id)" @input="setMorale(id, $event)" />
-                    <b>/24</b>
-                  </label>
-                </div>
-              </div>
-              <button class="operator-select-button control-button" type="button" @click="openControlPicker">
-                <span>选择干员</span>
-                <b>{{ config.controlOperatorIds.length }}/5</b>
-              </button>
-            </div>
-            <div class="facility-grid">
-              <label>
-                <span>会客室</span>
-                <select v-model.number="config.facilities.reception">
-                  <option v-for="level in 3" :key="level" :value="level">Lv.{{ level }}</option>
-                </select>
-              </label>
-              <label>
-                <span>办公室</span>
-                <select v-model.number="config.facilities.office">
-                  <option v-for="level in 3" :key="level" :value="level">Lv.{{ level }}</option>
-                </select>
-              </label>
-              <label>
-                <span>训练室</span>
-                <select v-model.number="config.facilities.training">
-                  <option v-for="level in 3" :key="level" :value="level">Lv.{{ level }}</option>
-                </select>
-              </label>
-              <label>
-                <span>加工站</span>
-                <select v-model.number="config.facilities.workshop">
-                  <option v-for="level in 3" :key="level" :value="level">Lv.{{ level }} · 10 电力</option>
-                </select>
-              </label>
-              <label v-for="(_, index) in config.facilities.dormitories" :key="index">
-                <span>宿舍 {{ index + 1 }}</span>
-                <select v-model.number="config.facilities.dormitories[index]">
-                  <option v-for="level in 5" :key="level" :value="level">Lv.{{ level }}</option>
-                </select>
-              </label>
-              <label>
-                <span>宿舍当前进驻人数</span>
-                <input
-                  v-model.number="config.dormitoryOccupantCount"
-                  type="number"
-                  min="0"
-                  :max="config.facilities.dormitories.length * 5"
-                  step="1"
-                />
-              </label>
-            </div>
-          </section>
         </div>
 
         <aside class="results-column">
@@ -531,7 +649,7 @@ if (EDITION.allowShiftRun) specialLabels.shiftRun = '跑单（自动换入但书
             <div class="drone-stat">
               <span>理论无人机</span>
               <strong>{{ format(report.drones) }}</strong>
-              <small>{{ config.hours }} 小时 · 每架减少 3 分钟</small>
+              <small>长期日均 · 每架减少 3 分钟</small>
             </div>
             <label>
               <span>全部无人机用于</span>
@@ -630,11 +748,13 @@ if (EDITION.allowShiftRun) specialLabels.shiftRun = '跑单（自动换入但书
             </div>
             <div class="morale-list">
               <div v-for="item in report.morale" :key="item.operatorId">
-                <span>{{ item.operatorName }} · {{ item.roomId }}</span>
+                <span>{{ item.operatorName }} · {{ item.roomId }} · {{ item.role === 'backup' ? '替补' : '主力' }}</span>
                 <b>{{ format(item.initial, 1) }} → {{ format(item.ending, 1) }}</b>
                 <small>
                   初始消耗 {{ format(item.initialConsumptionPerHour, 2) }}/时
-                  <template v-if="item.leaveReason === 'morale-exhausted'"> · {{ format(item.leftAt ?? 0, 1) }} 小时后耗尽并离开</template>
+                  <template v-if="item.role === 'backup' && item.startedAt === null"> · 预测期内待命，未接班</template>
+                  <template v-else-if="item.role === 'backup'"> · 第 {{ format(item.startedAt ?? 0, 1) }} 小时接班</template>
+                  <template v-else-if="item.leaveReason === 'morale-exhausted'"> · {{ format(item.leftAt ?? 0, 1) }} 小时后耗尽并离开</template>
                   <template v-else-if="item.leaveReason === 'group-sync'"> · {{ format(item.leftAt ?? 0, 1) }} 小时后随组合「{{ item.groupName }}」离开</template>
                   <template v-else> · 预测期内持续工作</template>
                 </small>
@@ -658,15 +778,5 @@ if (EDITION.allowShiftRun) specialLabels.shiftRun = '跑单（自动换入但书
       <span>GameData {{ GAME_DATA_VERSION }} · {{ OPERATOR_PROFILE_COUNT }} 份基建档案</span>
     </footer>
 
-    <OperatorPicker
-      :open="picker.open"
-      :target-label="picker.targetLabel"
-      :room-type="picker.roomType"
-      :capacity="picker.capacity"
-      :selected-ids="picker.selectedIds"
-      :assigned-to="assignedTo"
-      @close="picker.open = false"
-      @apply="applyOperators"
-    />
   </div>
 </template>

@@ -17,6 +17,26 @@ describe('base income calculator', () => {
     expect(result?.value).toBeCloseTo(10000)
   })
 
+  it('reports a daily average independently of the simulation horizon', () => {
+    const config = createDefaultConfig()
+    config.hours = 24 * 30
+    config.rooms[0] = { ...createRoom('B1', 'manufacture'), operatorCount: 0, product: 'gold' }
+    const result = calculate(config).manufacture.find((room) => room.roomId === 'B1')
+    expect(result?.count).toBeCloseTo(20)
+    expect(result?.value).toBeCloseTo(10000)
+  })
+
+  it('uses a warmed-up long-term rotation for the daily efficiency', () => {
+    const config = createDefaultConfig()
+    const room = config.rooms[0]!
+    room.operatorIds = ['char_4106_bryota']
+    config.operatorBackups = { char_4106_bryota: 'char_502_nblade' }
+
+    const result = calculate(config).manufacture.find((item) => item.roomId === room.id)!
+
+    expect(result.efficiency).toBeCloseTo(1.26, 2)
+  })
+
   it('produces 8000 EXP per day at 100 percent efficiency', () => {
     const config = createDefaultConfig()
     config.rooms[0] = { ...createRoom('B1', 'manufacture'), operatorCount: 0, product: 'exp' }
@@ -47,7 +67,21 @@ describe('base income calculator', () => {
     const config = createDefaultConfig()
     expect(calculate(config).drones).toBeCloseTo(240)
     config.rooms.find((room) => room.type === 'power')!.operatorIds = ['char_377_gdglow']
+    config.operatorBackups.char_377_gdglow = 'char_253_greyy'
     expect(calculate(config).drones).toBeCloseTo(300)
+  })
+
+  it('requires a unique backup for every configured primary operator', () => {
+    const config = createDefaultConfig()
+    config.rooms[0]!.operatorIds = ['char_4106_bryota', 'char_237_gravel']
+    config.operatorBackups = { char_4106_bryota: 'char_502_nblade' }
+    const report = calculate(config)
+    expect(report.layoutValid).toBe(false)
+    expect(report.summary).toBeNull()
+    expect(report.validationMessages).toContain('char_237_gravel 尚未设置替补干员。')
+
+    config.operatorBackups.char_237_gravel = 'char_502_nblade'
+    expect(calculate(config).validationMessages).toContain('同一替补干员不能同时接替多个主力工位。')
   })
 
   it('combines Proviso beta and Tequila beta for level 3 shift-running orders', () => {

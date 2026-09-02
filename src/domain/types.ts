@@ -41,16 +41,39 @@ export interface OperatorGroup {
   operatorIds: string[]
 }
 
+export interface EfficiencyResources {
+  manufacturePerceptionInformation: number
+  tradingPerceptionInformation: number
+  additionalGoldProductionLines: number
+  monsterCuisine: number
+  worldlyFireworks: number
+  suiFacilities: number
+  droneCapacity: number
+  extraWorkplaceOperatorIds: string[]
+  trainingOperatorIds: string[]
+}
+
+export interface FacilityOperatorAssignments {
+  dormitories: string[][]
+  reception: string[]
+  workshop: string[]
+  office: string[]
+  training: string[]
+}
+
 export interface AppConfig {
-  schemaVersion: 5
+  schemaVersion: 7
   planName: string
   hours: number
   rooms: OutputRoom[]
   facilities: FacilityLevels
   dormitoryOccupantCount: number
+  facilityOperatorIds: FacilityOperatorAssignments
+  efficiencyResources: EfficiencyResources
   controlOperatorIds: string[]
   zeroMoraleOperatorIds: string[]
   operatorMorale: Record<string, number>
+  operatorBackups: Record<string, string>
   operatorGroups: OperatorGroup[]
   droneTarget: string
 }
@@ -59,6 +82,9 @@ export interface OperatorMoraleResult {
   operatorId: string
   operatorName: string
   roomId: string
+  role: 'primary' | 'backup'
+  replacesOperatorId: string | null
+  startedAt: number | null
   initial: number
   ending: number
   initialConsumptionPerHour: number
@@ -111,6 +137,7 @@ export interface CalculationReport {
   trading: TradeResult[]
   drones: number
   morale: OperatorMoraleResult[]
+  roomShiftDetails: Record<string, string[]>
   summary: {
     exp: number
     goldCount: number

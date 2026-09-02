@@ -41,8 +41,57 @@ describe('morale timeline', () => {
     const production = report.manufacture.find((item) => item.roomId === room.id)!
     const morale = report.morale.find((item) => item.operatorId === 'char_4106_bryota')!
     expect(morale.exhaustedAt).toBeCloseTo(12)
-    expect(production.efficiency).toBeCloseTo(1.18)
-    expect(production.count).toBeCloseTo(23.6)
+    expect(production.efficiency).toBeCloseTo(1)
+    expect(production.count).toBeCloseTo(20)
+  })
+
+  it('hands a primary work slot to its one-to-one backup after morale exhaustion', () => {
+    const config = createDefaultConfig()
+    const room = config.rooms[0]!
+    room.operatorIds = ['char_4106_bryota']
+    config.operatorBackups = { char_4106_bryota: 'char_502_nblade' }
+    config.operatorMorale.char_4106_bryota = 12
+    config.operatorMorale.char_502_nblade = 24
+
+    const result = simulateMorale(config)
+    const primary = result.operators.find((item) => item.operatorId === 'char_4106_bryota')!
+    const backup = result.operators.find((item) => item.operatorId === 'char_502_nblade')!
+
+    expect(primary.exhaustedAt).toBeCloseTo(12)
+    expect(primary.leftAt).toBeCloseTo(12)
+    expect(backup.role).toBe('backup')
+    expect(backup.replacesOperatorId).toBe(primary.operatorId)
+    expect(backup.startedAt).toBeCloseTo(12)
+    expect(backup.ending).toBeCloseTo(12)
+    expect(result.averageEfficiencyPercent[room.id]).toBeCloseTo(126)
+    expect(result.roomShiftDetails[room.id]?.[0]).toContain('第 12.0 小时交接')
+  })
+
+  it('repeats primary and backup rotations during a long simulation', () => {
+    const config = createDefaultConfig()
+    const room = config.rooms[0]!
+    room.operatorIds = ['char_4106_bryota']
+    config.operatorBackups = { char_4106_bryota: 'char_502_nblade' }
+    config.hours = 24 * 10
+
+    const result = simulateMorale(config)
+
+    expect(result.averageEfficiencyPercent[room.id]).toBeCloseTo(126, 1)
+    expect(result.roomShiftDetails[room.id]!.length).toBeGreaterThan(2)
+  })
+
+  it('keeps zero-morale Lancet-2 in the power room as an automation trigger', () => {
+    const config = createDefaultConfig()
+    config.hours = 1
+    config.controlOperatorIds = ['char_416_zumama']
+    config.rooms[6]!.operatorIds = ['char_1027_greyy2']
+    config.rooms[7]!.operatorIds = ['char_285_medic2']
+    config.zeroMoraleOperatorIds = ['char_285_medic2']
+    config.rooms[0]!.operatorIds = ['char_400_weedy', 'char_385_finlpp']
+
+    const result = simulateMorale(config)
+
+    expect(result.averageEfficiencyPercent[config.rooms[0]!.id]).toBe(232)
   })
 
   it('synchronously removes a group whose members work in different facilities', () => {

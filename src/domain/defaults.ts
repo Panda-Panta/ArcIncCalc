@@ -43,7 +43,7 @@ export function createDefaultConfig(): AppConfig {
   ]
 
   return {
-    schemaVersion: 5,
+    schemaVersion: 7,
     planName: '243 标准方案',
     hours: 24,
     rooms: roomTypes.map((type, index) => createRoom(`B${index + 1}`, type)),
@@ -55,9 +55,28 @@ export function createDefaultConfig(): AppConfig {
       dormitories: [5, 5, 5, 5],
     },
     dormitoryOccupantCount: 0,
+    facilityOperatorIds: {
+      dormitories: [[], [], [], []],
+      reception: [],
+      workshop: [],
+      office: [],
+      training: [],
+    },
+    efficiencyResources: {
+      manufacturePerceptionInformation: 0,
+      tradingPerceptionInformation: 0,
+      additionalGoldProductionLines: 0,
+      monsterCuisine: 0,
+      worldlyFireworks: 0,
+      suiFacilities: 0,
+      droneCapacity: 235,
+      extraWorkplaceOperatorIds: [],
+      trainingOperatorIds: [],
+    },
     controlOperatorIds: [],
     zeroMoraleOperatorIds: [],
     operatorMorale: {},
+    operatorBackups: {},
     operatorGroups: [],
     droneTarget: 'none',
   }

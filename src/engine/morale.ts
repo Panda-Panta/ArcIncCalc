@@ -2,6 +2,8 @@ import { OPERATOR_MAP, type OperatorRecord, type OperatorSkill } from '../domain
 import type { AppConfig, OperatorMoraleResult, OutputRoom, RoomType } from '../domain/types'
 import { evaluateOperators } from './operatorRules'
 import { createOperatorGroupSchedule } from './operatorGroups'
+import { createShiftRoster } from './shiftRoster'
+import { buildRiicGlobalContext } from './globalContext'
 
 interface Assignment {
   operator: OperatorRecord
@@ -26,6 +28,18 @@ export interface MoraleSimulation {
   averageEfficiencyPercent: Record<string, number>
   averagePowerBonusPercent: number
   operators: OperatorMoraleResult[]
+  roomShiftDetails: Record<string, string[]>
+}
+
+function dormitoryRecoveryPerHour(config: AppConfig) {
+  if (!config.facilities.dormitories.length) return 0
+  return config.facilities.dormitories
+    .reduce((sum, level) => sum + 1.5 + level * 0.5, 0) /
+    config.facilities.dormitories.length
+}
+
+function leavesAtZeroMorale(operatorId: string) {
+  return operatorId !== 'char_285_medic2'
 }
 
 const MLYNAR_EXTENDED_SKILLS = new Set([
@@ -403,99 +417,195 @@ function nudgeBoundaryCrossings(
   return changed
 }
 
-export function simulateMorale(config: AppConfig): MoraleSimulation {
-  const all = assignments(config)
-  const morale = new Map(all.map((assignment) => {
-    const configured = config.operatorMorale[assignment.operator.charId]
-    const initial = config.zeroMoraleOperatorIds.includes(assignment.operator.charId)
+export function simulateMorale(
+  config: AppConfig,
+  options: { warmupHours?: number; sampleHours?: number } = {},
+): MoraleSimulation {
+  const warmupHours = Math.max(0, options.warmupHours ?? 0)
+  const sampleHours = Math.max(1, options.sampleHours ?? config.hours)
+  const totalHours = warmupHours + sampleHours
+  const roster = createShiftRoster(config)
+  const morale = new Map(roster.participants.map((participant) => {
+    const configured = config.operatorMorale[participant.operatorId]
+    const initial = config.zeroMoraleOperatorIds.includes(participant.operatorId)
       ? 0
       : Math.max(0, Math.min(24,
           typeof configured === 'number' && Number.isFinite(configured) ? configured : 24,
         ))
-    return [assignment.operator.charId, initial] as const
+    return [participant.operatorId, initial] as const
   }))
   const initialMorale = new Map(morale)
-  const activeIds = new Set([...morale].filter(([, value]) => value > 0).map(([id]) => id))
-  const assignedIds = new Set(all.map((assignment) => assignment.operator.charId))
-  const groupSchedule = createOperatorGroupSchedule(config.operatorGroups, assignedIds)
+  const groupSchedule = createOperatorGroupSchedule(config.operatorGroups, roster.primaryOperatorIds)
   const exhaustedAt = new Map<string, number>()
   const leftAt = new Map<string, number>()
   const leaveReason = new Map<string, OperatorMoraleResult['leaveReason']>()
-
-  const applyDepartures = (triggerIds: Set<string>, time: number) => {
-    const departures = groupSchedule.expandDepartures(triggerIds)
-    for (const id of departures) {
-      if (triggerIds.has(id)) exhaustedAt.set(id, time)
-      if (!activeIds.has(id) && !triggerIds.has(id)) continue
-      activeIds.delete(id)
-      leftAt.set(id, time)
-      leaveReason.set(id, triggerIds.has(id) ? 'morale-exhausted' : 'group-sync')
-    }
-  }
-
-  const initiallyExhausted = new Set(
-    [...morale].filter(([, value]) => value <= 0).map(([id]) => id),
+  const startedAt = new Map<string, number>(roster.participants
+    .filter((participant) => participant.role === 'primary')
+    .map((participant) => [participant.operatorId, 0] as const))
+  const firstRates = new Map<string, number>()
+  const firstDetails = new Map<string, string[]>()
+  const roomShiftDetails: Record<string, string[]> = Object.fromEntries(
+    config.rooms.map((room) => [room.id, []]),
   )
-  if (initiallyExhausted.size) applyDepartures(initiallyExhausted, 0)
-  const initialSnapshot = computeRates(config, all, activeIds, morale)
   const efficiencyTotals: Record<string, number> = Object.fromEntries(config.rooms.map((room) => [room.id, 0]))
   let powerBonusTotal = 0
   let elapsed = 0
+  const recoveryPerHour = dormitoryRecoveryPerHour(config)
+  const alwaysPresentIds = new Set([
+    ...config.facilityOperatorIds.dormitories.flat(),
+    ...config.facilityOperatorIds.reception,
+    ...config.facilityOperatorIds.workshop,
+    ...config.facilityOperatorIds.office,
+    ...config.facilityOperatorIds.training,
+    ...config.efficiencyResources.extraWorkplaceOperatorIds,
+  ].filter((id) => !config.zeroMoraleOperatorIds.includes(id)))
 
-  while (elapsed < config.hours - 1e-9) {
-    let snapshot = computeRates(config, all, activeIds, morale)
-    if (nudgeBoundaryCrossings(all, activeIds, morale, snapshot.rates)) {
-      snapshot = computeRates(config, all, activeIds, morale)
+  const activeIds = () => new Set(
+    [
+      ...[...roster.activeOperatorIds()].filter((id) => (morale.get(id) ?? 0) > 0),
+      ...alwaysPresentIds,
+    ],
+  )
+  const recordSnapshot = (snapshot: RateSnapshot, ids: Set<string>) => {
+    for (const id of ids) {
+      if (firstRates.has(id)) continue
+      firstRates.set(id, snapshot.rates.get(id) ?? 0)
+      firstDetails.set(id, [...(snapshot.details.get(id) ?? [])])
+    }
+  }
+  const applyDepartures = (triggerIds: Set<string>, time: number) => {
+    const departures = groupSchedule.expandDepartures(triggerIds)
+    for (const transition of roster.depart(
+      departures,
+      (id) => (morale.get(id) ?? 0) >= 24 - 1e-8,
+    )) {
+      if (triggerIds.has(transition.operatorId)) exhaustedAt.set(transition.operatorId, time)
+      leftAt.set(transition.operatorId, time)
+      leaveReason.set(
+        transition.operatorId,
+        triggerIds.has(transition.operatorId) ? 'morale-exhausted' : 'group-sync',
+      )
+      if (transition.replacementOperatorId) {
+        const replacementName = OPERATOR_MAP.get(transition.replacementOperatorId)?.name ?? transition.replacementOperatorId
+        const operatorName = OPERATOR_MAP.get(transition.operatorId)?.name ?? transition.operatorId
+        if (
+          time >= warmupHours &&
+          (roomShiftDetails[transition.roomId]?.length ?? 0) < 12
+        ) {
+          roomShiftDetails[transition.roomId]?.push(
+            `${operatorName} → ${replacementName}：统计期第 ${(time - warmupHours).toFixed(1)} 小时交接`,
+          )
+        }
+        if ((morale.get(transition.replacementOperatorId) ?? 0) > 0) {
+          startedAt.set(transition.replacementOperatorId, time)
+        }
+      }
+    }
+  }
+
+  while (true) {
+    const zeroIds = new Set(
+      [...roster.activeOperatorIds()].filter(
+        (id) => leavesAtZeroMorale(id) && (morale.get(id) ?? 0) <= 1e-9,
+      ),
+    )
+    if (!zeroIds.size) break
+    applyDepartures(zeroIds, 0)
+  }
+
+  while (elapsed < totalHours - 1e-9) {
+    roster.fillVacancies((id) => (morale.get(id) ?? 0) >= 24 - 1e-8)
+    const runtimeConfig = roster.currentConfig()
+    const all = assignments(runtimeConfig)
+    const currentActiveIds = activeIds()
+    let snapshot = computeRates(runtimeConfig, all, currentActiveIds, morale)
+    recordSnapshot(snapshot, currentActiveIds)
+    if (nudgeBoundaryCrossings(all, currentActiveIds, morale, snapshot.rates)) {
+      snapshot = computeRates(runtimeConfig, all, currentActiveIds, morale)
+      recordSnapshot(snapshot, currentActiveIds)
     }
     const rates = snapshot.rates
-    let duration = Math.min(config.hours - elapsed, nextBoundaryDuration(all, activeIds, morale, rates))
-    for (const id of activeIds) {
+    let duration = Math.min(totalHours - elapsed, nextBoundaryDuration(all, currentActiveIds, morale, rates))
+    for (const id of currentActiveIds) {
+      if (!morale.has(id)) continue
       const rate = rates.get(id) ?? 1
       if (rate > 0) duration = Math.min(duration, (morale.get(id) ?? 0) / rate)
     }
-    if (!Number.isFinite(duration)) duration = config.hours - elapsed
+    if (roster.hasVacancies() && recoveryPerHour > 0) {
+      for (const id of roster.inactiveOperatorIds()) {
+        const remaining = 24 - (morale.get(id) ?? 0)
+        if (remaining > 1e-8) duration = Math.min(duration, remaining / recoveryPerHour)
+      }
+    }
+    if (!Number.isFinite(duration)) duration = totalHours - elapsed
     if (duration <= 1e-9) {
-      const triggers = new Set([...activeIds].filter((id) => (morale.get(id) ?? 0) <= 1e-9))
-      applyDepartures(triggers, elapsed)
+      const zeroIds = new Set(
+        [...roster.activeOperatorIds()].filter(
+          (id) => leavesAtZeroMorale(id) && (morale.get(id) ?? 0) <= 1e-9,
+        ),
+      )
+      if (zeroIds.size) applyDepartures(zeroIds, elapsed)
+      else break
       continue
     }
 
-    for (const room of config.rooms) {
+    const globalContext = buildRiicGlobalContext(runtimeConfig, currentActiveIds, morale)
+    const measuredDuration = Math.max(
+      0,
+      Math.min(elapsed + duration, totalHours) - Math.max(elapsed, warmupHours),
+    )
+    for (const room of runtimeConfig.rooms) {
       efficiencyTotals[room.id] = (efficiencyTotals[room.id] ?? 0) +
-        evaluateOperators(room, config, activeIds, morale).efficiencyPercent * duration
+        evaluateOperators(room, runtimeConfig, currentActiveIds, morale, globalContext).efficiencyPercent * measuredDuration
     }
-    powerBonusTotal += config.rooms
+    powerBonusTotal += runtimeConfig.rooms
       .filter((room) => room.type === 'power')
       .reduce((sum, room) =>
-        sum + evaluateOperators(room, config, activeIds, morale).efficiencyPercent - 100,
-      0) * duration
+        sum + evaluateOperators(room, runtimeConfig, currentActiveIds, morale, globalContext).efficiencyPercent - 100,
+      0) * measuredDuration
 
-    for (const id of activeIds) {
+    for (const id of currentActiveIds) {
+      if (!morale.has(id)) continue
       const rate = rates.get(id) ?? 1
       morale.set(id, Math.max(0, Math.min(24, (morale.get(id) ?? 0) - rate * duration)))
     }
+    for (const id of roster.inactiveOperatorIds()) {
+      morale.set(id, Math.min(24, (morale.get(id) ?? 0) + recoveryPerHour * duration))
+    }
     elapsed += duration
-    const triggers = new Set([...activeIds].filter((id) => (morale.get(id) ?? 0) <= 1e-8))
-    if (triggers.size) applyDepartures(triggers, elapsed)
+    const zeroIds = new Set(
+      [...roster.activeOperatorIds()].filter(
+        (id) => leavesAtZeroMorale(id) && (morale.get(id) ?? 0) <= 1e-8,
+      ),
+    )
+    if (zeroIds.size) applyDepartures(zeroIds, elapsed)
   }
 
   return {
     averageEfficiencyPercent: Object.fromEntries(
-      Object.entries(efficiencyTotals).map(([roomId, total]) => [roomId, total / config.hours]),
+      Object.entries(efficiencyTotals).map(([roomId, total]) => [roomId, total / sampleHours]),
     ),
-    averagePowerBonusPercent: powerBonusTotal / config.hours,
-    operators: all.map((assignment) => {
-      const id = assignment.operator.charId
-      const group = groupSchedule.groupByOperator.get(id)
-      const details = [...(initialSnapshot.details.get(id) ?? [])]
+    averagePowerBonusPercent: powerBonusTotal / sampleHours,
+    roomShiftDetails,
+    operators: roster.participants.map((participant) => {
+      const id = participant.operatorId
+      const group = participant.role === 'primary' ? groupSchedule.groupByOperator.get(id) : undefined
+      const details = [...(firstDetails.get(id) ?? [])]
+      if (participant.role === 'backup' && participant.replacesOperatorId) {
+        const primaryName = OPERATOR_MAP.get(participant.replacesOperatorId)?.name ?? participant.replacesOperatorId
+        details.unshift(`替补关系：接替 ${primaryName} 离开后的 ${participant.roomId} 工位`)
+      }
       if (group) details.unshift(`组合「${group.name}」：预测起点同步进驻，任一成员耗尽时全组离开`)
       return {
         operatorId: id,
-        operatorName: assignment.operator.name,
-        roomId: assignment.roomId,
+        operatorName: OPERATOR_MAP.get(id)?.name ?? id,
+        roomId: participant.roomId,
+        role: participant.role,
+        replacesOperatorId: participant.replacesOperatorId,
+        startedAt: startedAt.get(id) ?? null,
         initial: initialMorale.get(id) ?? 24,
         ending: morale.get(id) ?? 0,
-        initialConsumptionPerHour: initialSnapshot.rates.get(id) ?? 0,
+        initialConsumptionPerHour: firstRates.get(id) ?? 0,
         exhaustedAt: exhaustedAt.get(id) ?? null,
         leftAt: leftAt.get(id) ?? null,
         leaveReason: leaveReason.get(id) ?? null,
