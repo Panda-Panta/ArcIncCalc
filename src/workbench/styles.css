@@ -1,0 +1,327 @@
+/**
+ * Derivative work based on arknights-mower (PlanEditor.vue)
+ * Original work Copyright (c) 2021 Nano
+ * Licensed under the MIT License
+ */
+
+:root {
+  --mower-bg: #141414;
+  --mower-card-bg: rgba(255, 255, 255, 0.08);
+  --mower-card-border: rgb(51, 54, 57);
+  --mower-card-selected: rgb(32, 128, 240);
+  --mower-manufacture: #f0a020;
+  --mower-trading: #2080f0;
+  --mower-power: #18a058;
+}
+
+/* Narrow screen scroll viewport */
+.mower-base-map.plan-scroll-wrapper,
+.mower-base-map .plan-scroll-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  display: flex;
+  justify-content: flex-start;
+  padding: 12px 0;
+  box-sizing: border-box;
+}
+
+/* Main plan layout container */
+.mower-base-map .plan-container {
+  width: 980px;
+  min-width: 980px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.mower-base-map .outer {
+  display: flex;
+  margin: 0 auto;
+  user-select: none;
+}
+
+/* Left Column: 3x3 Output Rooms */
+.mower-base-map .left_box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 82px;
+  padding-right: 2px;
+}
+
+.mower-base-map .left_contain {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4px;
+}
+
+/* Middle Column: Central + 4 Dorms */
+.mower-base-map .mid_box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mower-base-map .mid_contain {
+  display: flex;
+}
+
+/* Right Column: 4 Support Facilities */
+.mower-base-map .right_box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 80px;
+}
+
+.mower-base-map .right_contain {
+  display: flex;
+}
+
+/* Facility Card Base */
+.mower-base-map .facility-card {
+  box-sizing: border-box;
+  cursor: pointer;
+  position: relative;
+  user-select: none;
+  overflow: hidden;
+  font-size: 14px;
+  border-radius: 3px;
+  transition: all 0.3s;
+}
+
+/* Size Variants */
+.mower-base-map .facility-3,
+.mower-base-map .facility-output,
+.mower-base-map .size-output {
+  width: 175px;
+  height: 76px;
+  margin: 0;
+}
+
+.mower-base-map .left_box .facility-card {
+  margin: 0;
+}
+
+.mower-base-map .facility-5,
+.mower-base-map .facility-center,
+.mower-base-map .size-center {
+  width: 277px;
+  height: 76px;
+  margin: 2px 3px;
+}
+
+.mower-base-map .facility-2,
+.mower-base-map .facility-support,
+.mower-base-map .size-support {
+  width: 124px;
+  height: 76px;
+  margin: 2px 3px;
+}
+
+/* Output Rooms Color Themes */
+.mower-base-map .facility-card.info {
+  background-color: rgba(32, 128, 240, 0.16);
+  border: 1px solid transparent;
+}
+.mower-base-map .facility-card.info:hover {
+  background-color: rgba(32, 128, 240, 0.22);
+}
+.mower-base-map .facility-card.info.true,
+.mower-base-map .facility-card.info.is-selected {
+  background-color: rgba(32, 128, 240, 0.28);
+  border: 1px solid rgb(32, 128, 240);
+}
+.mower-base-map .facility-card.info .facility-name {
+  color: #2080f0;
+}
+
+.mower-base-map .facility-card.warning {
+  background-color: rgba(240, 160, 32, 0.16);
+  border: 1px solid transparent;
+}
+.mower-base-map .facility-card.warning:hover {
+  background-color: rgba(240, 160, 32, 0.22);
+}
+.mower-base-map .facility-card.warning.true,
+.mower-base-map .facility-card.warning.is-selected {
+  background-color: rgba(240, 160, 32, 0.28);
+  border: 1px solid rgb(240, 160, 32);
+}
+.mower-base-map .facility-card.warning .facility-name {
+  color: #f0a020;
+}
+
+.mower-base-map .facility-card.primary {
+  background-color: rgba(24, 160, 88, 0.16);
+  border: 1px solid transparent;
+}
+.mower-base-map .facility-card.primary:hover {
+  background-color: rgba(24, 160, 88, 0.22);
+}
+.mower-base-map .facility-card.primary.true,
+.mower-base-map .facility-card.primary.is-selected {
+  background-color: rgba(24, 160, 88, 0.28);
+  border: 1px solid rgb(24, 160, 88);
+}
+.mower-base-map .facility-card.primary .facility-name {
+  color: #18a058;
+}
+
+/* Unbuilt / Waiting State */
+.mower-base-map .waiting-box {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed rgb(51, 54, 57);
+  opacity: 0.6;
+  transition: all 0.3s;
+  cursor: pointer;
+  border-radius: 3px;
+  box-sizing: border-box;
+}
+.mower-base-map .waiting-box:hover,
+.mower-base-map .facility-card.waiting:hover .waiting-box {
+  opacity: 1;
+  border: 1px dashed rgb(54, 173, 106);
+  color: rgb(54, 173, 106);
+}
+.mower-base-map .waiting-box.true,
+.mower-base-map .waiting-box.is-selected,
+.mower-base-map .facility-card.waiting.true .waiting-box,
+.mower-base-map .facility-card.waiting.is-selected .waiting-box {
+  opacity: 1;
+  border: 1px dashed rgb(32, 128, 240);
+  color: rgb(32, 128, 240);
+}
+
+/* Center & Support Facility Styles (Mower Naive Button Dark Theme) */
+.mower-base-map .size-center,
+.mower-base-map .size-support,
+.mower-base-map .facility-center,
+.mower-base-map .facility-support {
+  background-color: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgb(51, 54, 57);
+}
+.mower-base-map .size-center:hover,
+.mower-base-map .size-support:hover,
+.mower-base-map .facility-center:hover,
+.mower-base-map .facility-support:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-color: rgb(75, 80, 85);
+}
+.mower-base-map .size-center.true,
+.mower-base-map .size-center.is-selected,
+.mower-base-map .size-support.true,
+.mower-base-map .size-support.is-selected,
+.mower-base-map .facility-center.true,
+.mower-base-map .facility-center.is-selected,
+.mower-base-map .facility-support.true,
+.mower-base-map .facility-support.is-selected {
+  background-color: rgba(32, 128, 240, 0.2);
+  border: 1px solid rgb(32, 128, 240);
+}
+
+/* Facility Name Header */
+.mower-base-map .facility-name {
+  margin-bottom: 4px;
+  text-align: center;
+  line-height: 1;
+  display: flex;
+  justify-content: space-around;
+  z-index: 5;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.mower-base-map .facility-name-train {
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
+}
+
+.mower-base-map .draggable,
+.mower-base-map .card-content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Staff Avatars Row */
+.mower-base-map .avatars {
+  display: flex;
+  gap: 6px;
+  z-index: 5;
+  justify-content: center;
+  align-items: center;
+}
+
+.mower-base-map .avatars img {
+  box-sizing: content-box;
+  border-radius: 2px;
+  background: grey;
+  object-fit: cover;
+  display: block;
+}
+
+.mower-base-map .avatar-wrapper {
+  position: relative;
+  display: inline-flex;
+  width: 45px;
+  height: 45px;
+}
+
+.mower-base-map .avatar-fallback {
+  box-sizing: content-box;
+  width: 45px;
+  height: 45px;
+  border-radius: 2px;
+  background: #333639;
+  color: #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  line-height: 1.1;
+  text-align: center;
+  word-break: break-all;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Product Watermark */
+.mower-base-map .product-bg {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 173px;
+  height: 74px;
+  opacity: 0.7;
+  background-repeat: no-repeat;
+  background-size: 100%;
+  background-position: 110px -20px;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* Workaholic badge */
+.mower-base-map .workaholic {
+  position: absolute;
+  content: '';
+  top: 0;
+  left: 0;
+  width: 45px;
+  height: 45px;
+  opacity: 0.35;
+  background-color: red;
+  pointer-events: none;
+}

@@ -11,18 +11,25 @@
     "typecheck": "vue-tsc -b"
   },
   "dependencies": {
+    "html-to-image": "^1.11.13",
     "jsqr": "^1.4.0",
+    "naive-ui": "^2.45.3",
     "pako": "^3.0.1",
     "pinia": "4.0.3",
+    "pinyin-pro": "^3.29.3",
     "qrcode": "^1.5.4",
-    "vue": "^3.5.22"
+    "vue": "^3.5.22",
+    "vue-slicksort": "^2.0.5"
   },
   "devDependencies": {
     "@types/node": "^26.4.0",
     "@types/qrcode": "^1.5.6",
     "@vitejs/plugin-vue": "^6.0.1",
+    "@vue/test-utils": "^2.5.0",
     "@vue/tsconfig": "^0.8.1",
     "jpeg-js": "^0.4.4",
+    "jsdom": "^30.0.1",
+    "sass": "^1.104.0",
     "typescript": "~5.9.3",
     "vite": "^7.1.12",
     "vitest": "^3.2.4",
