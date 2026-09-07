@@ -325,3 +325,176 @@
   background-color: red;
   pointer-events: none;
 }
+
+/* ==========================================================================
+   Facility Editor Styles (PlanEditor.vue 595-720 derivative)
+   ========================================================================== */
+
+.mower-facility-editor-wrapper.plan-scroll-wrapper,
+.mower-facility-editor-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  display: flex;
+  justify-content: flex-start;
+  padding: 8px 0;
+  box-sizing: border-box;
+}
+
+.mower-facility-editor {
+  min-width: 980px;
+  width: 980px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.mower-facility-editor table {
+  border-collapse: collapse;
+}
+
+.mower-facility-editor td {
+  padding: 4px 6px;
+  vertical-align: middle;
+}
+
+.mower-facility-editor .select-label {
+  width: 44px;
+  text-align: right;
+  white-space: nowrap;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.mower-facility-editor .type-select {
+  width: 100px;
+  margin-right: 8px;
+}
+
+.mower-facility-editor .text-facility-name {
+  display: inline-block;
+  line-height: 28px;
+  font-weight: 500;
+  padding: 0 4px;
+}
+
+.mower-facility-editor .level-select {
+  width: 80px;
+  margin-right: 8px;
+}
+
+.mower-facility-editor .product-select {
+  width: 180px;
+  margin-right: 8px;
+}
+
+.mower-facility-editor .operator-select {
+  width: 220px;
+}
+
+.mower-facility-editor .operator-cell {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  width: 220px;
+}
+
+.mower-facility-editor .operator-cell .occupant-select {
+  flex: 1;
+  min-width: 95px;
+}
+
+.mower-facility-editor .operator-cell .operator-pick-btn {
+  flex: 1;
+  min-width: 95px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mower-facility-editor .group {
+  width: 160px;
+}
+
+.mower-facility-editor .replacement-select {
+  min-width: 400px;
+}
+
+.mower-facility-editor .mower-replacement-list {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 400px;
+}
+
+.mower-facility-editor .replacement-items {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.mower-facility-editor .replacement-item {
+  cursor: grab;
+  user-select: none;
+}
+
+.mower-facility-editor .replacement-item:active {
+  cursor: grabbing;
+}
+
+.mower-facility-editor .replacement-avatar-wrapper {
+  position: relative;
+  width: 45px;
+  height: 45px;
+  display: inline-flex;
+}
+
+.mower-facility-editor .replacement-avatar {
+  border-radius: 2px;
+  background: grey;
+  object-fit: cover;
+}
+
+.mower-facility-editor .replacement-fallback {
+  width: 45px;
+  height: 45px;
+  border-radius: 2px;
+  background: #333639;
+  color: #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  text-align: center;
+  line-height: 1.1;
+  overflow: hidden;
+}
+
+.mower-facility-editor .remove-btn {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(208, 48, 80, 0.9);
+  color: #fff;
+  border: none;
+  font-size: 12px;
+  line-height: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  z-index: 10;
+}
+
+.mower-facility-editor .remove-btn:hover {
+  background: #e03158;
+}
