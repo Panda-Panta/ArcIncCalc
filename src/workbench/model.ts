@@ -40,6 +40,7 @@ export interface MowerSlot {
   occupant: MowerOccupant
   groupId: string | null
   replacements: string[]
+  metadata?: Record<string, unknown>
 }
 
 export interface MowerFacility {
@@ -75,6 +76,11 @@ export interface MowerCompatibilityEnvelope {
   backupPlans: unknown[]
   otherPlans: Record<string, unknown>
   unrecognizedFields: Record<string, unknown>
+  facilityMetadata?: Record<string, Record<string, unknown>>
+  unrecognizedRooms?: Record<string, unknown>
+  importedPresentRooms?: string[]
+  importedHasConf?: boolean
+  importedHasBackupPlans?: boolean
 }
 
 export interface RosterWorkspace {

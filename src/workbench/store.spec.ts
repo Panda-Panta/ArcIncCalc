@@ -235,4 +235,92 @@ describe('RosterWorkbenchStore', () => {
     store.resetWorkspace()
     expect(store.workspace.name).toBe('默认排班')
   })
+
+  it('idempotently appends roomId to importedPresentRooms across room-editing operations and swapOutputRooms', () => {
+    const store = useRosterWorkbenchStore()
+    const customWs = createDefaultWorkspace()
+    customWs.compatibility.importedPresentRooms = ['room_1_1']
+    store.loadWorkspace(customWs)
+
+    // 1. updateFacility on new room
+    store.updateFacility('room_1_2', { type: 'trading' })
+    expect(store.workspace.compatibility.importedPresentRooms).toEqual(['room_1_1', 'room_1_2'])
+
+    // Idempotent: editing existing room does not duplicate or reorder
+    store.updateFacility('room_1_1', { level: 2 })
+    expect(store.workspace.compatibility.importedPresentRooms).toEqual(['room_1_1', 'room_1_2'])
+
+    // 2. swapOutputRooms marks both rooms
+    store.swapOutputRooms('room_1_2', 'room_2_1')
+    expect(store.workspace.compatibility.importedPresentRooms).toEqual(['room_1_1', 'room_1_2', 'room_2_1'])
+
+    // 3. updateSlot
+    store.updateSlot('room_2_2', 0, {
+      occupant: { kind: 'empty' },
+      groupId: null,
+      replacements: [],
+    })
+    expect(store.workspace.compatibility.importedPresentRooms).toContain('room_2_2')
+
+    // 4. updateSlotOccupant
+    store.updateSlotOccupant('room_2_3', 0, { kind: 'free' })
+    expect(store.workspace.compatibility.importedPresentRooms).toContain('room_2_3')
+
+    // 5. updateSlotGroup
+    store.updateSlotGroup('room_3_1', 0, 'new_group')
+    expect(store.workspace.compatibility.importedPresentRooms).toContain('room_3_1')
+
+    // 6. setReplacements
+    store.setReplacements('room_3_2', 0, ['char_002_amiya'])
+    expect(store.workspace.compatibility.importedPresentRooms).toContain('room_3_2')
+
+    // 7. addReplacement
+    store.addReplacement('room_3_3', 0, 'char_102_texas')
+    expect(store.workspace.compatibility.importedPresentRooms).toContain('room_3_3')
+
+    // 8. removeReplacement
+    store.workspace.mainPlan.facilities.dormitory_1.slots[0]!.replacements = ['rep_to_remove']
+    store.removeReplacement('dormitory_1', 0, 0)
+    expect(store.workspace.compatibility.importedPresentRooms).toContain('dormitory_1')
+
+    // 9. reorderReplacements
+    store.workspace.mainPlan.facilities.central.slots[0]!.replacements = ['a', 'b']
+    store.reorderReplacements('central', 0, 0, 1)
+    expect(store.workspace.compatibility.importedPresentRooms).toContain('central')
+  })
+
+  it('leaves importedPresentRooms undefined when editing on a newly created workspace', () => {
+    const store = useRosterWorkbenchStore()
+    expect(store.workspace.compatibility.importedPresentRooms).toBeUndefined()
+
+    store.updateFacility('room_1_2', { type: 'trading' })
+    store.swapOutputRooms('room_1_1', 'room_1_2')
+    store.updateSlotOccupant('room_2_1', 0, { kind: 'free' })
+
+    expect(store.workspace.compatibility.importedPresentRooms).toBeUndefined()
+  })
+
+  it('clears rawProduct when updateFacility patch contains product, and clears rawName when patch contains type', () => {
+    const store = useRosterWorkbenchStore()
+    const customWs = createDefaultWorkspace()
+    customWs.compatibility.facilityMetadata = {
+      room_1_1: {
+        rawName: '原制造站',
+        rawProduct: 'custom_ore',
+        otherMeta: 'keep_this',
+      },
+    }
+    store.loadWorkspace(customWs)
+
+    // Explicit product in patch clears rawProduct
+    store.updateFacility('room_1_1', { product: undefined })
+    expect(store.workspace.compatibility.facilityMetadata?.room_1_1?.rawProduct).toBeUndefined()
+    expect(store.workspace.compatibility.facilityMetadata?.room_1_1?.rawName).toBe('原制造站')
+    expect(store.workspace.compatibility.facilityMetadata?.room_1_1?.otherMeta).toBe('keep_this')
+
+    // Explicit type in patch clears rawName
+    store.updateFacility('room_1_1', { type: 'trading' })
+    expect(store.workspace.compatibility.facilityMetadata?.room_1_1?.rawName).toBeUndefined()
+    expect(store.workspace.compatibility.facilityMetadata?.room_1_1?.otherMeta).toBe('keep_this')
+  })
 })

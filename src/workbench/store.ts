@@ -32,6 +32,13 @@ export const useRosterWorkbenchStore = defineStore('rosterWorkbench', () => {
     selectedRoomId.value = roomId
   }
 
+  function markRoomPresent(roomId: MowerRoomId): void {
+    const list = workspace.value.compatibility.importedPresentRooms
+    if (Array.isArray(list) && !list.includes(roomId)) {
+      list.push(roomId)
+    }
+  }
+
   function swapOutputRooms(sourceId: MowerOutputRoomId, targetId: MowerOutputRoomId): void {
     if (sourceId === targetId) return
     if (!MOWER_OUTPUT_ROOM_IDS.includes(sourceId) || !MOWER_OUTPUT_ROOM_IDS.includes(targetId)) return
@@ -55,6 +62,9 @@ export const useRosterWorkbenchStore = defineStore('rosterWorkbench', () => {
     target.level = tempLevel
     target.product = tempProduct
     target.slots = tempSlots
+
+    markRoomPresent(sourceId)
+    markRoomPresent(targetId)
   }
 
   function updateFacility(roomId: MowerRoomId, patch: MowerFacilityPatch): void {
@@ -65,36 +75,52 @@ export const useRosterWorkbenchStore = defineStore('rosterWorkbench', () => {
     const { roomId: _ignored, ...safePatch } = rawPatch
     Object.assign(facility, structuredClone(safePatch))
     facility.roomId = roomId
+
+    if (workspace.value.compatibility.facilityMetadata?.[roomId]) {
+      if (Object.prototype.hasOwnProperty.call(rawPatch, 'product')) {
+        delete workspace.value.compatibility.facilityMetadata[roomId].rawProduct
+      }
+      if (Object.prototype.hasOwnProperty.call(rawPatch, 'type')) {
+        delete workspace.value.compatibility.facilityMetadata[roomId].rawName
+      }
+    }
+
+    markRoomPresent(roomId)
   }
 
   function updateSlot(roomId: MowerRoomId, slotIndex: number, slot: MowerSlot): void {
     const facility = workspace.value.mainPlan.facilities[roomId]
     if (!facility || !facility.slots[slotIndex]) return
     facility.slots[slotIndex] = structuredClone(toRaw(slot))
+    markRoomPresent(roomId)
   }
 
   function updateSlotOccupant(roomId: MowerRoomId, slotIndex: number, occupant: MowerOccupant): void {
     const facility = workspace.value.mainPlan.facilities[roomId]
     if (!facility || !facility.slots[slotIndex]) return
     facility.slots[slotIndex].occupant = structuredClone(toRaw(occupant))
+    markRoomPresent(roomId)
   }
 
   function updateSlotGroup(roomId: MowerRoomId, slotIndex: number, groupId: string | null): void {
     const facility = workspace.value.mainPlan.facilities[roomId]
     if (!facility || !facility.slots[slotIndex]) return
     facility.slots[slotIndex].groupId = groupId
+    markRoomPresent(roomId)
   }
 
   function setReplacements(roomId: MowerRoomId, slotIndex: number, replacements: string[]): void {
     const facility = workspace.value.mainPlan.facilities[roomId]
     if (!facility || !facility.slots[slotIndex]) return
     facility.slots[slotIndex].replacements = structuredClone(toRaw(replacements))
+    markRoomPresent(roomId)
   }
 
   function addReplacement(roomId: MowerRoomId, slotIndex: number, operatorId: string): void {
     const facility = workspace.value.mainPlan.facilities[roomId]
     if (!facility || !facility.slots[slotIndex] || !operatorId) return
     facility.slots[slotIndex].replacements.push(operatorId)
+    markRoomPresent(roomId)
   }
 
   function removeReplacement(roomId: MowerRoomId, slotIndex: number, replacementIndex: number): void {
@@ -103,6 +129,7 @@ export const useRosterWorkbenchStore = defineStore('rosterWorkbench', () => {
     const reps = facility.slots[slotIndex].replacements
     if (replacementIndex >= 0 && replacementIndex < reps.length) {
       reps.splice(replacementIndex, 1)
+      markRoomPresent(roomId)
     }
   }
 
@@ -119,6 +146,7 @@ export const useRosterWorkbenchStore = defineStore('rosterWorkbench', () => {
     const [item] = reps.splice(fromIndex, 1)
     if (item !== undefined) {
       reps.splice(toIndex, 0, item)
+      markRoomPresent(roomId)
     }
   }
 
@@ -128,11 +156,19 @@ export const useRosterWorkbenchStore = defineStore('rosterWorkbench', () => {
 
     for (const roomId of Object.keys(facilities) as MowerRoomId[]) {
       const facility = facilities[roomId]
+      let modified = false
       for (const slot of facility.slots) {
         if (slot.occupant.kind === 'operator' && slot.occupant.operatorId === targetOpId) {
           slot.occupant.operatorId = replacementOpId
+          modified = true
         }
-        slot.replacements = slot.replacements.map((id) => (id === targetOpId ? replacementOpId : id))
+        if (slot.replacements.includes(targetOpId)) {
+          slot.replacements = slot.replacements.map((id) => (id === targetOpId ? replacementOpId : id))
+          modified = true
+        }
+      }
+      if (modified) {
+        markRoomPresent(roomId)
       }
     }
 
