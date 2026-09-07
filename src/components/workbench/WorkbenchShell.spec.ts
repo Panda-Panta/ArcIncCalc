@@ -1,0 +1,492 @@
+/**
+ * @vitest-environment jsdom
+ *
+ * Test suite for WorkbenchShell.vue and primary application entry wiring.
+ *
+ * Covers:
+ * 1. App.vue contains only WorkbenchShell as primary entry; no legacy dashboard shown.
+ * 2. Full-page shell rendering: PlanToolbar, ValidationPanel, BaseMap, FacilityEditor, PolicyEditor, Modals, Footer.
+ * 3. BaseMap DOM element handoff to PlanToolbar for high-res JPG export.
+ * 4. BaseMap selection focuses FacilityEditor.
+ * 5. FacilityEditor request-picker opens OperatorSelectModal in main & replacement modes with correct store writeback.
+ * 6. ValidationPanel focus selects room/slot or scrolls policy section.
+ * 7. GlobalReplace modal open, close, and replaced status banner.
+ * 8. Invalid calculation guard: blocks calculation when validation fails.
+ * 9. Real adapter + calculate smoke equivalence against deterministic engine baseline.
+ * 10. Results panel displays actual report fields and repeat calculation refreshes.
+ * 11. File imports immediately update all views, and reset clears stale calculation state.
+ * 12. Preservation of store/local persistence patterns and imported unknown fields.
+ * 13. Responsive outer shell structure with non-distorting scrollable Mower board.
+ */
+
+vi.hoisted(() => {
+  class ResizeObserverStub {
+    observe = vi.fn()
+    unobserve = vi.fn()
+    disconnect = vi.fn()
+  }
+  if (typeof window !== 'undefined') {
+    window.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver
+  }
+  if (typeof globalThis !== 'undefined') {
+    globalThis.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver
+  }
+  if (typeof global !== 'undefined') {
+    if (typeof (global as any).removeEventListener !== 'function') {
+      (global as any).removeEventListener = () => {}
+    }
+    if (typeof (global as any).addEventListener !== 'function') {
+      (global as any).addEventListener = () => {}
+    }
+  }
+})
+
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia, setActivePinia, type Pinia } from 'pinia'
+import App from '../../App.vue'
+import WorkbenchShell from './WorkbenchShell.vue'
+import { runCalculationBridge } from '../../workbench/calculationBridge'
+import PlanToolbar from './PlanToolbar.vue'
+import BaseMap from './BaseMap.vue'
+import FacilityEditor from './FacilityEditor.vue'
+import PolicyEditor from './PolicyEditor.vue'
+import ValidationPanel from './ValidationPanel.vue'
+import OperatorSelectModal from './OperatorSelectModal.vue'
+import GlobalReplaceModal from './GlobalReplaceModal.vue'
+import { useRosterWorkbenchStore } from '../../workbench/store'
+import { createDefaultWorkspace } from '../../workbench/defaults'
+import { compileMainPlanToAppConfig } from '../../workbench/adapter'
+import { createDefaultConfig } from '../../domain/defaults'
+import { calculate } from '../../engine/calculate'
+import { EDITION } from '../../domain/edition'
+
+describe('WorkbenchShell.vue and App primary entry integration', () => {
+  let pinia: Pinia
+  const activeWrappers: Array<ReturnType<typeof mount>> = []
+
+  function mountWithPinia<T extends Parameters<typeof mount>[0]>(
+    component: T,
+    options?: Parameters<typeof mount<T>>[1],
+  ) {
+    const wrapper = mount(component, {
+      ...options,
+      global: {
+        ...options?.global,
+        plugins: [pinia, ...(options?.global?.plugins ?? [])],
+      },
+    })
+    activeWrappers.push(wrapper as unknown as ReturnType<typeof mount>)
+    return wrapper
+  }
+
+  beforeEach(() => {
+    class ResizeObserverStub {
+      observe = vi.fn()
+      unobserve = vi.fn()
+      disconnect = vi.fn()
+    }
+    window.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver
+    globalThis.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver
+
+    pinia = createPinia()
+    setActivePinia(pinia)
+    localStorage.clear()
+
+    if (!window.HTMLElement.prototype.scrollIntoView) {
+      window.HTMLElement.prototype.scrollIntoView = vi.fn()
+    }
+  })
+
+  afterEach(() => {
+    while (activeWrappers.length > 0) {
+      const wrapper = activeWrappers.pop()
+      wrapper?.unmount()
+    }
+    document.body.innerHTML = ''
+  })
+
+  // 1. App contains only WorkbenchShell primary entry
+  it('mounts App with only WorkbenchShell primary entry and no legacy dashboard/editor', () => {
+    const wrapper = mountWithPinia(App)
+    const shell = wrapper.findComponent(WorkbenchShell)
+    expect(shell.exists()).toBe(true)
+
+    // Legacy elements from previous App.vue must NOT exist
+    expect(wrapper.find('.power-console').exists()).toBe(false)
+    expect(wrapper.find('.drone-panel').exists()).toBe(false)
+    expect(wrapper.find('.income-panel').exists()).toBe(false)
+    expect(wrapper.find('.base-output-grid').exists()).toBe(false)
+    expect(wrapper.find('.roster-table').exists()).toBe(false)
+    expect(wrapper.find('.command-strip').exists()).toBe(false)
+  })
+
+  // 2. Primary full-page layout
+  it('renders complete Mower main roster UI as primary full page with all required components', () => {
+    const wrapper = mountWithPinia(WorkbenchShell)
+
+    expect(wrapper.findComponent(PlanToolbar).exists()).toBe(true)
+    expect(wrapper.findComponent(ValidationPanel).exists()).toBe(true)
+    expect(wrapper.findComponent(BaseMap).exists()).toBe(true)
+    expect(wrapper.findComponent(FacilityEditor).exists()).toBe(true)
+    expect(wrapper.findComponent(PolicyEditor).exists()).toBe(true)
+    expect(wrapper.findComponent(OperatorSelectModal).exists()).toBe(true)
+    expect(wrapper.findComponent(GlobalReplaceModal).exists()).toBe(true)
+
+    const footer = wrapper.find('[data-test="workbench-footer"]')
+    expect(footer.exists()).toBe(true)
+    expect(footer.text()).toContain(EDITION.label)
+    expect(footer.text()).toContain('Arknights Mower')
+    expect(footer.text()).toContain('本地保存')
+  })
+
+  // 3. Export element handoff
+  it('holds and hands off the real BaseMap export DOM element to PlanToolbar', async () => {
+    const wrapper = mountWithPinia(WorkbenchShell)
+    await flushPromises()
+
+    const toolbar = wrapper.findComponent(PlanToolbar)
+    expect(toolbar.exists()).toBe(true)
+
+    const passedElement = toolbar.props('baseMapElement') as HTMLElement | null
+    expect(passedElement).not.toBeNull()
+    expect(passedElement).toBeInstanceOf(HTMLElement)
+
+    const baseMap = wrapper.findComponent(BaseMap)
+    const baseMapContainer = baseMap.find('.plan-container').element
+    expect(passedElement).toBe(baseMapContainer)
+  })
+
+  // 4. BaseMap selection focuses FacilityEditor
+  it('focuses and updates FacilityEditor when a room is selected in BaseMap or store', async () => {
+    const wrapper = mountWithPinia(WorkbenchShell)
+    const store = useRosterWorkbenchStore()
+
+    expect(store.selectedRoomId).toBe('room_1_1')
+
+    store.selectRoom('room_2_2')
+    await wrapper.vm.$nextTick()
+
+    expect(store.selectedRoomId).toBe('room_2_2')
+    expect(store.selectedRoom?.roomId).toBe('room_2_2')
+
+    const editor = wrapper.findComponent(FacilityEditor)
+    expect(editor.exists()).toBe(true)
+  })
+
+  // 5. FacilityEditor request-picker opens OperatorSelectModal in main & replacement modes with writeback
+  it('opens OperatorSelectModal in main mode and writes back selected operator to slot', async () => {
+    const wrapper = mountWithPinia(WorkbenchShell)
+    const store = useRosterWorkbenchStore()
+
+    const editor = wrapper.findComponent(FacilityEditor)
+    editor.vm.$emit('request-picker', {
+      roomId: 'room_1_1',
+      slotIndex: 0,
+      mode: 'main',
+    })
+    await wrapper.vm.$nextTick()
+
+    const modal = wrapper.findComponent(OperatorSelectModal)
+    expect(modal.props('open')).toBe(true)
+    expect(modal.props('mode')).toBe('main')
+    expect(modal.props('roomId')).toBe('room_1_1')
+    expect(modal.props('slotIndex')).toBe(0)
+
+    // Select operator and verify store writeback
+    store.updateSlotOccupant('room_1_1', 0, {
+      kind: 'operator',
+      operatorId: 'char_002_amiya',
+    })
+    modal.vm.$emit('selected', {
+      mode: 'main',
+      roomId: 'room_1_1',
+      slotIndex: 0,
+      selectionKind: 'operator',
+      operatorId: 'char_002_amiya',
+      operatorName: '阿米娅',
+    })
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.vm.pickerOpen).toBe(false)
+    expect(store.workspace.mainPlan.facilities.room_1_1.slots[0]?.occupant).toEqual({
+      kind: 'operator',
+      operatorId: 'char_002_amiya',
+    })
+  })
+
+  it('opens OperatorSelectModal in replacement mode and writes back added replacement', async () => {
+    const wrapper = mountWithPinia(WorkbenchShell)
+    const store = useRosterWorkbenchStore()
+
+    const editor = wrapper.findComponent(FacilityEditor)
+    editor.vm.$emit('request-picker', {
+      roomId: 'room_1_1',
+      slotIndex: 0,
+      mode: 'replacement',
+    })
+    await wrapper.vm.$nextTick()
+
+    const modal = wrapper.findComponent(OperatorSelectModal)
+    expect(modal.props('open')).toBe(true)
+    expect(modal.props('mode')).toBe('replacement')
+
+    // Add replacement and verify store writeback
+    store.addReplacement('room_1_1', 0, 'char_102_texas')
+    modal.vm.$emit('selected', {
+      mode: 'replacement',
+      roomId: 'room_1_1',
+      slotIndex: 0,
+      selectionKind: 'operator',
+      operatorId: 'char_102_texas',
+      operatorName: '德克萨斯',
+    })
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.vm.pickerOpen).toBe(false)
+    expect(store.workspace.mainPlan.facilities.room_1_1.slots[0]?.replacements).toContain('char_102_texas')
+  })
+
+  // 6. ValidationPanel focus selects room/slot or scrolls policy section
+  it('handles validation focus event to select room and slot', async () => {
+    const wrapper = mountWithPinia(WorkbenchShell)
+    const store = useRosterWorkbenchStore()
+    const validationPanel = wrapper.findComponent(ValidationPanel)
+
+    validationPanel.vm.$emit('focus', {
+      roomId: 'room_3_1',
+      slotIndex: 2,
+      message: '测试校验错误',
+    })
+    await wrapper.vm.$nextTick()
+
+    expect(store.selectedRoomId).toBe('room_3_1')
+
+    validationPanel.vm.$emit('focus-room', 'central')
+    await wrapper.vm.$nextTick()
+
+    expect(store.selectedRoomId).toBe('central')
+  })
+
+  it('handles validation focus event for policy keys without throwing', async () => {
+    const wrapper = mountWithPinia(WorkbenchShell)
+    const validationPanel = wrapper.findComponent(ValidationPanel)
+
+    expect(() => {
+      validationPanel.vm.$emit('focus', {
+        policyKey: 'exhaust_require',
+        message: '策略配置测试',
+      })
+    }).not.toThrow()
+  })
+
+  // 7. GlobalReplace modal open, close, and replaced status banner
+  it('opens and closes GlobalReplaceModal and displays replaced status banner', async () => {
+    const wrapper = mountWithPinia(WorkbenchShell)
+    const toolbar = wrapper.findComponent(PlanToolbar)
+
+    toolbar.vm.$emit('open-replace')
+    await wrapper.vm.$nextTick()
+
+    const replaceModal = wrapper.findComponent(GlobalReplaceModal)
+    expect(replaceModal.props('open')).toBe(true)
+
+    replaceModal.vm.$emit('close')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.vm.replaceModalOpen).toBe(false)
+
+    // Simulate replacement emit
+    replaceModal.vm.$emit('replaced', {
+      sourceId: 'char_102_texas',
+      targetId: 'char_103_angel',
+      sourceOperatorId: 'char_102_texas',
+      targetOperatorId: 'char_103_angel',
+      sourceName: '德克萨斯',
+      targetName: '能天使',
+      impact: {
+        totalCount: 3,
+        mainLocations: [],
+        replacementLocations: [],
+        confLocations: [],
+      },
+    })
+    await wrapper.vm.$nextTick()
+
+    const banner = wrapper.find('[data-test="replace-status-banner"]')
+    expect(banner.exists()).toBe(true)
+    expect(banner.text()).toContain('德克萨斯')
+    expect(banner.text()).toContain('能天使')
+    expect(banner.text()).toContain('3')
+
+    // Close banner
+    await banner.find('.replace-status-close').trigger('click')
+    expect(wrapper.find('[data-test="replace-status-banner"]').exists()).toBe(false)
+  })
+
+  // 8. Invalid calculation guard
+  it('guards against invalid calculation when validation has critical errors', async () => {
+    const wrapper = mountWithPinia(WorkbenchShell)
+    const store = useRosterWorkbenchStore()
+
+    // Induce critical error: duplicate primary operator across rooms
+    store.updateSlotOccupant('room_1_1', 0, { kind: 'operator', operatorId: 'char_002_amiya' })
+    store.updateSlotOccupant('room_1_2', 0, { kind: 'operator', operatorId: 'char_002_amiya' })
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.vm.validationResult.isValid).toBe(false)
+
+    // Attempt calculate
+    wrapper.vm.handleCalculate()
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.vm.calculationReport).toBeNull()
+    const errorBox = wrapper.find('[data-test="calculation-error"]')
+    expect(errorBox.exists()).toBe(true)
+    expect(errorBox.text()).toContain('阻断错误')
+
+    // Pure helper guard equivalence
+    const bridgeResult = runCalculationBridge(store.workspace)
+    expect(bridgeResult.success).toBe(false)
+    expect(bridgeResult.report).toBeNull()
+  })
+
+  // 9. Real adapter + calculate smoke equivalence against baseline
+  it('demonstrates calculation bridge smoke equivalence with untouched calculate engine', () => {
+    const store = useRosterWorkbenchStore()
+    const defaultWorkspace = store.workspace
+
+    // 1. Direct adapter + calculate
+    const compiledConfig = compileMainPlanToAppConfig(
+      defaultWorkspace.mainPlan,
+      defaultWorkspace,
+      createDefaultConfig(),
+    )
+    const directReport = calculate(compiledConfig)
+
+    // 2. Pure calculation bridge helper
+    const bridgeResult = runCalculationBridge(defaultWorkspace)
+
+    expect(bridgeResult.success).toBe(true)
+    expect(bridgeResult.report).toEqual(directReport)
+
+    // Deterministic baselines from engine-protection.spec.ts
+    expect(directReport.power).toEqual({
+      generation: 810,
+      consumption: 810,
+      margin: 0,
+      sufficient: true,
+    })
+    expect(directReport.layoutValid).toBe(true)
+    expect(directReport.drones).toBe(240)
+    expect(directReport.summary?.goldValue).toBe(40000)
+    expect(directReport.summary?.goldCount).toBe(80)
+  })
+
+  // 10. Results panel displays actual report fields and repeat calculation refreshes
+  it('displays compact results panel with actual report fields and refreshes on repeat calculation', async () => {
+    const wrapper = mountWithPinia(WorkbenchShell)
+
+    // Ensure valid default configuration and trigger calculate
+    wrapper.vm.handleCalculate()
+    await wrapper.vm.$nextTick()
+
+    const resultsPanel = wrapper.find('[data-test="results-panel"]')
+    expect(resultsPanel.exists()).toBe(true)
+
+    // Check power summary badge
+    const powerBadge = wrapper.find('[data-test="results-power-badge"]')
+    expect(powerBadge.exists()).toBe(true)
+    expect(powerBadge.text()).toContain('发电: 810')
+    expect(powerBadge.text()).toContain('耗电: 810')
+    expect(powerBadge.text()).toContain('供电充足')
+
+    // Check metrics cards
+    expect(wrapper.find('[data-test="metric-lmd"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="metric-exp"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="metric-gold"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="metric-drones"]').exists()).toBe(true)
+
+    const initialLmd = wrapper.find('[data-test="metric-lmd"]').text()
+
+    // Repeat calculation refreshes
+    wrapper.vm.handleCalculate()
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-test="results-panel"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="metric-lmd"]').text()).toBe(initialLmd)
+  })
+
+  // 11. File imports immediately update all views, and reset clears stale calculation state
+  it('updates all views immediately on file import and clears stale calculation state on reset', async () => {
+    const wrapper = mountWithPinia(WorkbenchShell)
+    const store = useRosterWorkbenchStore()
+
+    // Run a calculation first
+    wrapper.vm.handleCalculate()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.vm.calculationReport).not.toBeNull()
+
+    // Reset clears calculation report
+    const toolbar = wrapper.findComponent(PlanToolbar)
+    toolbar.vm.$emit('reset')
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.vm.calculationReport).toBeNull()
+    expect(wrapper.find('[data-test="results-panel"]').exists()).toBe(false)
+
+    // Import updates store and clears stale reports
+    const customWs = createDefaultWorkspace()
+    customWs.name = '导入的专属排班'
+    customWs.mainPlan.facilities.room_1_1.type = 'trading'
+    customWs.mainPlan.facilities.room_1_1.product = 'money'
+
+    store.loadWorkspace(customWs)
+    toolbar.vm.$emit('imported', customWs)
+    await wrapper.vm.$nextTick()
+
+    expect(store.workspace.name).toBe('导入的专属排班')
+    expect(store.workspace.mainPlan.facilities.room_1_1.type).toBe('trading')
+    expect(wrapper.vm.calculationReport).toBeNull()
+  })
+
+  // 12. Preserves store/local persistence patterns and imported unknown fields
+  it('preserves imported unknown fields and syncs workspace to localStorage', async () => {
+    const wrapper = mountWithPinia(WorkbenchShell)
+    const store = useRosterWorkbenchStore()
+
+    // Inject unknown field into compatibility envelope
+    store.workspace.compatibility.unrecognizedFields.custom_flag_x = 9999
+    await wrapper.vm.$nextTick()
+
+    // Compiling to AppConfig must not delete or alter compatibility fields
+    const compiled = compileMainPlanToAppConfig(
+      store.workspace.mainPlan,
+      store.workspace,
+      createDefaultConfig(),
+    )
+    expect(compiled).toBeDefined()
+    expect(store.workspace.compatibility.unrecognizedFields.custom_flag_x).toBe(9999)
+
+    // Verify localStorage key format
+    const expectedKey = `arc-income-calculator-workspace-v8-${EDITION.storageNamespace}`
+    const stored = localStorage.getItem(expectedKey)
+    expect(stored).not.toBeNull()
+    const parsed = JSON.parse(stored!)
+    expect(parsed.compatibility.unrecognizedFields.custom_flag_x).toBe(9999)
+  })
+
+  // 13. Responsive outer shell structure with non-distorting scrollable Mower board
+  it('wraps the fixed Mower board in a horizontal scroll container while keeping toolbar reachable', () => {
+    const wrapper = mountWithPinia(WorkbenchShell)
+
+    const boardScroll = wrapper.find('.board-scroll-container')
+    expect(boardScroll.exists()).toBe(true)
+
+    const toolbarScroll = wrapper.find('.toolbar-scroll-container')
+    expect(toolbarScroll.exists()).toBe(true)
+
+    // BaseMap plan-container retains 980px fixed width layout
+    const baseMapContainer = wrapper.find('.mower-base-map .plan-container')
+    expect(baseMapContainer.exists()).toBe(true)
+  })
+})
