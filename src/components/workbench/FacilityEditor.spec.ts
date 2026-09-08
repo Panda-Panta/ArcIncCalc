@@ -120,6 +120,10 @@ describe('FacilityEditor.vue and subcomponents', () => {
 
   it('atomically adjusts slots capacity when level changes and truncates slots on downscaling', async () => {
     const store = useRosterWorkbenchStore()
+    // Manual levels are only meaningful outside the exact 2/3-power Mower
+    // inference layouts. Use a 1-power layout to exercise slot resizing.
+    store.workspace.mainPlan.facilities.room_2_3.type = 'manufacture'
+    store.workspace.mainPlan.facilities.room_3_3.type = 'manufacture'
     store.selectRoom('room_1_1') // manufacture level 3, slots: 3
     store.updateSlotOccupant('room_1_1', 2, { kind: 'operator', operatorId: 'char_102_durnar' })
     store.addReplacement('room_1_1', 2, 'char_103_angel')
@@ -140,6 +144,58 @@ describe('FacilityEditor.vue and subcomponents', () => {
     expect(store.selectedRoom?.level).toBe(2)
     expect(store.selectedRoom?.slots.length).toBe(2)
     expect(store.selectedRoom?.slots[1]?.occupant.kind).toBe('empty')
+  })
+
+  it('re-infers all levels when changing a power room makes the layout 2-power', async () => {
+    const store = useRosterWorkbenchStore()
+    store.selectRoom('room_3_3')
+    expect(store.workspace.mainPlan.facilities.dormitory_1.level).toBe(5)
+
+    const wrapper = mount(FacilityEditor)
+    const typeSelect = asVueWrapper(wrapper.findComponent('.type-select'))
+    typeSelect.vm.$emit('update:value', 'manufacture')
+    await wrapper.vm.$nextTick()
+
+    expect(store.selectedRoom?.type).toBe('manufacture')
+    expect(store.selectedRoom?.level).toBe(1)
+    expect(store.workspace.mainPlan.facilities.dormitory_1.level).toBe(1)
+    expect(store.workspace.mainPlan.facilities.dormitory_4.level).toBe(1)
+    expect(store.workspace.mainPlan.facilities.room_1_3.level).toBe(3)
+    expect(store.workspace.mainPlan.facilities.meeting.level).toBe(3)
+    expect(store.workspace.mainPlan.facilities.central.level).toBe(5)
+  })
+
+  it('disables and rejects level edits in inferred 2/3-power layouts without truncating operators', async () => {
+    const store = useRosterWorkbenchStore()
+    const room = store.workspace.mainPlan.facilities.room_1_1
+    store.updateSlotOccupant('room_1_1', 0, { kind: 'operator', operatorId: 'char_a' })
+    store.updateSlotOccupant('room_1_1', 1, { kind: 'operator', operatorId: 'char_b' })
+    store.updateSlotOccupant('room_1_1', 2, { kind: 'operator', operatorId: 'char_c' })
+    store.selectRoom('room_1_1')
+
+    const wrapper = mount(FacilityEditor)
+    const levelSelect = asVueWrapper(wrapper.findComponent('.level-select'))
+    expect(getProps(levelSelect)['disabled']).toBe(true)
+
+    levelSelect.vm.$emit('update:value', 1)
+    await wrapper.vm.$nextTick()
+
+    expect(room.level).toBe(3)
+    expect(room.slots).toHaveLength(3)
+    expect(room.slots.map((slot) => slot.occupant)).toEqual([
+      { kind: 'operator', operatorId: 'char_a' },
+      { kind: 'operator', operatorId: 'char_b' },
+      { kind: 'operator', operatorId: 'char_c' },
+    ])
+
+    store.updateFacility('room_3_3', { type: 'trading', product: 'money' })
+    await wrapper.vm.$nextTick()
+    expect(getProps(levelSelect)['disabled']).toBe(true)
+
+    levelSelect.vm.$emit('update:value', 1)
+    await wrapper.vm.$nextTick()
+    expect(room.level).toBe(3)
+    expect(room.slots).toHaveLength(3)
   })
 
   it('renders product select for manufacture and trading with images, hidden for power', async () => {

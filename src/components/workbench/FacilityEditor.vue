@@ -25,6 +25,8 @@
                   :options="facilityLevelOptions"
                   class="level-select"
                   size="small"
+                  :disabled="isLevelInferred"
+                  :title="isLevelInferred ? '当前 2/3 电站布局的设施等级由排班自动推断' : undefined"
                   @update:value="onLevelChange"
                 />
               </td>
@@ -123,6 +125,15 @@ const isOutputRoom = computed<boolean>(() => {
   if (!selectedRoom.value) return false
   return (MOWER_OUTPUT_ROOM_IDS as readonly string[]).includes(selectedRoom.value.roomId)
 })
+
+const powerPlantCount = computed<number>(() =>
+  MOWER_OUTPUT_ROOM_IDS.reduce(
+    (count, roomId) => count + (store.workspace.mainPlan.facilities[roomId].type === 'power' ? 1 : 0),
+    0,
+  ),
+)
+
+const isLevelInferred = computed<boolean>(() => powerPlantCount.value === 2 || powerPlantCount.value === 3)
 
 const facilityTypeOptions = [
   { label: '制造站', value: 'manufacture' },
@@ -289,7 +300,7 @@ function onTypeChange(newType: MowerFacilityType): void {
 }
 
 function onLevelChange(newLevel: number): void {
-  if (!selectedRoom.value) return
+  if (!selectedRoom.value || isLevelInferred.value) return
   const currentType = selectedRoom.value.type
   const targetCap = getFacilityCapacity(currentType, newLevel)
   const newSlots = adjustSlots(selectedRoom.value.slots, targetCap)

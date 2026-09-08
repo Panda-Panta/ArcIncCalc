@@ -86,6 +86,16 @@ export const useRosterWorkbenchStore = defineStore('rosterWorkbench', () => {
     }
 
     markRoomPresent(roomId)
+
+    // Mower plans do not carry facility levels. Keep the inferred 2/3-power
+    // layout invariant intact when an editor changes a facility type or tries
+    // to override a derived level directly.
+    if (
+      Object.prototype.hasOwnProperty.call(rawPatch, 'type') ||
+      Object.prototype.hasOwnProperty.call(rawPatch, 'level')
+    ) {
+      inferFacilityLevels(workspace.value.mainPlan.facilities)
+    }
   }
 
   function updateSlot(roomId: MowerRoomId, slotIndex: number, slot: MowerSlot): void {
@@ -93,6 +103,7 @@ export const useRosterWorkbenchStore = defineStore('rosterWorkbench', () => {
     if (!facility || !facility.slots[slotIndex]) return
     facility.slots[slotIndex] = structuredClone(toRaw(slot))
     markRoomPresent(roomId)
+    inferFacilityLevels(workspace.value.mainPlan.facilities)
   }
 
   function updateSlotOccupant(roomId: MowerRoomId, slotIndex: number, occupant: MowerOccupant): void {
@@ -100,6 +111,7 @@ export const useRosterWorkbenchStore = defineStore('rosterWorkbench', () => {
     if (!facility || !facility.slots[slotIndex]) return
     facility.slots[slotIndex].occupant = structuredClone(toRaw(occupant))
     markRoomPresent(roomId)
+    inferFacilityLevels(workspace.value.mainPlan.facilities)
   }
 
   function updateSlotGroup(roomId: MowerRoomId, slotIndex: number, groupId: string | null): void {

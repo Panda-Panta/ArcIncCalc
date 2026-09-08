@@ -126,7 +126,9 @@ describe('RosterWorkbenchStore', () => {
     const facility = store.workspace.mainPlan.facilities.room_1_1
     expect(facility.roomId).toBe('room_1_1')
     expect(facility.type).toBe('trading')
-    expect(facility.level).toBe(1)
+    // The default layout has 3 power plants, so facility levels are derived
+    // and remain maxed even if a patch tries to force a lower value.
+    expect(facility.level).toBe(3)
     expect(facility.product).toBe('money')
   })
 
@@ -227,6 +229,63 @@ describe('RosterWorkbenchStore', () => {
 
     expect(store.workspace.mainPlan.facilities.dormitory_1.level).toBe(1)
     expect(store.workspace.mainPlan.facilities.room_1_1.level).toBe(2)
+  })
+
+  it('re-infers the complete facility layout after a type edit changes 3 power plants to 2', () => {
+    const store = useRosterWorkbenchStore()
+    const facilities = store.workspace.mainPlan.facilities
+
+    expect(facilities.dormitory_1.level).toBe(5)
+    store.updateFacility('room_3_3', { type: 'manufacture', product: 'gold' })
+
+    expect(facilities.room_3_3.level).toBe(1)
+    expect(facilities.dormitory_1.level).toBe(1)
+    expect(facilities.dormitory_4.level).toBe(1)
+    expect(facilities.room_1_3.level).toBe(3)
+    expect(facilities.room_2_3.level).toBe(3)
+    expect(facilities.meeting.level).toBe(3)
+    expect(facilities.contact.level).toBe(3)
+    expect(facilities.factory.level).toBe(3)
+    expect(facilities.train.level).toBe(3)
+    expect(facilities.central.level).toBe(5)
+  })
+
+  it('re-infers a 2-power output-room level whenever its occupied slot count changes', () => {
+    const store = useRosterWorkbenchStore()
+    const facilities = store.workspace.mainPlan.facilities
+    facilities.room_3_3.type = 'trading'
+    store.inferLevels()
+
+    const room = facilities.room_1_1
+    expect(room.level).toBe(1)
+
+    store.updateSlotOccupant('room_1_1', 0, { kind: 'operator', operatorId: 'char_a' })
+    expect(room.level).toBe(1)
+    store.updateSlotOccupant('room_1_1', 1, { kind: 'free' })
+    expect(room.level).toBe(2)
+    store.updateSlot('room_1_1', 2, {
+      occupant: { kind: 'current' },
+      groupId: null,
+      replacements: [],
+    })
+    expect(room.level).toBe(3)
+    store.updateSlotOccupant('room_1_1', 1, { kind: 'empty' })
+    expect(room.level).toBe(2)
+  })
+
+  it('rejects manual level drift while the layout has exactly 2 or 3 power plants', () => {
+    const store = useRosterWorkbenchStore()
+    const facilities = store.workspace.mainPlan.facilities
+
+    store.updateFacility('room_1_1', { level: 1 })
+    expect(facilities.room_1_1.level).toBe(3)
+
+    facilities.room_3_3.type = 'trading'
+    store.inferLevels()
+    store.updateFacility('dormitory_1', { level: 5 })
+    store.updateFacility('room_1_1', { level: 3 })
+    expect(facilities.dormitory_1.level).toBe(1)
+    expect(facilities.room_1_1.level).toBe(1)
   })
 
   it('resets workspace back to fresh default', () => {
