@@ -287,6 +287,45 @@ describe('BaseMap.vue', () => {
     expect(cssContent).toMatch(/\.size-support[^{]*\{[^}]*margin:\s*2px\s+3px/)
   })
 
+  it('enforces fixed 533px non-shrinking left block and repeat(3, 175px) output cards in styles.css', () => {
+    const cssPath = resolve(__dirname, '../../workbench/styles.css')
+    const cssContent = readFileSync(cssPath, 'utf-8')
+
+    // Left block fixed width 533px with flex-basis/non-shrink
+    expect(cssContent).toMatch(/\.left_box[^{]*\{[^}]*width:\s*533px/)
+    expect(cssContent).toMatch(/\.left_box[^{]*\{[^}]*min-width:\s*533px/)
+    expect(cssContent).toMatch(/\.left_box[^{]*\{[^}]*flex:\s*0\s+0\s+533px/)
+    expect(cssContent).toMatch(/\.left_box[^{]*\{[^}]*flex-shrink:\s*0/)
+
+    // Left contain explicit repeat(3, 175px), 4px gap, and non-shrinking row
+    expect(cssContent).toMatch(/\.left_contain[^{]*\{[^}]*grid-template-columns:\s*repeat\(3,\s*175px\)/)
+    expect(cssContent).toMatch(/\.left_contain[^{]*\{[^}]*gap:\s*4px/)
+    expect(cssContent).toMatch(/\.left_contain[^{]*\{[^}]*width:\s*533px/)
+    expect(cssContent).toMatch(/\.left_contain[^{]*\{[^}]*min-width:\s*533px/)
+    expect(cssContent).toMatch(/\.left_contain[^{]*\{[^}]*height:\s*76px/)
+    expect(cssContent).toMatch(/\.left_contain[^{]*\{[^}]*min-height:\s*76px/)
+    expect(cssContent).toMatch(/\.left_contain[^{]*\{[^}]*flex-shrink:\s*0/)
+
+    // Output cards exact 175px x 76px non-shrinking
+    expect(cssContent).toMatch(/\.size-output[^{]*\{[^}]*width:\s*175px/)
+    expect(cssContent).toMatch(/\.size-output[^{]*\{[^}]*min-width:\s*175px/)
+    expect(cssContent).toMatch(/\.size-output[^{]*\{[^}]*height:\s*76px/)
+    expect(cssContent).toMatch(/\.size-output[^{]*\{[^}]*min-height:\s*76px/)
+    expect(cssContent).toMatch(/\.size-output[^{]*\{[^}]*flex-shrink:\s*0/)
+
+    expect(cssContent).toMatch(/\.left_box\s+\.facility-card[^{]*\{[^}]*width:\s*175px/)
+    expect(cssContent).toMatch(/\.left_box\s+\.facility-card[^{]*\{[^}]*min-width:\s*175px/)
+    expect(cssContent).toMatch(/\.left_box\s+\.facility-card[^{]*\{[^}]*height:\s*76px/)
+    expect(cssContent).toMatch(/\.left_box\s+\.facility-card[^{]*\{[^}]*min-height:\s*76px/)
+    expect(cssContent).toMatch(/\.left_box\s+\.facility-card[^{]*\{[^}]*flex-shrink:\s*0/)
+
+    // Center and right card dimensions remain intact
+    expect(cssContent).toMatch(/\.size-center[^{]*\{[^}]*width:\s*277px/)
+    expect(cssContent).toMatch(/\.size-center[^{]*\{[^}]*height:\s*76px/)
+    expect(cssContent).toMatch(/\.size-support[^{]*\{[^}]*width:\s*124px/)
+    expect(cssContent).toMatch(/\.size-support[^{]*\{[^}]*height:\s*76px/)
+  })
+
   it('implements role=button, tabindex=0, aria-label, aria-selected and Enter/Space selection on FacilityCard', async () => {
     const store = useRosterWorkbenchStore()
     store.selectRoom(null)

@@ -485,7 +485,7 @@ defineExpose({
       <div class="footer-attribution">
         <span>{{ EDITION.label }} · 组合规则引擎 v0.3.0</span>
         <span class="dot-sep">·</span>
-        <span>Arknights Mower 排班兼容</span>
+        <span>Arknights Mower 排班兼容 (MIT License | Copyright (c) 2021 Nano)</span>
         <span class="dot-sep">·</span>
         <span>本地保存 · 不上传配置</span>
         <span class="dot-sep">·</span>
@@ -704,6 +704,13 @@ h1 small {
 }
 
 @media (max-width: 1020px) {
+  .toolbar-scroll-container {
+    justify-content: flex-start;
+  }
+  .toolbar-scroll-container .mower-plan-toolbar {
+    margin-left: 0;
+    margin-right: 0;
+  }
   .board-scroll-container {
     justify-content: flex-start;
   }

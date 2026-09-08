@@ -44,6 +44,9 @@ vi.hoisted(() => {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia, type Pinia } from 'pinia'
+import { readFileSync } from 'node:fs'
+import { resolve, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import App from '../../App.vue'
 import WorkbenchShell from './WorkbenchShell.vue'
 import { runCalculationBridge } from '../../workbench/calculationBridge'
@@ -488,5 +491,24 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
     // BaseMap plan-container retains 980px fixed width layout
     const baseMapContainer = wrapper.find('.mower-base-map .plan-container')
     expect(baseMapContainer.exists()).toBe(true)
+  })
+
+  // 14. Responsive viewport fit regression guard (body min-width <= 320, no obsolete 1180px min-width)
+  it('enforces removal of legacy body 1180px min-width and verifies local overflow containment', () => {
+    const globalCssPath = resolve(dirname(fileURLToPath(import.meta.url)), '../../styles.css')
+    const globalCss = readFileSync(globalCssPath, 'utf-8')
+
+    // Must NOT contain obsolete 1180px min-width
+    expect(globalCss).not.toMatch(/min-width:\s*1180px/)
+    expect(globalCss).not.toContain('1180px')
+
+    // Body and #app fit narrow viewports down to <= 320px
+    expect(globalCss).toMatch(/body[^{]*\{[^}]*min-width:\s*(?:[12]?[0-9]{1,2}|3[01][0-9]|320)px/)
+    expect(globalCss).toMatch(/body[^{]*\{[^}]*overflow-x:\s*hidden/)
+
+    // Local horizontal scroll containers exist in mounted shell
+    const wrapper = mountWithPinia(WorkbenchShell)
+    expect(wrapper.find('.toolbar-scroll-container').exists()).toBe(true)
+    expect(wrapper.find('.board-scroll-container').exists()).toBe(true)
   })
 })

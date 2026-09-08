@@ -50,12 +50,22 @@
   gap: 4px;
   padding-top: 82px;
   padding-right: 2px;
+  width: 533px;
+  min-width: 533px;
+  flex: 0 0 533px;
+  flex-shrink: 0;
+  box-sizing: content-box;
 }
 
 .mower-base-map .left_contain {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(3, 175px);
   gap: 4px;
+  width: 533px;
+  min-width: 533px;
+  height: 76px;
+  min-height: 76px;
+  flex-shrink: 0;
 }
 
 /* Middle Column: Central + 4 Dorms */
@@ -98,11 +108,19 @@
 .mower-base-map .facility-output,
 .mower-base-map .size-output {
   width: 175px;
+  min-width: 175px;
   height: 76px;
+  min-height: 76px;
+  flex-shrink: 0;
   margin: 0;
 }
 
 .mower-base-map .left_box .facility-card {
+  width: 175px;
+  min-width: 175px;
+  height: 76px;
+  min-height: 76px;
+  flex-shrink: 0;
   margin: 0;
 }
 
@@ -497,4 +515,53 @@
 
 .mower-facility-editor .remove-btn:hover {
   background: #e03158;
+}
+
+/* ==========================================================================
+   Responsive Container Wrappers & Viewport Guards
+   ========================================================================== */
+
+.m-workbench-scroll-container,
+.board-scroll-container,
+.toolbar-scroll-container {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.m-workbench-canvas-wrapper {
+  min-width: 980px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+@media (max-width: 1200px) {
+  .m-toolbar-actions,
+  .toolbar-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 1020px) {
+  .toolbar-scroll-container {
+    justify-content: flex-start;
+  }
+  .toolbar-scroll-container .mower-plan-toolbar {
+    margin-left: 0;
+    margin-right: 0;
+  }
+  .board-scroll-container {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 768px) {
+  .m-modal-dialog,
+  .mower-operator-modal,
+  .mower-global-replace-modal {
+    max-width: 95vw !important;
+    max-height: 85vh !important;
+  }
 }

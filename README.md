@@ -28,6 +28,59 @@
 - 在心情耗尽、跨越 12 心情和铅踝每 4 点心情落差时立即重算，并按分段效率积分制造、贸易和无人机产出；
 - 基础公式与组合规则单元测试。
 
+## Mower 排班兼容工作台 (Main Roster Workbench)
+
+本版本提供与 [Arknights Mower](https://github.com/ArkMowers/arknights-mower) 高度互通的 980px 固定画布主排班工作台，实现排班数据的双向无损交换与确定性收益测算：
+
+- **核心主排班范围 (Core Main-Roster Scope):**
+  专注于 18 设施卡片主力主排班（`plan1` / active default plan）以及全局策略配置（`conf`）。覆盖左侧 3×3 矩阵共 9 个产出设施（制造站、贸易站、发电站）、控制中枢、4 间宿舍以及 4 间右侧功能设施（会客室、加工站、办公室、训练室）。视觉设计严格遵循 Mower 经典暗色调风格（980px 宽度、设施分类左侧主题色边框、产物水印、45px 干员头像、拖拽换位交互）。
+- **JSON / 16-QR 排班图双向导入导出 (JSON/JPG Interchange):**
+  - **Mower JSON 无损互通 (`mowerJson.ts`):** 原生解析并生成标准 Mower JSON 顶层结构（`default`、`plan1`、`conf`、`backup_plans`）。通过兼容信封（`MowerCompatibilityEnvelope`）无损保留多方案及第三方自定义字段，确保往返保存时非主排班配置不丢失；
+  - **16-QR 排班图互通 (`mowerQrCodec.ts`):** 严格依照 Mower `arknights_mower/utils/qrcode.py` 几何标准（顶部 7 个，左下 7 个，右下 2 个，zlib level 9 压缩 + RFC 9285 Base45 编码），使用坐标掩模与纯几何排序算法直接从画布提取并还原排班，**完全不依赖 OCR**。
+- **2/3 发电站设施等级推导规则 (2/3 Power Facility Inference):**
+  针对 Mower 排班数据中不持久化设施等级的特点，内置智能等级推导：
+  - **3 发电站（如 243、333 等）:** 810 kW 发电量充沛，推导所有 9 个产出设施为 3 级，4 间宿舍全部为 5 级，控制中枢 5 级，右侧功能设施均为 3 级；
+  - **2 发电站（如 252、342 等）:** 电力预算受限，推导 4 间宿舍为 1 级，发电站 3 级，中枢 5 级，右侧功能设施 3 级；制造站与贸易站则根据在岗干员人数推导：$\text{level} = \max(1, \min(3, \text{staffedCount} \parallel 1))$。
+- **收益测算桥接 (Calculation Bridge):**
+  采用纯适配器 `compileMainPlanToAppConfig` 将 Schema-v8 主排班工作台转换为收益计算引擎所要求的 Schema-v7 `AppConfig`，自动抽取主力槽位、首选替补（映射为 `operatorBackups`）与分组标签（映射为 `operatorGroups`），并安全过滤 `Free` / `Current` / `Empty` 等非确定性占位槽；生产收益算法（`src/engine/calculate.ts`、`src/engine/morale.ts`、`src/engine/operatorRules.ts`）受到 SHA-256 校验保护，**完全未做任何修改**。
+- **不支持的动态特性说明 (Unsupported Subplans / Triggers / Tasks):**
+  工作台专注于基建排班配置与静态/稳态收益模拟，不执行副排班轮换触发器（`backup_plans`、`TriggerDialog` AST 规则）、定时换班任务（`roomTask`）与动态自动化跑单仿真。导入的相关数据将完整保存在兼容信封中，不参与收益计算并在导出时原样写回。
+
+## 开源许可与致谢 (License & Attribution)
+
+本项目的排班工作台布局结构、设计变量、二维码布局几何常数及互操作协议改编自开源项目 **Arknights Mower**：
+
+- **原项目:** [Arknights Mower](https://github.com/ArkMowers/arknights-mower)
+- **原作者:** Nano & Contributors
+- **开源协议:** MIT License
+- **版权所有:** Copyright (c) 2021 Nano
+
+```
+MIT License
+
+Copyright (c) 2021 Nano
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+详细信息请参阅 [THIRD_PARTY_NOTICES.md](file:///D:/Project/Arknights/ArcIncCalc%20-%20Codex/THIRD_PARTY_NOTICES.md)。
+
 ## 本地运行
 
 Windows 用户可直接双击 `一键启动.bat`。脚本会在首次运行时自动安装依赖并打开浏览器，关闭脚本窗口即可停止服务。
