@@ -243,4 +243,44 @@ describe('morale timeline', () => {
     const aroma = result.operators.find((item) => item.operatorId === 'char_446_aroma')!
     expect(aroma.initialConsumptionPerHour).toBeCloseTo(1.25)
   })
+
+  it('keeps a workaholic in place at zero morale while its skills stay inactive', () => {
+    const config = createDefaultConfig()
+    const room = config.rooms[7]!
+    room.operatorIds = ['char_253_greyy']
+    config.operatorBackups.char_253_greyy = 'char_377_gdglow'
+    config.workaholicOperatorIds = ['char_253_greyy']
+    config.zeroMoraleOperatorIds = ['char_253_greyy']
+
+    const result = simulateMorale(config)
+    const workaholic = result.operators.find((item) => item.operatorId === 'char_253_greyy')!
+    const backup = result.operators.find((item) => item.operatorId === 'char_377_gdglow')!
+
+    expect(workaholic.leftAt).toBeNull()
+    expect(workaholic.ending).toBe(0)
+    expect(backup.startedAt).toBeNull()
+    expect(result.averagePowerBonusPercent).toBe(0)
+  })
+
+  it('does not remove a workaholic when another member of its group leaves', () => {
+    const config = createDefaultConfig()
+    config.hours = 2
+    config.rooms[0]!.operatorIds = ['char_4106_bryota']
+    config.rooms[7]!.operatorIds = ['char_285_medic2']
+    config.operatorMorale.char_4106_bryota = 1
+    config.workaholicOperatorIds = ['char_285_medic2']
+    config.operatorGroups = [{
+      id: 'automation-group',
+      name: '自动化',
+      operatorIds: ['char_4106_bryota', 'char_285_medic2'],
+    }]
+
+    const result = simulateMorale(config)
+    const ordinary = result.operators.find((item) => item.operatorId === 'char_4106_bryota')!
+    const lancet = result.operators.find((item) => item.operatorId === 'char_285_medic2')!
+
+    expect(ordinary.leaveReason).toBe('morale-exhausted')
+    expect(lancet.leftAt).toBeNull()
+    expect(lancet.ending).toBeGreaterThan(0)
+  })
 })

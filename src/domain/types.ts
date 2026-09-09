@@ -72,6 +72,7 @@ export interface AppConfig {
   efficiencyResources: EfficiencyResources
   controlOperatorIds: string[]
   zeroMoraleOperatorIds: string[]
+  workaholicOperatorIds: string[]
   operatorMorale: Record<string, number>
   operatorBackups: Record<string, string>
   operatorGroups: OperatorGroup[]

@@ -14,6 +14,36 @@ export interface OperatorSearchItem extends OperatorRecord {
 }
 
 const OPERATOR_BY_NAME = new Map(OPERATORS.map((op) => [op.name, op]))
+const OPERATOR_BY_APPELLATION = new Map(OPERATORS.map((op) => [op.appellation.toLowerCase(), op]))
+
+export function getOperatorName(identifier: string | null | undefined): string {
+  if (!identifier) return ''
+  if (identifier === 'Free' || identifier === 'free') return 'Free'
+  if (identifier === 'Current' || identifier === 'current') return 'Current'
+  const op =
+    OPERATOR_MAP.get(identifier) ||
+    OPERATOR_BY_NAME.get(identifier) ||
+    OPERATOR_BY_APPELLATION.get(identifier.toLowerCase())
+  return op ? op.name : identifier
+}
+
+export function isRunOrderOperator(identifier: string | null | undefined): boolean {
+  if (!identifier) return false
+  const name = getOperatorName(identifier)
+  return name === '但书' || name === '龙舌兰' || name === '佩佩'
+}
+
+export function isProviso(identifier: string | null | undefined): boolean {
+  if (!identifier) return false
+  const name = getOperatorName(identifier)
+  return name === '但书'
+}
+
+export function isFiammetta(identifier: string | null | undefined): boolean {
+  if (!identifier) return false
+  const name = getOperatorName(identifier)
+  return name === '菲亚梅塔'
+}
 
 export function buildOperatorSearchIndex(operators: OperatorRecord[]): OperatorSearchItem[] {
   return operators.map((op) => {

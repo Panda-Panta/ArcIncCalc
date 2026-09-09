@@ -62,19 +62,17 @@ function transformSpecial(template: OrderTemplate, special: SpecialOrder, roomLe
     case 'uofficial':
       return { ...template, cost: 2, reward: 1000 }
     case 'provisoAlpha':
-      return { ...template, cost: template.cost + 1, reward: template.reward + 500 }
+      return template.cost < 4 ? { ...template, cost: template.cost + 1, reward: template.reward + 500 } : template
     case 'provisoBeta':
-      return { ...template, cost: template.cost + 2, reward: template.reward + 1000 }
+      return template.cost < 4 ? { ...template, cost: template.cost + 2, reward: template.reward + 1000 } : template
     case 'tequilaAlpha':
-      return { ...template, reward: template.reward + 250 }
+      return template.cost > 3 ? { ...template, reward: template.reward + 250 } : template
     case 'tequilaBeta':
-      return { ...template, reward: template.reward + 500 }
+      return template.cost > 3 ? { ...template, reward: template.reward + 500 } : template
     case 'shiftRun':
-      return {
-        ...template,
-        cost: template.cost + 2,
-        reward: template.reward + (roomLevel >= 3 ? 1500 : 1000),
-      }
+      // Contract conversion and Tequila are mutually exclusive. Test the BASE cost.
+      if (template.cost < 4) return { ...template, cost: template.cost + 2, reward: template.reward + 1000 }
+      return roomLevel >= 3 ? { ...template, reward: template.reward + 500 } : template
     default:
       return template
   }
@@ -211,10 +209,12 @@ function validateLayout(config: AppConfig): string[] {
   const assignments = [...config.controlOperatorIds, ...config.rooms.flatMap((room) => room.operatorIds)]
   if (new Set(assignments).size !== assignments.length) messages.push('同一干员不能同时进驻多个设施。')
   const primaryIds = new Set(assignments)
+  const workaholicIds = new Set(config.workaholicOperatorIds ?? [])
   const backups = assignments
     .map((primaryId) => ({ primaryId, backupId: config.operatorBackups[primaryId] }))
   for (const { primaryId, backupId } of backups) {
     if (!backupId) {
+      if (workaholicIds.has(primaryId)) continue
       messages.push(`${primaryId} 尚未设置替补干员。`)
       continue
     }

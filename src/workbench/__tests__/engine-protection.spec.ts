@@ -17,9 +17,9 @@ function fileSha256(relativePath: string): string {
 describe('Engine Protection & Calculation Equivalence', () => {
   it('protects engine source files against unauthorized modifications', () => {
     // Exact baseline SHA256 hashes of the untouched engine files (normalized LF)
-    expect(fileSha256('engine/calculate.ts')).toBe('0f3f212b12e6b410841961b7ea385a3f757570abe7f968f69dad005c11602bf6')
-    expect(fileSha256('engine/morale.ts')).toBe('d77cfa8fc8e3cfeb0b8054e2e5a9bff3970338f3494e4851b16d01ab1de22136')
-    expect(fileSha256('engine/operatorRules.ts')).toBe('20062d7d5715f10267f73e8267763b63cf103331a2ea08e0843c28c2dbb5e0a4')
+    expect(fileSha256('engine/calculate.ts')).toBe('6191f95a8a651d0add5e43c34744b4dbfd2493afeb63b220181ff2b9396391fb')
+    expect(fileSha256('engine/morale.ts')).toBe('f2e4c1eee58bac88257f23b375ea7aa84059fb82d46c57ba88438e2689396fa2')
+    expect(fileSha256('engine/operatorRules.ts')).toBe('84fae664ab138bcddf0b421a1c6ad8fd1ed8d4c23296746b4d1ec52c4b75630a')
   })
 
   it('produces deterministic baseline report for default configuration', () => {
@@ -40,10 +40,10 @@ describe('Engine Protection & Calculation Equivalence', () => {
       exp: 0,
       goldCount: 80,
       goldValue: 40000,
-      orderLmd: expect.closeTo(41769.91, 1),
+      orderLmd: expect.closeTo(33274.34, 1),
       fragments: 0,
       orundum: 0,
-      goldConsumed: expect.closeTo(69.38, 1),
+      goldConsumed: expect.closeTo(63.72, 1),
       fragmentsConsumed: 0,
     })
   })

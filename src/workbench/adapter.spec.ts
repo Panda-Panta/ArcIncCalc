@@ -242,6 +242,110 @@ describe('compileMainPlanToAppConfig', () => {
     expect(config.operatorBackups['char_109_fmout']).toBeUndefined()
   })
 
+  it('projects repeated ordered candidates onto unique legacy backups without losing workspace data', () => {
+    const ws = createDefaultWorkspace()
+    const baseConfig = createDefaultConfig()
+
+    ws.mainPlan.facilities.room_1_1.slots = [
+      {
+        occupant: { kind: 'operator', operatorId: 'char_002_amiya' },
+        groupId: null,
+        replacements: ['char_4032_provs', 'char_102_texas'],
+      },
+    ]
+    ws.mainPlan.facilities.room_1_2.slots = [
+      {
+        occupant: { kind: 'operator', operatorId: 'char_103_angel' },
+        groupId: null,
+        replacements: ['char_4032_provs', 'char_106_franka'],
+      },
+    ]
+    ws.mainPlan.facilities.dormitory_4.slots = [
+      {
+        occupant: { kind: 'operator', operatorId: 'char_300_phenxi' },
+        groupId: null,
+        replacements: ['char_002_amiya', 'char_103_angel'],
+      },
+    ]
+
+    const config = compileMainPlanToAppConfig(ws.mainPlan, ws, baseConfig)
+
+    expect(config.operatorBackups['char_002_amiya']).toBe('char_4032_provs')
+    expect(config.operatorBackups['char_103_angel']).toBe('char_106_franka')
+    expect(config.operatorBackups['char_300_phenxi']).toBeUndefined()
+    expect(ws.mainPlan.facilities.room_1_2.slots[0]!.replacements).toEqual([
+      'char_4032_provs',
+      'char_106_franka',
+    ])
+  })
+
+  it('does not project shift-run candidates as ordinary trading-room backups', () => {
+    const ws = createDefaultWorkspace()
+    const baseConfig = createDefaultConfig()
+    ws.mainPlan.facilities.room_1_1.type = 'trading'
+    ws.mainPlan.facilities.room_1_1.slots = [{
+      occupant: { kind: 'operator', operatorId: 'char_4055_bgsnow' },
+      groupId: null,
+      replacements: ['char_4032_provs', 'char_4037_demetr'],
+    }]
+    ws.mainPlan.facilities.room_1_2.type = 'trading'
+    ws.mainPlan.facilities.room_1_2.slots = [{
+      occupant: { kind: 'operator', operatorId: 'char_402_tuye' },
+      groupId: null,
+      replacements: ['char_4032_provs', 'char_427_vigil'],
+    }]
+
+    const config = compileMainPlanToAppConfig(ws.mainPlan, ws, baseConfig)
+
+    expect(config.operatorBackups.char_4055_bgsnow).toBe('char_4037_demetr')
+    expect(config.operatorBackups.char_402_tuye).toBe('char_427_vigil')
+  })
+
+  it('uses non-empty dormitory beds as the steady-state occupancy approximation', () => {
+    const ws = createDefaultWorkspace()
+    const baseConfig = createDefaultConfig()
+    ws.mainPlan.facilities.dormitory_1.slots = [
+      { occupant: { kind: 'operator', operatorId: 'char_338_iris' }, groupId: null, replacements: [] },
+      { occupant: { kind: 'free' }, groupId: null, replacements: [] },
+      { occupant: { kind: 'current' }, groupId: null, replacements: [] },
+      { occupant: { kind: 'empty' }, groupId: null, replacements: [] },
+    ]
+
+    const config = compileMainPlanToAppConfig(ws.mainPlan, ws, baseConfig)
+
+    expect(config.dormitoryOccupantCount).toBe(3)
+  })
+
+  it('preserves Mower workaholics as occupied zero-morale workers without ordinary backup projection', () => {
+    const ws = createDefaultWorkspace()
+    const baseConfig = createDefaultConfig()
+    ws.mainPlan.facilities.room_3_3.type = 'power'
+    ws.mainPlan.facilities.room_3_3.slots = [{
+      occupant: { kind: 'operator', operatorId: 'char_285_medic2' },
+      groupId: null,
+      replacements: ['char_253_greyy'],
+    }]
+    ws.mainPlan.conf.workaholic = ['char_285_medic2']
+
+    const config = compileMainPlanToAppConfig(ws.mainPlan, ws, baseConfig)
+
+    expect(config.workaholicOperatorIds).toEqual(['char_285_medic2'])
+    expect(config.operatorBackups.char_285_medic2).toBeUndefined()
+  })
+
+  it('uses the edition default order mode when an imported room becomes a trading station', () => {
+    const ws = createDefaultWorkspace()
+    const baseConfig = createDefaultConfig()
+    ws.mainPlan.facilities.room_1_2.type = 'trading'
+    ws.mainPlan.facilities.room_1_2.level = 2
+
+    const config = compileMainPlanToAppConfig(ws.mainPlan, ws, baseConfig)
+
+    expect(baseConfig.rooms[1]!.type).toBe('manufacture')
+    expect(config.rooms[1]!.type).toBe('trading')
+    expect(config.rooms[1]!.specialOrder).toBe('shiftRun')
+  })
+
   it('aggregates group labels from all facilities and preserves existing group names if present', () => {
     const ws = createDefaultWorkspace()
     const baseConfig = createDefaultConfig()
@@ -460,4 +564,3 @@ describe('compileMainPlanToAppConfig', () => {
     expect(compiled.rooms).toHaveLength(9)
   })
 })
-

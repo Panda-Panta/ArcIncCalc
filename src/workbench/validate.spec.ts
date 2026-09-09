@@ -37,6 +37,8 @@ describe('validateRosterWorkspace', () => {
     expect(dup).toBeDefined()
     expect(dup?.severity).toBe('critical')
     expect(dup?.roomId).toBe('room_1_2')
+    expect(dup?.message).toContain('阿米娅')
+    expect(dup?.message).not.toContain('char_002_amiya')
   })
 
   it('detects conflicting replacements when replacement is already an active primary operator', () => {
@@ -59,16 +61,17 @@ describe('validateRosterWorkspace', () => {
     expect(conflict).toBeDefined()
     expect(conflict?.severity).toBe('critical')
     expect(conflict?.roomId).toBe('room_1_2')
-    expect(conflict?.message).toContain('char_102_texas')
+    expect(conflict?.message).toContain('德克萨斯')
+    expect(conflict?.message).not.toContain('char_102_texas')
   })
 
-  it('detects duplicate replacement within the same slot or overlapping across slots', () => {
+  it('detects duplicate replacement within the same slot', () => {
     const ws = createDefaultWorkspace()
     // Same slot has duplicate replacements
     ws.mainPlan.facilities.room_1_1.slots[0] = {
-      occupant: { kind: 'operator', operatorId: 'char_1' },
+      occupant: { kind: 'operator', operatorId: 'char_002_amiya' },
       groupId: null,
-      replacements: ['char_sub1', 'char_sub1'],
+      replacements: ['char_102_texas', 'char_102_texas'],
     }
 
     const res = validateRosterWorkspace(ws)
@@ -77,6 +80,115 @@ describe('validateRosterWorkspace', () => {
     expect(dupRep).toBeDefined()
     expect(dupRep?.severity).toBe('critical')
     expect(dupRep?.roomId).toBe('room_1_1')
+    expect(dupRep?.message).toContain('德克萨斯')
+    expect(dupRep?.message).not.toContain('char_102_texas')
+  })
+
+  it('allows the same replacement candidate to appear in multiple facilities', () => {
+    const ws = createDefaultWorkspace()
+    ws.mainPlan.facilities.room_1_1.slots[0] = {
+      occupant: { kind: 'operator', operatorId: 'char_002_amiya' },
+      groupId: null,
+      replacements: ['char_103_angel'],
+    }
+    ws.mainPlan.facilities.room_1_2.slots[0] = {
+      occupant: { kind: 'operator', operatorId: 'char_102_texas' },
+      groupId: null,
+      replacements: ['char_103_angel'],
+    }
+
+    const res = validateRosterWorkspace(ws)
+    const dupRep = res.criticalErrors.find((e) => e.code === 'DUPLICATE_REPLACEMENT')
+    expect(dupRep).toBeUndefined()
+  })
+
+  it('allows Fiammetta in dormitory to reference active primary operators as replacements', () => {
+    const ws = createDefaultWorkspace()
+    // char_102_texas is primary in room_1_1
+    ws.mainPlan.facilities.room_1_1.slots[0] = {
+      occupant: { kind: 'operator', operatorId: 'char_102_texas' },
+      groupId: null,
+      replacements: ['char_103_angel'],
+    }
+    // Fiammetta in dormitory_4 references active primary char_102_texas
+    ws.mainPlan.facilities.dormitory_4.slots[0] = {
+      occupant: { kind: 'operator', operatorId: 'char_300_phenxi' },
+      groupId: null,
+      replacements: ['char_102_texas'],
+    }
+
+    const res = validateRosterWorkspace(ws)
+    const conflict = res.criticalErrors.find((e) => e.code === 'CONFLICTING_REPLACEMENT')
+    expect(conflict).toBeUndefined()
+  })
+
+  it('rejects Fiammetta outside dormitory referencing active primary operators as replacements', () => {
+    const ws = createDefaultWorkspace()
+    // char_102_texas is primary in room_1_1
+    ws.mainPlan.facilities.room_1_1.slots[0] = {
+      occupant: { kind: 'operator', operatorId: 'char_102_texas' },
+      groupId: null,
+      replacements: ['char_103_angel'],
+    }
+    // Fiammetta outside dormitory (e.g. room_1_2) references active primary char_102_texas
+    ws.mainPlan.facilities.room_1_2.slots[0] = {
+      occupant: { kind: 'operator', operatorId: 'char_300_phenxi' },
+      groupId: null,
+      replacements: ['char_102_texas'],
+    }
+
+    const res = validateRosterWorkspace(ws)
+    const conflict = res.criticalErrors.find((e) => e.code === 'CONFLICTING_REPLACEMENT')
+    expect(conflict).toBeDefined()
+    expect(conflict?.message).toContain('德克萨斯')
+    expect(conflict?.message).not.toContain('char_102_texas')
+  })
+
+  it('does not warn for normal dormitory keepers without replacements or Free rest pool placeholders', () => {
+    const ws = createDefaultWorkspace()
+    ws.mainPlan.facilities.dormitory_1.slots[0] = {
+      occupant: { kind: 'operator', operatorId: 'char_4042_lumen' },
+      groupId: null,
+      replacements: [],
+    }
+    ws.mainPlan.facilities.dormitory_1.slots[1] = {
+      occupant: { kind: 'free' },
+      groupId: null,
+      replacements: [],
+    }
+
+    const res = validateRosterWorkspace(ws)
+    const dormIssues = res.warnings.filter((w) => w.roomId === 'dormitory_1')
+    expect(dormIssues).toHaveLength(0)
+  })
+
+  it('does not warn when a Mower workaholic has no ordinary replacement', () => {
+    const ws = createDefaultWorkspace()
+    ws.mainPlan.facilities.room_3_3.slots[0] = {
+      occupant: { kind: 'operator', operatorId: 'char_285_medic2' },
+      groupId: null,
+      replacements: [],
+    }
+    ws.mainPlan.conf.workaholic = ['char_285_medic2']
+
+    const result = validateRosterWorkspace(ws)
+
+    expect(result.warnings.some((item) => item.code === 'NO_REPLACEMENT')).toBe(false)
+  })
+
+  it('warns when Fiammetta in dormitory has no replacements', () => {
+    const ws = createDefaultWorkspace()
+    ws.mainPlan.facilities.dormitory_4.slots[0] = {
+      occupant: { kind: 'operator', operatorId: 'char_300_phenxi' },
+      groupId: null,
+      replacements: [],
+    }
+
+    const res = validateRosterWorkspace(ws)
+    const noRep = res.warnings.find((w) => w.code === 'NO_REPLACEMENT' && w.roomId === 'dormitory_4')
+    expect(noRep).toBeDefined()
+    expect(noRep?.message).toContain('菲亚梅塔')
+    expect(noRep?.message).not.toContain('char_300_phenxi')
   })
 
   it('enforces exact slot capacity for all facility types', () => {

@@ -3,6 +3,16 @@ import { createDefaultConfig, createRoom } from '../domain/defaults'
 import { calculate } from './calculate'
 
 describe('base income calculator', () => {
+  it('accepts a workaholic primary without an ordinary backup', () => {
+    const config = createDefaultConfig()
+    config.rooms[7]!.operatorIds = ['char_285_medic2']
+    config.workaholicOperatorIds = ['char_285_medic2']
+
+    const result = calculate(config)
+
+    expect(result.layoutValid).toBe(true)
+    expect(result.validationMessages).not.toContain('char_285_medic2 尚未设置替补干员。')
+  })
   it('balances a fully upgraded 243 layout at 810 power', () => {
     const report = calculate(createDefaultConfig())
     expect(report.power).toEqual({ generation: 810, consumption: 810, margin: 0, sufficient: true })
@@ -90,8 +100,10 @@ describe('base income calculator', () => {
     room.specialOrder = 'shiftRun'
     const result = calculate(config).trading.find((item) => item.roomId === room.id)!
     expect(result.orders).toBeCloseTo(1440 / 203.4)
-    expect(result.lmd / result.orders).toBeCloseTo(2950)
-    expect(result.goldConsumed / result.orders).toBeCloseTo(4.9)
+    // .3*(4 gold,2000) + .5*(5 gold,2500) + .2*(4 gold,2500).
+    // Tequila does not also apply to Proviso's contract orders.
+    expect(result.lmd / result.orders).toBeCloseTo(2350)
+    expect(result.goldConsumed / result.orders).toBeCloseTo(4.5)
   })
 
   it('uses Proviso alone for level 1 and 2 shift-running orders', () => {

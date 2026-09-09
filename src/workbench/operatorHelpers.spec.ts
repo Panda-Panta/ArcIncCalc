@@ -3,6 +3,7 @@ import {
   buildOperatorSearchIndex,
   searchOperators,
   getOperatorAvatarUrl,
+  getOperatorName,
   getRoomDisplayName,
   getAssignedSummaryMap,
   computeReplacementScope,
@@ -45,6 +46,28 @@ describe('operatorHelpers', () => {
     it('returns capped results when query is empty', () => {
       const results = searchOperators('', index, 20)
       expect(results.length).toBe(20)
+    })
+  })
+
+  describe('getOperatorName', () => {
+    it('resolves charId to Chinese operator name without showing char_id', () => {
+      expect(getOperatorName('char_102_texas')).toBe('德克萨斯')
+      expect(getOperatorName('char_002_amiya')).toBe('阿米娅')
+      expect(getOperatorName('char_300_phenxi')).toBe('菲亚梅塔')
+      expect(getOperatorName('char_4042_lumen')).toBe('流明')
+    })
+
+    it('resolves English appellation to Chinese operator name', () => {
+      expect(getOperatorName('Texas')).toBe('德克萨斯')
+      expect(getOperatorName('texas')).toBe('德克萨斯')
+      expect(getOperatorName('Amiya')).toBe('阿米娅')
+      expect(getOperatorName('Fiammetta')).toBe('菲亚梅塔')
+    })
+
+    it('preserves Chinese names, Free, and Current', () => {
+      expect(getOperatorName('德克萨斯')).toBe('德克萨斯')
+      expect(getOperatorName('Free')).toBe('Free')
+      expect(getOperatorName('Current')).toBe('Current')
     })
   })
 

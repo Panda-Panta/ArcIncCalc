@@ -1,0 +1,69 @@
+import type { MowerFacilityType, MowerMainConf, MowerOccupant, MowerProduct, RosterWorkspace } from '../workbench/model'
+
+export interface CompileDiagnostic {
+  code: string
+  severity: 'error' | 'warning' | 'info'
+  message: string
+  path?: string
+}
+export interface SimulationAssumptions {
+  schemaVersion: 1
+  initialMorale: number
+  operatorMorale: Record<string, number>
+  dormAtmosphere: number
+  initialGold: number
+  initialFragments: number
+  initialDrones: number
+  collectionIntervalHours: number
+  operationDurationHours: number
+  horizonHours: number
+  elitePhase: 0 | 1 | 2
+  currentOccupants: Record<string, string[]>
+}
+export interface CompiledSlot {
+  roomId: string
+  slotIndex: number
+  occupant: MowerOccupant
+  primaryOperatorId: string | null
+  orderedCandidates: string[]
+  groupId: string | null
+  role: 'work' | 'dorm-keeper' | 'free-rest' | 'fiammetta'
+  metadata?: Record<string, unknown>
+}
+export interface CompiledRoom {
+  roomId: string
+  type: MowerFacilityType
+  level: number
+  product?: MowerProduct
+  capacity: number
+  slots: CompiledSlot[]
+}
+export interface OperatorRuntimeState {
+  operatorId: string
+  morale: number
+  roomId: string | null
+  slotIndex: number | null
+}
+export interface RestPool { roomId: string; capacity: number; freeSlotIndices: number[] }
+export type MainRosterPolicies = MowerMainConf
+export interface RunOrderPolicy { roomId: string; orderedOperatorIds: string[] }
+export interface FiammettaPolicy { roomId: string; slotIndex: number; operatorId: string; orderedTargets: string[] }
+export interface CompiledSchedule {
+  schemaVersion: 1
+  rooms: CompiledRoom[]
+  operators: Record<string, OperatorRuntimeState>
+  restPools: RestPool[]
+  policies: MainRosterPolicies
+  rawConf: MowerMainConf
+  runOrderPolicies: RunOrderPolicy[]
+  fiammettaPolicies: FiammettaPolicy[]
+  assumptions: SimulationAssumptions & {
+    dataVersion: string
+    compilerVersion: string
+    levelSource: string
+    importSource: string
+    defaultsApplied: string[]
+  }
+  diagnostics: CompileDiagnostic[]
+  sourceWorkspace: RosterWorkspace
+}

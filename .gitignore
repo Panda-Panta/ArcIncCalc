@@ -2,5 +2,8 @@ node_modules/
 .pnpm-store/
 dist/
 .worktrees/
+.antigravity-bridge/
+.tmp_mowerxlsx/
+scratch/
 *.tsbuildinfo
 .DS_Store

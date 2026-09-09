@@ -1,0 +1,35 @@
+import { describe, expect, it } from 'vitest'
+import { createDefaultConfig } from '../domain/defaults'
+import { calculate } from './calculate'
+import type { QualityRule, SpecialOrder } from '../domain/types'
+
+function perOrder(specialOrder: SpecialOrder, quality: QualityRule = 'normal') {
+  const config = createDefaultConfig()
+  const room = config.rooms.find((value) => value.type === 'trading')!
+  room.specialOrder = specialOrder
+  room.quality = quality
+  const trade = calculate(config).trading.find((value) => value.roomId === room.id)!
+  return { gold: trade.goldConsumed / trade.orders, lmd: trade.lmd / trade.orders }
+}
+
+describe('source-backed mutually exclusive order transforms', () => {
+  it('applies Proviso only below four base gold and Tequila only to the remaining four-gold order', () => {
+    // Ordinary L3 probabilities: .3/.5/.2. Contracts: 4/2000, 5/2500, 4/2500.
+    expect(perOrder('shiftRun')).toEqual({ gold: 4.5, lmd: 2350 })
+  })
+  it('leaves base four-gold orders unchanged for Proviso alone', () => {
+    const result = perOrder('provisoBeta')
+    expect(result.gold).toBeCloseTo(4.5)
+    expect(result.lmd).toBeCloseTo(2250)
+  })
+  it('adds Tequila reward only to base orders above three gold', () => {
+    const result = perOrder('tequilaBeta')
+    expect(result.gold).toBeCloseTo(2.9)
+    expect(result.lmd).toBeCloseTo(1550)
+  })
+  it('uses the base quality probabilities before mutually exclusive transformations', () => {
+    const result = perOrder('shiftRun', 'beta')
+    expect(result.gold).toBeCloseTo(4.1)
+    expect(result.lmd).toBeCloseTo(2475)
+  })
+})

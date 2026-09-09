@@ -6,6 +6,11 @@ import {
   type MowerRoomId,
   type RosterWorkspace,
 } from './model'
+import {
+  getOperatorName,
+  getRoomDisplayName,
+  isFiammetta,
+} from './operatorHelpers'
 
 export type ValidationSeverity = 'critical' | 'warning' | 'info'
 
@@ -83,9 +88,6 @@ export function validateRosterWorkspace(workspace: RosterWorkspace): ValidationR
   // Track primary operators: operatorId -> { roomId, slotIndex }
   const primaryOperators = new Map<string, { roomId: MowerRoomId; slotIndex: number }>()
 
-  // Track replacement operators globally: operatorId -> { roomId, slotIndex }
-  const allReplacements = new Map<string, { roomId: MowerRoomId; slotIndex: number }>()
-
   // 1. First pass: Collect all active primary operators and check duplicates
   for (const roomId of MOWER_ROOM_IDS) {
     const facility = facilities[roomId]
@@ -94,6 +96,9 @@ export function validateRosterWorkspace(workspace: RosterWorkspace): ValidationR
     facility.slots.forEach((slot, slotIndex) => {
       if (slot.occupant.kind === 'operator') {
         const opId = slot.occupant.operatorId
+        if (!opId || opId.toLowerCase() === 'free' || opId.toLowerCase() === 'current') {
+          return
+        }
         const existing = primaryOperators.get(opId)
         if (existing) {
           criticalErrors.push({
@@ -101,7 +106,7 @@ export function validateRosterWorkspace(workspace: RosterWorkspace): ValidationR
             severity: 'critical',
             roomId,
             slotIndex,
-            message: `干员 ${opId} 在 ${existing.roomId} 和 ${roomId} 同时在岗，不可重复指派主力。`,
+            message: `干员 ${getOperatorName(opId)} 在 ${getRoomDisplayName(existing.roomId)} 和 ${getRoomDisplayName(roomId)} 同时在岗，不可重复指派主力。`,
           })
         } else {
           primaryOperators.set(opId, { roomId, slotIndex })
@@ -245,18 +250,41 @@ export function validateRosterWorkspace(workspace: RosterWorkspace): ValidationR
 
     // Slot-level validation
     facility.slots.forEach((slot, slotIndex) => {
+      const isDorm = facility.type === 'dormitory' || roomId.startsWith('dormitory_') || roomId.startsWith('dorm_')
+
       if (slot.occupant.kind === 'operator') {
         const opId = slot.occupant.operatorId
+        if (!opId || opId.toLowerCase() === 'free' || opId.toLowerCase() === 'current') {
+          if (!(isDorm && opId?.toLowerCase() === 'free')) {
+            warnings.push({
+              code: 'PLACEHOLDER_SLOT',
+              severity: 'warning',
+              roomId,
+              slotIndex,
+              message: `${getRoomDisplayName(roomId, facility.type)} 席位使用 ${opId} 占位，在收益模拟中将视为空席。`,
+            })
+          }
+          return
+        }
 
-        // Missing replacements warning
+        const isFiam = isFiammetta(opId)
+        const isFiamInDorm = isDorm && isFiam
+        const isWorkaholic = workspace.mainPlan.conf.workaholic.includes(opId)
+
+        // Missing replacements warning:
+        // Ordinary dormitory keepers do not need replacements and do not warn.
+        // Fiammetta requires replacements (morale swap targets) and warns if missing.
+        // Non-dormitory rooms require replacements.
         if (slot.replacements.length === 0) {
-          warnings.push({
-            code: 'NO_REPLACEMENT',
-            severity: 'warning',
-            roomId,
-            slotIndex,
-            message: `${roomId} 席位干员 (${opId}) 未配置替补。`,
-          })
+          if ((!isDorm || isFiamInDorm) && !isWorkaholic) {
+            warnings.push({
+              code: 'NO_REPLACEMENT',
+              severity: 'warning',
+              roomId,
+              slotIndex,
+              message: `${getRoomDisplayName(roomId, facility.type)} 席位干员 (${getOperatorName(opId)}) 未配置替补。`,
+            })
+          }
         }
 
         // Validate replacements
@@ -269,10 +297,17 @@ export function validateRosterWorkspace(workspace: RosterWorkspace): ValidationR
               severity: 'critical',
               roomId,
               slotIndex,
-              message: `${roomId} 席位的替补列表中存在重复干员：${repId}。`,
+              message: `${getRoomDisplayName(roomId, facility.type)} 席位的替补列表中存在重复干员：${getOperatorName(repId)}。`,
             })
           }
           seenInSlot.add(repId)
+
+          // If occupant is Fiammetta in dormitory:
+          // Her replacements are morale swap targets referencing primary operators.
+          // They are allowed to reference active primary operators and should not be tracked as normal shift replacements.
+          if (isFiamInDorm) {
+            continue
+          }
 
           // Check replacement conflicting with an active primary operator
           if (primaryOperators.has(repId)) {
@@ -281,32 +316,23 @@ export function validateRosterWorkspace(workspace: RosterWorkspace): ValidationR
               severity: 'critical',
               roomId,
               slotIndex,
-              message: `替补干员 ${repId} 当前已作为主力在岗执勤，不可设为替补。`,
+              message: `替补干员 ${getOperatorName(repId)} 当前已作为主力在岗执勤，不可设为替补。`,
             })
           }
 
-          // Check replacement overlapping across different slots
-          const existingRep = allReplacements.get(repId)
-          if (existingRep && (existingRep.roomId !== roomId || existingRep.slotIndex !== slotIndex)) {
-            criticalErrors.push({
-              code: 'DUPLICATE_REPLACEMENT',
-              severity: 'critical',
-              roomId,
-              slotIndex,
-              message: `替补干员 ${repId} 同时被 ${existingRep.roomId} 和 ${roomId} 指定为替补。`,
-            })
-          } else if (!existingRep) {
-            allReplacements.set(repId, { roomId, slotIndex })
-          }
+          // Same backup candidate is allowed to appear across multiple facilities
         }
       } else if (slot.occupant.kind === 'free' || slot.occupant.kind === 'current') {
-        warnings.push({
-          code: 'PLACEHOLDER_SLOT',
-          severity: 'warning',
-          roomId,
-          slotIndex,
-          message: `${roomId} 席位使用 ${slot.occupant.kind} 占位，在收益模拟中将视为空席。`,
-        })
+        // dorm Free is a rest pool placeholder, should not be warned as an illegal empty placeholder slot.
+        if (!(isDorm && slot.occupant.kind === 'free')) {
+          warnings.push({
+            code: 'PLACEHOLDER_SLOT',
+            severity: 'warning',
+            roomId,
+            slotIndex,
+            message: `${getRoomDisplayName(roomId, facility.type)} 席位使用 ${slot.occupant.kind} 占位，在收益模拟中将视为空席。`,
+          })
+        }
       }
     })
   }

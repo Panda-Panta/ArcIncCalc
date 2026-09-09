@@ -48,6 +48,7 @@ export function migrateAppConfigToWorkspace(config: AppConfig): RosterWorkspace 
     ws.name = config.planName
     ws.mainPlan.name = config.planName
   }
+  ws.mainPlan.conf.workaholic = [...(config.workaholicOperatorIds ?? [])]
 
   // 1. Map 9 output rooms (B1..B9)
   for (let i = 0; i < 9 && i < config.rooms.length; i++) {

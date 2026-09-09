@@ -5,6 +5,7 @@ import type {
   OutputRoom,
   TradeStrategy,
 } from '../domain/types'
+import { EDITION } from '../domain/edition'
 import {
   MOWER_OUTPUT_ROOM_IDS,
   MOWER_ROOM_IDS,
@@ -14,6 +15,7 @@ import {
   type RosterWorkspace,
 } from './model'
 import { COMPAT_OPERATOR_GROUPS_KEY } from './migrate'
+import { isRunOrderOperator } from './operatorHelpers'
 
 const DORMITORY_ROOM_IDS = [
   'dormitory_1',
@@ -168,14 +170,33 @@ export function compileMainPlanToAppConfig(
       product,
       strategy,
       quality: existingRoom?.quality ?? 'normal',
-      specialOrder: existingRoom?.specialOrder ?? 'none',
+      specialOrder:
+        type === 'trading' && existingRoom?.type !== 'trading'
+          ? EDITION.defaultSpecialOrder
+          : existingRoom?.specialOrder ?? (type === 'trading' ? EDITION.defaultSpecialOrder : 'none'),
       powerStaffed: existingRoom?.powerStaffed ?? false,
     }
   })
 
-  // 2. Aggregate group labels and first valid replacement per primary operator
+  // 2. Aggregate group labels and project ordered Mower candidates onto the
+  // legacy engine's one-to-one backup map. The workspace remains lossless;
+  // this projection chooses the first candidate that is neither on duty nor
+  // already assigned to another legacy work slot.
   const groupMap = new Map<string, string[]>()
   const backups: Record<string, string> = {}
+  const usedBackupIds = new Set<string>()
+  const activePrimaryIds = new Set<string>()
+  const workaholicOperatorIds = [...new Set(mainPlan.conf.workaholic)]
+  const workaholicIds = new Set(workaholicOperatorIds)
+
+  for (const facility of Object.values(mainPlan.facilities)) {
+    for (const slot of facility?.slots ?? []) {
+      const opId = extractOperatorId(slot)
+      if (opId) activePrimaryIds.add(opId)
+    }
+  }
+
+  const legacyAssignmentRoomIds = new Set<string>([...MOWER_OUTPUT_ROOM_IDS, 'central'])
 
   const seenRooms = new Set<string>()
   const orderedRoomIds: string[] = [...MOWER_ROOM_IDS]
@@ -206,13 +227,28 @@ export function compileMainPlanToAppConfig(
         }
       }
 
-      // First valid ordered replacement
-      if (slot.replacements && slot.replacements.length > 0) {
+      // Dormitory/right-side replacement metadata (notably Fiammetta's morale
+      // swap targets) is intentionally not flattened into operatorBackups.
+      if (
+        legacyAssignmentRoomIds.has(roomId) &&
+        !workaholicIds.has(opId) &&
+        slot.replacements &&
+        slot.replacements.length > 0
+      ) {
         const firstValid = slot.replacements.find(
-          (rep) => typeof rep === 'string' && rep.trim().length > 0,
+          (rep) => {
+            if (typeof rep !== 'string') return false
+            const candidate = rep.trim()
+            return candidate.length > 0 &&
+              !(facility.type === 'trading' && isRunOrderOperator(candidate)) &&
+              !activePrimaryIds.has(candidate) &&
+              !usedBackupIds.has(candidate)
+          },
         )
         if (firstValid && !(opId in backups)) {
-          backups[opId] = firstValid.trim()
+          const backupId = firstValid.trim()
+          backups[opId] = backupId
+          usedBackupIds.add(backupId)
         }
       }
     }
@@ -262,6 +298,11 @@ export function compileMainPlanToAppConfig(
       .map((slot) => extractOperatorId(slot))
       .filter((id): id is string => id !== null)
   })
+  const steadyDormitoryOccupancy = DORMITORY_ROOM_IDS.reduce((sum, roomId) => {
+    const dorm = mainPlan.facilities[roomId]
+    if (!dorm?.slots) return sum
+    return sum + dorm.slots.filter((slot) => slot.occupant.kind !== 'empty').length
+  }, 0)
 
   // 5. Functional facilities: meeting (reception), factory (workshop), contact (office), train (training)
   const meetingFac = mainPlan.facilities.meeting
@@ -316,7 +357,9 @@ export function compileMainPlanToAppConfig(
   const dormitoryOccupantCount =
     typeof unrecognized.dormitoryOccupantCount === 'number'
       ? unrecognized.dormitoryOccupantCount
-      : (cloned.dormitoryOccupantCount ?? 0)
+      : cloned.dormitoryOccupantCount > 0
+        ? cloned.dormitoryOccupantCount
+        : steadyDormitoryOccupancy
 
   const droneTarget =
     typeof unrecognized.droneTarget === 'string'
@@ -362,6 +405,7 @@ export function compileMainPlanToAppConfig(
       training: trainingOperators,
     },
     controlOperatorIds,
+    workaholicOperatorIds,
     operatorBackups: backups,
     operatorGroups,
   }

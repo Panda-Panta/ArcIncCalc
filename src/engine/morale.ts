@@ -3,7 +3,7 @@ import type { AppConfig, OperatorMoraleResult, OutputRoom, RoomType } from '../d
 import { evaluateOperators } from './operatorRules'
 import { createOperatorGroupSchedule } from './operatorGroups'
 import { createShiftRoster } from './shiftRoster'
-import { buildRiicGlobalContext } from './globalContext'
+import { buildRiicGlobalContext, deriveWorldlyFireworks } from './globalContext'
 
 interface Assignment {
   operator: OperatorRecord
@@ -24,6 +24,11 @@ interface RateSnapshot {
   resources: ResourceValues
 }
 
+export interface CurrentMoraleRates {
+  rates: Record<string, number>
+  details: Record<string, string[]>
+}
+
 export interface MoraleSimulation {
   averageEfficiencyPercent: Record<string, number>
   averagePowerBonusPercent: number
@@ -38,8 +43,8 @@ function dormitoryRecoveryPerHour(config: AppConfig) {
     config.facilities.dormitories.length
 }
 
-function leavesAtZeroMorale(operatorId: string) {
-  return operatorId !== 'char_285_medic2'
+function leavesAtZeroMorale(operatorId: string, config: AppConfig) {
+  return operatorId !== 'char_285_medic2' && !(config.workaholicOperatorIds ?? []).includes(operatorId)
 }
 
 const MLYNAR_EXTENDED_SKILLS = new Set([
@@ -143,13 +148,7 @@ function resources(
     )
   }
 
-  let fireworks = 0
-  if (activeControlIds.has('char_2023_ling') && (morale.get('char_2023_ling') ?? 0) > 12) fireworks += 15
-  if (activeControlIds.has('char_2015_dusk') && (morale.get('char_2015_dusk') ?? 0) <= 12) fireworks += 15
-  if (activeControlIds.has('char_2024_chyue')) {
-    const activeSui = activeAssignments(all, activeIds).filter((item) => isFaction(item.operator, 'sui')).length
-    fireworks += Math.min(5, activeSui) * 5
-  }
+  const fireworks = deriveWorldlyFireworks(config, activeIds, morale)
 
   return { enthusiasm, fireworks }
 }
@@ -369,6 +368,24 @@ function computeRates(
   return { rates, details, resources: resourceValues }
 }
 
+/** Evaluate the currently occupied roster only. Dynamic schedulers use this
+ * adapter after each atomic roster change instead of invoking legacy rotation. */
+export function currentMoraleRates(config: AppConfig): CurrentMoraleRates {
+  const all = assignments(config)
+  const morale = new Map(all.map(({ operator }) => [
+    operator.charId,
+    Math.max(0, Math.min(24, config.operatorMorale[operator.charId] ?? 24)),
+  ]))
+  const activeIds = new Set(all
+    .map(({ operator }) => operator.charId)
+    .filter((id) => (morale.get(id) ?? 0) > 0))
+  const snapshot = computeRates(config, all, activeIds, morale)
+  return {
+    rates: Object.fromEntries(snapshot.rates),
+    details: Object.fromEntries(snapshot.details),
+  }
+}
+
 function boundaryValues(assignment: Assignment) {
   if (assignment.operator.charId === 'char_4062_totter') return [20, 16, 12, 8, 4]
   if (assignment.operator.charId === 'char_2023_ling' || assignment.operator.charId === 'char_2015_dusk') return [12]
@@ -474,7 +491,10 @@ export function simulateMorale(
     }
   }
   const applyDepartures = (triggerIds: Set<string>, time: number) => {
-    const departures = groupSchedule.expandDepartures(triggerIds)
+    const departures = new Set(
+      [...groupSchedule.expandDepartures(triggerIds)]
+        .filter((id) => leavesAtZeroMorale(id, config)),
+    )
     for (const transition of roster.depart(
       departures,
       (id) => (morale.get(id) ?? 0) >= 24 - 1e-8,
@@ -506,7 +526,7 @@ export function simulateMorale(
   while (true) {
     const zeroIds = new Set(
       [...roster.activeOperatorIds()].filter(
-        (id) => leavesAtZeroMorale(id) && (morale.get(id) ?? 0) <= 1e-9,
+        (id) => leavesAtZeroMorale(id, config) && (morale.get(id) ?? 0) <= 1e-9,
       ),
     )
     if (!zeroIds.size) break
@@ -541,7 +561,7 @@ export function simulateMorale(
     if (duration <= 1e-9) {
       const zeroIds = new Set(
         [...roster.activeOperatorIds()].filter(
-          (id) => leavesAtZeroMorale(id) && (morale.get(id) ?? 0) <= 1e-9,
+          (id) => leavesAtZeroMorale(id, config) && (morale.get(id) ?? 0) <= 1e-9,
         ),
       )
       if (zeroIds.size) applyDepartures(zeroIds, elapsed)
@@ -575,7 +595,7 @@ export function simulateMorale(
     elapsed += duration
     const zeroIds = new Set(
       [...roster.activeOperatorIds()].filter(
-        (id) => leavesAtZeroMorale(id) && (morale.get(id) ?? 0) <= 1e-8,
+        (id) => leavesAtZeroMorale(id, config) && (morale.get(id) ?? 0) <= 1e-8,
       ),
     )
     if (zeroIds.size) applyDepartures(zeroIds, elapsed)

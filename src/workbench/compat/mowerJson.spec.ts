@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { readFileSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -11,6 +11,8 @@ import {
 } from './mowerJson'
 import { createDefaultWorkspace } from '../defaults'
 import { useRosterWorkbenchStore } from '../store'
+import { validateRosterWorkspace } from '../validate'
+import { runCalculationBridge } from '../calculationBridge'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -173,6 +175,87 @@ describe('Mower JSON Compatibility Layer', () => {
       expect(centralPlans[0]!.replacement).toEqual(['歌蕾蒂娅'])
       expect(centralPlans[1]!.replacement).toEqual(['Mon3tr'])
       expect(centralPlans[4]!.replacement).toEqual(['八幡海铃'])
+    })
+
+    it('imports real 252 2-gold fixture (mower-252-2gold.json / 252二赤金Test.json) and verifies all validation features', () => {
+      const filePath = 'E:/OneDrive/Mower/252二赤金Test.json'
+      const raw = existsSync(filePath) ? readFileSync(filePath, 'utf-8') : loadFixture('mower-252-2gold.json')
+      const ws = importMowerJson(raw)
+
+      expect(ws.schemaVersion).toBe(8)
+      expect(ws.compatibility.defaultPlanKey).toBe('plan1')
+
+      const facilities = ws.mainPlan.facilities
+
+      // 1. Full workspace passes validation with 0 critical errors and 0 warnings
+      const res = validateRosterWorkspace(ws)
+      expect(res.isValid).toBe(true)
+      expect(res.criticalErrors).toHaveLength(0)
+      expect(res.warnings).toHaveLength(0)
+      expect(res.power).toEqual({
+        generation: 540,
+        consumption: 540,
+        margin: 0,
+        sufficient: true,
+      })
+
+      // 2. 同一替补候选可在多个设施出现 (e.g. 但书 in room_1_2 and room_3_2)
+      const room12Reps = facilities.room_1_2.slots[0]!.replacements
+      const room32Reps = facilities.room_3_2.slots[0]!.replacements
+      expect(room12Reps).toContain('char_4032_provs') // 但书
+      expect(room32Reps).toContain('char_4032_provs') // 但书
+
+      // Assigning any candidate across multiple facilities does NOT produce DUPLICATE_REPLACEMENT
+      facilities.room_3_3.slots[0]!.replacements = ['char_377_gdglow'] // 澄闪 in room_1_3 and room_3_3
+      const resMultiCandidate = validateRosterWorkspace(ws)
+      expect(resMultiCandidate.criticalErrors.find((e) => e.code === 'DUPLICATE_REPLACEMENT')).toBeUndefined()
+      facilities.room_3_3.slots[0]!.replacements = ['char_1027_greyy2'] // revert to 格雷伊
+
+      // 3. 菲亚梅塔宿舍位的替补可引用当前主力
+      // Fiammetta in dormitory_4 has replacements: 森蚺 (central), 温蒂 (room_2_2), 清流 (room_2_2), 红云 (room_1_1)
+      const fiamSlot = facilities.dormitory_4.slots[0]!
+      expect(fiamSlot.occupant).toEqual({ kind: 'operator', operatorId: 'char_300_phenxi' })
+      expect(fiamSlot.replacements).toEqual([
+        'char_416_zumama',
+        'char_400_weedy',
+        'char_385_finlpp',
+        'char_190_clour',
+      ])
+      expect(res.criticalErrors.find((e) => e.code === 'CONFLICTING_REPLACEMENT')).toBeUndefined()
+
+      // 4. 普通宿舍宿管无替补不警告
+      // Dormitory keepers (流明, 蜜莓, 刺玫, 杜林, 聆音, 爱丽丝, 波登可, 至简, 桃金娘, 车尔尼)
+      expect(facilities.dormitory_1.slots[0]!.replacements).toEqual([])
+      expect(facilities.dormitory_2.slots[0]!.replacements).toEqual([])
+      expect(facilities.dormitory_3.slots[0]!.replacements).toEqual([])
+      expect(facilities.dormitory_4.slots[1]!.replacements).toEqual([])
+      expect(res.warnings.filter((w) => w.code === 'NO_REPLACEMENT' && w.roomId.startsWith('dormitory_'))).toHaveLength(0)
+
+      // 5. 宿舍 Free 休息池占位不警告
+      expect(facilities.dormitory_1.slots[3]!.occupant).toEqual({ kind: 'free' })
+      expect(facilities.dormitory_2.slots[2]!.occupant).toEqual({ kind: 'free' })
+      expect(facilities.dormitory_3.slots[2]!.occupant).toEqual({ kind: 'free' })
+      expect(facilities.dormitory_4.slots[4]!.occupant).toEqual({ kind: 'free' })
+      expect(res.warnings.filter((w) => w.code === 'PLACEHOLDER_SLOT' && w.roomId.startsWith('dormitory_'))).toHaveLength(0)
+
+      // 6. 验证错误/警告必须显示中文干员名，不显示 char_id
+      facilities.room_1_3.slots[0]!.replacements = ['char_4098_vvana'] // 薇薇安娜 is primary in central
+      const resConflict = validateRosterWorkspace(ws)
+      const conflictErr = resConflict.criticalErrors.find((e) => e.code === 'CONFLICTING_REPLACEMENT')
+      expect(conflictErr).toBeDefined()
+      expect(conflictErr?.message).toContain('薇薇安娜')
+      expect(conflictErr?.message).not.toContain('char_4098_vvana')
+      facilities.room_1_3.slots[0]!.replacements = ['char_377_gdglow'] // revert
+    })
+
+    it('runs the real 252 2-gold fixture through the legacy calculation bridge', () => {
+      const ws = importMowerJson(loadFixture('mower-252-2gold.json'))
+      const result = runCalculationBridge(ws)
+
+      expect(result.success).toBe(true)
+      expect(result.validation.isValid).toBe(true)
+      expect(result.report).not.toBeNull()
+      expect(result.report?.layoutValid).toBe(true)
     })
 
     it('imports and exports real 342 pure LMD fixture (mower-342-pure-lmd.json)', () => {
@@ -1049,5 +1132,4 @@ describe('Mower JSON Compatibility Layer', () => {
     })
   })
 })
-
 

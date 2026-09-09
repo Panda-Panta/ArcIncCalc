@@ -75,6 +75,7 @@ export function createDefaultConfig(): AppConfig {
     },
     controlOperatorIds: [],
     zeroMoraleOperatorIds: [],
+    workaholicOperatorIds: [],
     operatorMorale: {},
     operatorBackups: {},
     operatorGroups: [],

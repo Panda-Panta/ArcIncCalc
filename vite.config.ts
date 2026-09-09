@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, configDefaults } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
 
 export default defineConfig({
@@ -6,5 +6,13 @@ export default defineConfig({
   server: {
     host: '127.0.0.1',
     port: 4173,
+  },
+  test: {
+    exclude: [
+      ...configDefaults.exclude,
+      '.worktrees/**',
+      '.antigravity-bridge/**',
+      'dist/**',
+    ],
   },
 })
