@@ -7,3 +7,6 @@ dist/
 scratch/
 *.tsbuildinfo
 .DS_Store
+release/
+desktop/bin/
+desktop/obj/
