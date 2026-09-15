@@ -26,6 +26,12 @@ public class MainForm : Form
         BackColor = Color.FromArgb(24, 24, 28);
         ForeColor = Color.White;
 
+        try
+        {
+            Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? Icon;
+        }
+        catch { }
+
         _webView = new WebView2
         {
             Dock = DockStyle.Fill,

@@ -3,11 +3,11 @@ $ErrorActionPreference = "Stop"
 Write-Host ">>> [1/5] Building Vue 3 Frontend (npm run build)..."
 npm run build
 
-Write-Host ">>> [2/5] Publishing .NET Desktop Runner (win-x64 folder structure)..."
+Write-Host ">>> [2/5] Publishing .NET Desktop Runner (win-x64 single file)..."
 if (Test-Path "release/ArcIncCalc") {
     Remove-Item -Recurse -Force "release/ArcIncCalc"
 }
-dotnet publish desktop/ArcIncCalc.Desktop.csproj -c Release -r win-x64 --self-contained true -o release/ArcIncCalc
+dotnet publish desktop/ArcIncCalc.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o release/ArcIncCalc
 
 Write-Host ">>> [3/5] Syncing dist assets into release folder..."
 robocopy dist release/ArcIncCalc/dist /E /NFL /NDL /NJH /NJS /nc /ns /np | Out-Null
