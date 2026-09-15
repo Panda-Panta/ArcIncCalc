@@ -10,7 +10,7 @@
     <AssemblyTitle>明日方舟基建排班与全动态模拟测算器</AssemblyTitle>
     <Product>ArcIncCalc</Product>
     <Version>0.1.0</Version>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <SatelliteResourceLanguages>zh-Hans;en</SatelliteResourceLanguages>
   </PropertyGroup>
 
   <ItemGroup>

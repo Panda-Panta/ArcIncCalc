@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "build:desktop": "npm run build && dotnet publish desktop/ArcIncCalc.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o release/ArcIncCalc",
+    "build:desktop": "npm run build && dotnet publish desktop/ArcIncCalc.Desktop.csproj -c Release -r win-x64 --self-contained true -o release/ArcIncCalc",
+    "pack": "powershell -ExecutionPolicy Bypass -File scripts/pack-release.ps1",
     "audit:data": "node scripts/audit-riic-data.mjs \"C:/Users/Panda-Panta/Downloads/Compressed/ArknightsGameData-master/zh_CN/gamedata/excel\"",
     "test": "vitest run",
     "typecheck": "vue-tsc -b"

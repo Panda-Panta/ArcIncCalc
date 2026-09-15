@@ -10,3 +10,4 @@ scratch/
 release/
 desktop/bin/
 desktop/obj/
+*.exe
