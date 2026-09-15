@@ -5,25 +5,38 @@ import type { CompiledSchedule, CompiledSlot, SimulationAssumptions } from './ty
 
 const LIST_POLICIES = ['exhaust_require', 'rest_in_full', 'resting_priority', 'workaholic', 'refresh_trading', 'refresh_drained', 'ope_resting_priority'] as const
 const DEFAULTS: SimulationAssumptions = {
-  schemaVersion: 1, initialMorale: 24, operatorMorale: {}, dormAtmosphere: 0,
+  schemaVersion: 1, initialMorale: 24, restingThreshold: 0.65, rescueThreshold: 0.75, fiammettaFool: true, fiammettaThreshold: 0.9, operatorMorale: {}, dormAtmosphere: 0,
   initialGold: 0, initialFragments: 0, initialDrones: 0,
   collectionIntervalHours: 0, operationDurationHours: 0, horizonHours: 24 * 90,
   elitePhase: 2, currentOccupants: {},
 }
 const isKnown = (id: string) => OPERATOR_MAP.has(id)
 
+function safeClone<T>(val: T): T {
+  if (val === undefined || val === null) return val
+  try {
+    return structuredClone(val)
+  } catch {
+    return JSON.parse(JSON.stringify(val))
+  }
+}
+
 export function compileRosterSchedule(workspace: RosterWorkspace, options: Partial<SimulationAssumptions> = {}): CompiledSchedule {
-  const sourceWorkspace = structuredClone(workspace)
-  const assumptions = { ...DEFAULTS, ...structuredClone(options), schemaVersion: 1 as const }
-  assumptions.operatorMorale = structuredClone(options.operatorMorale ?? {})
-  assumptions.currentOccupants = structuredClone(options.currentOccupants ?? {})
+  const sourceWorkspace = safeClone(workspace)
+  const assumptions = { ...DEFAULTS, ...safeClone(options), schemaVersion: 1 as const }
+  assumptions.operatorMorale = safeClone(options.operatorMorale ?? {})
+  assumptions.currentOccupants = safeClone(options.currentOccupants ?? {})
   const diagnostics: CompiledSchedule['diagnostics'] = []
   const invalid = (path: string, message: string) => diagnostics.push({ code: 'INVALID_ASSUMPTION', severity: 'error', path, message })
+  if (!Number.isFinite(assumptions.restingThreshold) || assumptions.restingThreshold! < 0 || assumptions.restingThreshold! > 1) invalid('assumptions.restingThreshold', 'Resting threshold must be within 0..1')
   if (!Number.isFinite(assumptions.initialMorale) || assumptions.initialMorale < 0 || assumptions.initialMorale > 24) invalid('assumptions.initialMorale', '初始心情必须为 0–24 的有限数')
   if (!Number.isFinite(assumptions.horizonHours) || assumptions.horizonHours <= 0) invalid('assumptions.horizonHours', '模拟时长必须为正有限数')
   if (!Number.isFinite(assumptions.initialGold) || assumptions.initialGold < 0) invalid('assumptions.initialGold', '初始赤金不能为负数')
   for (const [id, morale] of Object.entries(assumptions.operatorMorale)) if (!Number.isFinite(morale) || morale < 0 || morale > 24) invalid(`assumptions.operatorMorale.${id}`, '干员心情必须为 0–24 的有限数')
 
+  if (assumptions.idleOperators) assumptions.idleOperators = [...new Set(assumptions.idleOperators.map(resolveOperatorCharId))]
+  if (assumptions.idleOperators?.some(id => !isKnown(id))) invalid('assumptions.idleOperators', 'Unknown idle operator')
+  for (const key of ['rescueThreshold', 'fiammettaThreshold'] as const) if (!Number.isFinite(assumptions[key]) || assumptions[key]! < 0 || assumptions[key]! > 1) invalid(`assumptions.${key}`, 'Threshold must be within 0..1')
   const rawConf = structuredClone(workspace.mainPlan.conf)
   const policies = structuredClone(rawConf) as MowerMainConf
   for (const key of LIST_POLICIES) policies[key] = (rawConf[key] ?? []).map(resolveOperatorCharId)

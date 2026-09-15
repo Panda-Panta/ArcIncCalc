@@ -1,4 +1,4 @@
-export type ResourceKind = 'gold' | 'lmd' | 'exp' | 'fragment' | 'orundum' | 'drone'
+export type ResourceKind = 'gold' | 'lmd' | 'exp' | 'fragment' | 'orundum' | 'drone' | 'orirock' | 'device'
 export type ResourceAmounts = Partial<Record<ResourceKind, number>>
 export interface LedgerEntry { reason: string; delta: ResourceAmounts }
 export interface ResourceLedger { initial: ResourceAmounts; balances: ResourceAmounts; inflows: ResourceAmounts; outflows: ResourceAmounts; entries: LedgerEntry[]; appliedReasons: string[] }
@@ -13,7 +13,7 @@ export function transactLedger(ledger: ResourceLedger, delta: ResourceAmounts, r
   validate(delta, true)
   if (!reason) throw new Error('Transaction reason required')
   if (ledger.appliedReasons.includes(reason)) return { applied: false, ledger }
-  for (const [key, value] of Object.entries(delta) as [ResourceKind, number][]) if ((ledger.balances[key] ?? 0) + value < -1e-9) return { applied: false, ledger }
+  for (const [key, value] of Object.entries(delta) as [ResourceKind, number][]) if ((ledger.balances[key] ?? 0) + value < 0) return { applied: false, ledger }
   const next = structuredClone(ledger)
   for (const [key, value] of Object.entries(delta) as [ResourceKind, number][]) {
     next.balances[key] = (next.balances[key] ?? 0) + value

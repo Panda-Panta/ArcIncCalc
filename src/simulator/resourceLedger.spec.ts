@@ -2,6 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { collectStorage, createLedger, createStorage, produceStorage, transactLedger } from './resourceLedger'
 
 describe('resource ledger', () => {
+  it('never pays a reward by overdrawing an empty resource within a floating-point tolerance', () => {
+    const ledger = createLedger({ gold: 0 })
+    const result = transactLedger(ledger, { gold: -5e-10, lmd: 1000 }, 'order:tiny')
+    expect(result.applied).toBe(false)
+    expect(result.ledger).toBe(ledger)
+    expect(result.ledger.balances.lmd).toBeUndefined()
+  })
   it('refuses an entire transaction when any resource is short', () => {
     const ledger = createLedger({ gold: 3, lmd: 0 })
     const refused = transactLedger(ledger, { gold: -4, lmd: 2000 }, 'order:a')

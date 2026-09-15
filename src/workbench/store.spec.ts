@@ -126,9 +126,8 @@ describe('RosterWorkbenchStore', () => {
     const facility = store.workspace.mainPlan.facilities.room_1_1
     expect(facility.roomId).toBe('room_1_1')
     expect(facility.type).toBe('trading')
-    // The default layout has 3 power plants, so facility levels are derived
-    // and remain maxed even if a patch tries to force a lower value.
-    expect(facility.level).toBe(3)
+    // The patch explicitly sets level: 1, which is respected now that level editing is unlocked.
+    expect(facility.level).toBe(1)
     expect(facility.product).toBe('money')
   })
 
@@ -250,42 +249,18 @@ describe('RosterWorkbenchStore', () => {
     expect(facilities.central.level).toBe(5)
   })
 
-  it('re-infers a 2-power output-room level whenever its occupied slot count changes', () => {
+  it('allows manual level modification when updateFacility is called with level', () => {
     const store = useRosterWorkbenchStore()
     const facilities = store.workspace.mainPlan.facilities
-    facilities.room_3_3.type = 'trading'
-    store.inferLevels()
 
-    const room = facilities.room_1_1
-    expect(room.level).toBe(1)
-
-    store.updateSlotOccupant('room_1_1', 0, { kind: 'operator', operatorId: 'char_a' })
-    expect(room.level).toBe(1)
-    store.updateSlotOccupant('room_1_1', 1, { kind: 'free' })
-    expect(room.level).toBe(2)
-    store.updateSlot('room_1_1', 2, {
-      occupant: { kind: 'current' },
-      groupId: null,
-      replacements: [],
-    })
-    expect(room.level).toBe(3)
-    store.updateSlotOccupant('room_1_1', 1, { kind: 'empty' })
-    expect(room.level).toBe(2)
-  })
-
-  it('rejects manual level drift while the layout has exactly 2 or 3 power plants', () => {
-    const store = useRosterWorkbenchStore()
-    const facilities = store.workspace.mainPlan.facilities
+    store.updateFacility('room_1_1', { level: 2 })
+    expect(facilities.room_1_1.level).toBe(2)
 
     store.updateFacility('room_1_1', { level: 1 })
-    expect(facilities.room_1_1.level).toBe(3)
-
-    facilities.room_3_3.type = 'trading'
-    store.inferLevels()
-    store.updateFacility('dormitory_1', { level: 5 })
-    store.updateFacility('room_1_1', { level: 3 })
-    expect(facilities.dormitory_1.level).toBe(1)
     expect(facilities.room_1_1.level).toBe(1)
+
+    store.updateFacility('dormitory_1', { level: 3 })
+    expect(facilities.dormitory_1.level).toBe(3)
   })
 
   it('resets workspace back to fresh default', () => {

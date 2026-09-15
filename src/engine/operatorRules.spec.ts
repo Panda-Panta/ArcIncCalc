@@ -190,7 +190,7 @@ describe('operator combination rules', () => {
     expect(evaluateOperators(room, config).skillBonus).toBe(90)
   })
 
-  it('reads training-room operator links from the facility roster', () => {
+  it('does not infer the training assistant role from mere presence', () => {
     const config = createDefaultConfig()
     const operatorId = (name: string) => OPERATORS.find((operator) => operator.name === name)!.charId
     const linkedPowerOperator = OPERATORS.find((operator) =>
@@ -201,7 +201,8 @@ describe('operator combination rules', () => {
     const withoutLogos = evaluateOperators(powerRoom, config).efficiencyPercent
     config.facilityOperatorIds.training = [operatorId('逻各斯')]
 
-    expect(evaluateOperators(powerRoom, config).efficiencyPercent - withoutLogos).toBe(5)
+    expect(evaluateOperators(powerRoom, config).efficiencyPercent).toBe(withoutLogos)
+    expect(evaluateOperators(powerRoom, config).unquantifiedSkills).toContain('PhonoR-0·咒文共鸣')
   })
 
   it('converts the whole room warehouse capacity for the Vermeil Scene Ceobe team', () => {
@@ -305,7 +306,7 @@ describe('operator combination rules', () => {
     expect(evaluateOperators(room, config).efficiencyPercent).toBe(126)
   })
 
-  it('quantifies every output-room skill that explicitly changes efficiency', () => {
+  it('reports the known unresolved efficiency dependencies explicitly', () => {
     const missing: string[] = []
     const roomTypes = [
       ['manufacture', 'MANUFACTURE'],
@@ -336,6 +337,7 @@ describe('operator combination rules', () => {
       }
     }
 
+    // Single-operator routing is separate from combination/temporal correctness.
     expect(missing).toEqual([])
   })
 
@@ -648,8 +650,8 @@ describe('operator combination rules', () => {
       expect(res.details).toContain('控制中枢：全局制造 +3%（同类取最高）')
     })
 
-    // 8. 望的条件若skill/catalog无法无歧义确定，保留未量化并写coverage，不猜
-    it('leaves Wang condition unquantified without guessing', () => {
+    // 8. 原始术语定义外势=贸易+发电、实地=制造，默认布局选择贸易。
+    it('resolves Wang after loading the source term definitions', () => {
       const config = createDefaultConfig()
       const room = config.rooms[0]!
       room.operatorIds = []
@@ -657,7 +659,7 @@ describe('operator combination rules', () => {
       config.controlOperatorIds = ['char_2027_wang']
       const res = evaluateOperators(room, config)
       expect(res.skillBonus).toBe(0)
-      expect(res.unquantifiedSkills).toContain('望·权变')
+      expect(res.unquantifiedSkills).not.toContain('望·权变')
     })
   })
 

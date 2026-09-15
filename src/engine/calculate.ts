@@ -113,11 +113,17 @@ function expectedGoldOrder(room: OutputRoom, quality: QualityRule, specialOrder:
   const transformed = distribution(room.level, quality).map((template) =>
     transformSpecial(template, specialOrder, room.level),
   )
+  const isTequilaBonus = (specialOrder === 'tequilaBeta' || specialOrder === 'shiftRun') && room.level >= 3
+  const virtualGoldPerOrder = isTequilaBonus
+    ? distribution(room.level, quality).find((t) => t.cost > 3)?.probability ?? 0
+    : 0
+
   return {
     minutes: transformed.reduce((sum, item) => sum + item.probability * item.minutes, 0),
     reward: transformed.reduce((sum, item) => sum + item.probability * item.reward, 0),
     cost: transformed.reduce((sum, item) => sum + item.probability * item.cost, 0),
     efficiencyAffected: transformed.some((item) => item.efficiencyAffected),
+    virtualGold: virtualGoldPerOrder,
   }
 }
 
@@ -175,13 +181,18 @@ function calculateTrade(
   const naturalMinutes = hours * 60 * (expected.efficiencyAffected ? efficiency : 1)
   const orders = naturalMinutes / expected.minutes
   const extra = droneMinutes / expected.minutes
+  const totalOrders = orders + extra
+  const virtualGold = totalOrders * expected.virtualGold
+  const virtualGoldValue = virtualGold * 500
   return {
     roomId: room.id,
     strategy: room.strategy,
     efficiency,
-    orders: orders + extra,
-    lmd: (orders + extra) * expected.reward,
-    goldConsumed: (orders + extra) * expected.cost,
+    orders: totalOrders,
+    lmd: totalOrders * expected.reward,
+    goldConsumed: totalOrders * expected.cost,
+    virtualGold,
+    virtualGoldValue,
     orundum: 0,
     fragmentsConsumed: 0,
     droneExtraOrders: extra,
@@ -240,6 +251,15 @@ export function calculate(config: AppConfig): CalculationReport {
     sampleHours: 24 * 90,
   })
   const globalContext = buildRiicGlobalContext(config)
+  const efficiencyNotes = [
+    '按最高阶段技能计算；暖机技能使用稳定终值。',
+    '长期产出为近似值，尚未逐订单模拟品质暖机、领取与换班。',
+  ]
+  for (const room of config.rooms) {
+    const result = evaluateOperators(room, config, undefined, undefined, globalContext)
+    const ambiguous = result.details.filter(detail => detail.startsWith('JAYE_') || detail.includes('训练名单未区分'))
+    for (const detail of ambiguous) efficiencyNotes.push(`${room.id}：${detail}`)
+  }
   const drones = calculateDrones(config, morale.averagePowerBonusPercent)
   const droneMinutes = drones * 3
   const dailyHours = 24
@@ -292,6 +312,7 @@ export function calculate(config: AppConfig): CalculationReport {
       power,
       layoutValid,
       validationMessages,
+      efficiencyNotes,
       manufacture,
       trading,
       drones,
@@ -301,20 +322,42 @@ export function calculate(config: AppConfig): CalculationReport {
     }
   }
 
+  const exp = manufacture.filter((item) => item.product === 'exp').reduce((sum, item) => sum + item.value, 0)
+  const goldCount = manufacture.filter((item) => item.product === 'gold').reduce((sum, item) => sum + item.count, 0)
+  const goldValue = manufacture.filter((item) => item.product === 'gold').reduce((sum, item) => sum + item.value, 0)
+  const virtualGoldCount = trading.reduce((sum, item) => sum + (item.virtualGold ?? 0), 0)
+  const virtualGoldValue = virtualGoldCount * 500
+  const orderLmd = trading.reduce((sum, item) => sum + item.lmd, 0)
+  const fragments = manufacture.filter((item) => item.product === 'fragment').reduce((sum, item) => sum + item.count, 0)
+  const orundum = trading.reduce((sum, item) => sum + item.orundum, 0)
+  const goldConsumed = trading.reduce((sum, item) => sum + item.goldConsumed, 0)
+  const fragmentsConsumed = trading.reduce((sum, item) => sum + item.fragmentsConsumed, 0)
+  const netGoldCount = goldCount - goldConsumed
+  const netGoldValue = netGoldCount * 500
+  const totalScore82 = exp + 0.8 * (goldValue + virtualGoldValue) + 0.2 * orderLmd
+  const totalEquivalentLmd = orderLmd + netGoldValue + virtualGoldValue
+
   const summary = {
-    exp: manufacture.filter((item) => item.product === 'exp').reduce((sum, item) => sum + item.value, 0),
-    goldCount: manufacture.filter((item) => item.product === 'gold').reduce((sum, item) => sum + item.count, 0),
-    goldValue: manufacture.filter((item) => item.product === 'gold').reduce((sum, item) => sum + item.value, 0),
-    orderLmd: trading.reduce((sum, item) => sum + item.lmd, 0),
-    fragments: manufacture.filter((item) => item.product === 'fragment').reduce((sum, item) => sum + item.count, 0),
-    orundum: trading.reduce((sum, item) => sum + item.orundum, 0),
-    goldConsumed: trading.reduce((sum, item) => sum + item.goldConsumed, 0),
-    fragmentsConsumed: trading.reduce((sum, item) => sum + item.fragmentsConsumed, 0),
+    exp,
+    goldCount,
+    goldValue,
+    virtualGoldCount,
+    virtualGoldValue,
+    orderLmd,
+    fragments,
+    orundum,
+    goldConsumed,
+    fragmentsConsumed,
+    netGoldCount,
+    netGoldValue,
+    totalScore82,
+    totalEquivalentLmd,
   }
   return {
     power,
     layoutValid,
     validationMessages,
+    efficiencyNotes,
     manufacture,
     trading,
     drones,

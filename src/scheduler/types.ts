@@ -9,6 +9,12 @@ export interface CompileDiagnostic {
 export interface SimulationAssumptions {
   schemaVersion: 1
   initialMorale: number
+  /** Mower global configuration; absent from the plan JSON. */
+  restingThreshold?: number
+  rescueThreshold?: number
+  idleOperators?: string[]
+  fiammettaFool?: boolean
+  fiammettaThreshold?: number
   operatorMorale: Record<string, number>
   dormAtmosphere: number
   initialGold: number

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, provide, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, provide, ref, toRaw, watch } from 'vue'
 import { useRosterWorkbenchStore } from '../../workbench/store'
 import { validateRosterWorkspace, type ValidationResult } from '../../workbench/validate'
 import { EDITION } from '../../domain/edition'
@@ -8,11 +8,16 @@ import { migrateAppConfigToWorkspace } from '../../workbench/migrate'
 import type { MowerRoomId, RosterWorkspace } from '../../workbench/model'
 import type { AppConfig, CalculationReport } from '../../domain/types'
 import { runCalculationBridge } from '../../workbench/calculationBridge'
+import type { ScheduleSimulationReport } from '../../simulator/scheduleSimulation'
+import { generateAutomaticRoster } from '../../optimizer/automaticRoster'
+import { applySmartDormitoryPolicy } from '../../scheduler/smartDormitoryPolicy'
+import { parseOperatorInventory, type OwnedOperatorInput } from '../../domain/operatorInventory'
 
 import PlanToolbar from './PlanToolbar.vue'
 import BaseMap from './BaseMap.vue'
 import FacilityEditor from './FacilityEditor.vue'
-import PolicyEditor from './PolicyEditor.vue'
+import SettingsView, { type SimulationSettings } from './SettingsView.vue'
+import SimulationLogView from './SimulationLogView.vue'
 import ValidationPanel, { type ValidationFocusPayload } from './ValidationPanel.vue'
 import OperatorSelectModal, { type OperatorSelectionPayload } from './OperatorSelectModal.vue'
 import GlobalReplaceModal, { type GlobalReplacePayload } from './GlobalReplaceModal.vue'
@@ -24,6 +29,23 @@ const store = useRosterWorkbenchStore()
 const baseMapRef = ref<InstanceType<typeof BaseMap> | null>(null)
 const facilityEditorSectionRef = ref<HTMLElement | null>(null)
 const policyEditorSectionRef = ref<HTMLElement | null>(null)
+
+// Sub-page navigation: workbench | settings | logs
+const activeTab = ref<'workbench' | 'settings' | 'logs'>('workbench')
+
+// Simulation settings state
+const defaultSimSettings: SimulationSettings = {
+  sampleDays: 7,
+  warmupDays: 3,
+  step: 0.25,
+  seed: 1,
+  droneTarget: 'gold',
+  droneTradingRoomId: '',
+}
+const simSettings = ref<SimulationSettings>({ ...defaultSimSettings })
+const simulationReport = ref<ScheduleSimulationReport | null>(null)
+const isCalculating = ref(false)
+const isGeneratingRoster = ref(false)
 
 // Operator picker modal state
 const pickerOpen = ref(false)
@@ -60,6 +82,7 @@ const validationResult = computed<ValidationResult>(() => {
 const WORKSPACE_STORAGE_KEY = `arc-income-calculator-workspace-v8-${EDITION.storageNamespace}`
 const V7_STORAGE_KEY = `arc-income-calculator-config-v7-${EDITION.storageNamespace}`
 const REPORT_STORAGE_KEY = `arc-income-calculator-report-v1-${EDITION.storageNamespace}`
+const SIM_SETTINGS_STORAGE_KEY = `arc-income-calculator-sim-settings-v1-${EDITION.storageNamespace}`
 
 function initPersistence(): void {
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') return
@@ -87,6 +110,14 @@ function initPersistence(): void {
       const parsedRep = JSON.parse(rawRep)
       if (parsedRep?.power) {
         calculationReport.value = parsedRep as CalculationReport
+      }
+    }
+
+    const rawSim = localStorage.getItem(SIM_SETTINGS_STORAGE_KEY)
+    if (rawSim) {
+      const parsedSim = JSON.parse(rawSim)
+      if (parsedSim?.sampleDays) {
+        simSettings.value = { ...defaultSimSettings, ...parsedSim }
       }
     }
   } catch (e) {
@@ -213,13 +244,19 @@ function handleFocusRoom(roomId: string): void {
 function handleReset(): void {
   calculationReport.value = null
   calculationError.value = null
+  simulationReport.value = null
   replaceStatusMessage.value = null
 }
 
 function handleImported(_workspace: RosterWorkspace): void {
   calculationReport.value = null
   calculationError.value = null
+  simulationReport.value = null
   replaceStatusMessage.value = null
+}
+
+function handleInventoryChange(_payload: { enabled: boolean; valid: boolean; entries: OwnedOperatorInput[] }): void {
+  // Inventory updated in settings
 }
 
 function handleCalculate(): void {
@@ -229,15 +266,124 @@ function handleCalculate(): void {
     return
   }
 
+  isCalculating.value = true
   try {
-    const bridgeResult = runCalculationBridge(store.workspace)
+    let inventoryEntries: OwnedOperatorInput[] | undefined = undefined
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      const rawInv = localStorage.getItem('arcinc-operator-inventory-v1')
+      if (rawInv) {
+        try {
+          const parsedInv = JSON.parse(rawInv)
+          if (parsedInv.enabled && parsedInv.text) {
+            const compiled = parseOperatorInventory(parsedInv.text)
+            if (compiled.valid) {
+              inventoryEntries = compiled.entries
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    const bridgeResult = runCalculationBridge(store.workspace, {
+      engine: 'simulation',
+      simulationOptions: {
+        warmupHours: simSettings.value.warmupDays * 24,
+        sampleHours: simSettings.value.sampleDays * 24,
+        maxStepHours: simSettings.value.step,
+        warmupModel: 'hourly',
+        operatorInventory: inventoryEntries,
+        production: {
+          outputMode: 'potential',
+          runOrderMode: 'drone',
+          seed: simSettings.value.seed,
+          droneTarget: simSettings.value.droneTarget,
+          droneTradingRoomId: simSettings.value.droneTradingRoomId || undefined,
+        },
+      },
+    })
+
     if (bridgeResult.success && bridgeResult.report) {
       calculationReport.value = bridgeResult.report
+      simulationReport.value = bridgeResult.simulationReport ?? null
     } else {
       calculationError.value = bridgeResult.error ?? '收益计算未成功完成'
     }
   } catch (err: unknown) {
     calculationError.value = err instanceof Error ? err.message : String(err)
+  } finally {
+    isCalculating.value = false
+  }
+}
+
+function handleAutoGenerate(): void {
+  replaceStatusMessage.value = null
+  calculationError.value = null
+
+  let inventoryEntries: OwnedOperatorInput[] = []
+  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+    const rawInv = localStorage.getItem('arcinc-operator-inventory-v1')
+    if (rawInv) {
+      try {
+        const parsedInv = JSON.parse(rawInv)
+        if (parsedInv.text) {
+          const compiled = parseOperatorInventory(parsedInv.text)
+          if (compiled.valid) {
+            inventoryEntries = compiled.entries
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  if (inventoryEntries.length === 0) {
+    replaceStatusMessage.value = '无法自动生成排班：请先在「设置」子页面或点击「导入干员库」录入您持有的干员与练度。'
+    return
+  }
+
+  isGeneratingRoster.value = true
+  try {
+    // 2. Prepare clean workspace: KEEP ALL FACILITY TYPES AND LEVELS!
+    const cleanWorkspace = structuredClone(toRaw(store.workspace))
+    for (const room of Object.values(cleanWorkspace.mainPlan.facilities)) {
+      for (const slot of room.slots) {
+        slot.occupant = { kind: 'empty' }
+        slot.replacements = []
+        slot.groupId = null
+      }
+    }
+
+    // 3. Run automatic roster generation
+    const autoResult = generateAutomaticRoster(cleanWorkspace, inventoryEntries, {
+      seed: simSettings.value.seed,
+      trials: 3,
+      maxStates: 2000,
+    })
+
+    if (autoResult.status === 'draft' && autoResult.draft?.workspace) {
+      const newWorkspace = autoResult.draft.workspace
+      // 4. Apply smart dormitory keepers (Req 8)
+      applySmartDormitoryPolicy(newWorkspace, {
+        candidateOperatorIds: inventoryEntries.map(e => e.operator),
+      })
+
+      // 5. Update workspace in store
+      store.loadWorkspace(newWorkspace)
+      replaceStatusMessage.value = '自动生成排班成功！已保留当前建筑等级与布局，并完成干员入驻与宿管分配。'
+
+      // Recalculate output
+      handleCalculate()
+    } else {
+      const msgs = autoResult.diagnostics.map(d => d.message).join('；')
+      replaceStatusMessage.value = `自动生成排班未成功：${msgs || '未找到合适的主替班组合方案'}`
+    }
+  } catch (err: unknown) {
+    replaceStatusMessage.value = `自动排班生成失败：${err instanceof Error ? err.message : String(err)}`
+  } finally {
+    isGeneratingRoster.value = false
   }
 }
 
@@ -254,6 +400,11 @@ defineExpose({
   validationResult,
   calculationReport,
   calculationError,
+  simulationReport,
+  simSettings,
+  activeTab,
+  isCalculating,
+  isGeneratingRoster,
   replaceStatusMessage,
   pickerOpen,
   pickerMode,
@@ -261,6 +412,8 @@ defineExpose({
   pickerSlotIndex,
   replaceModalOpen,
   handleCalculate,
+  handleAutoGenerate,
+  handleInventoryChange,
   handleReset,
   handleImported,
   handleRequestPicker,
@@ -285,6 +438,39 @@ defineExpose({
           <p class="edition-description">{{ EDITION.description }}</p>
         </div>
       </div>
+
+      <!-- Topbar Navigation Tabs (Req 3, 11) -->
+      <nav class="topbar-nav" data-test="topbar-nav">
+        <button
+          type="button"
+          class="nav-tab"
+          :class="{ active: activeTab === 'workbench' }"
+          data-test="tab-workbench"
+          @click="activeTab = 'workbench'"
+        >
+          基建排班
+        </button>
+        <button
+          type="button"
+          class="nav-tab"
+          :class="{ active: activeTab === 'settings' }"
+          data-test="tab-settings"
+          @click="activeTab = 'settings'"
+        >
+          设置
+        </button>
+        <button
+          type="button"
+          class="nav-tab"
+          :class="{ active: activeTab === 'logs' }"
+          data-test="tab-logs"
+          @click="activeTab = 'logs'"
+        >
+          日志
+          <span v-if="simulationReport" class="tab-indicator">●</span>
+        </button>
+      </nav>
+
       <div class="topbar-actions">
         <label class="plan-name-input-label">
           <span>方案名称</span>
@@ -299,17 +485,19 @@ defineExpose({
       </div>
     </header>
 
-    <!-- Reachable Toolbar Section -->
-    <div class="toolbar-sticky-wrapper">
+    <!-- Reachable Toolbar Section (shown on workbench tab) -->
+    <div v-show="activeTab === 'workbench'" class="toolbar-sticky-wrapper">
       <div class="toolbar-scroll-container">
         <PlanToolbar
           :base-map-element="baseMapElement"
           :is-valid="validationResult.isValid"
+          :is-generating-roster="isGeneratingRoster"
           theme="dark"
           @open-replace="handleOpenReplace"
           @calculate="handleCalculate"
           @reset="handleReset"
           @imported="handleImported"
+          @auto-generate="handleAutoGenerate"
         />
       </div>
     </div>
@@ -334,150 +522,176 @@ defineExpose({
         </button>
       </div>
 
-      <!-- Validation Summary & Diagnostics -->
-      <section class="validation-section" data-test="validation-section">
-        <ValidationPanel
-          :result="validationResult"
-          @focus="handleValidationFocus"
-          @focus-room="handleFocusRoom"
+      <!-- Tab 1: 基建排班 -->
+      <div v-show="activeTab === 'workbench'" class="tab-panel workbench-tab-panel">
+        <!-- Validation Summary & Diagnostics -->
+        <section class="validation-section" data-test="validation-section">
+          <ValidationPanel
+            :result="validationResult"
+            @focus="handleValidationFocus"
+            @focus-room="handleFocusRoom"
+          />
+        </section>
+
+        <!-- Compact Calculation Results Panel -->
+        <section
+          v-if="calculationReport || calculationError"
+          class="results-panel plan-container"
+          data-test="results-panel"
+        >
+          <div class="results-panel-header">
+            <div class="results-title-box">
+              <span class="results-kicker">SIMULATION REPORT</span>
+              <h3 class="results-title">基建收益测算结果</h3>
+            </div>
+            <div
+              v-if="calculationReport"
+              class="power-summary-badge"
+              :class="{ 'is-danger': !calculationReport.power.sufficient }"
+              data-test="results-power-badge"
+            >
+              <span>发电: {{ calculationReport.power.generation }}</span>
+              <span>耗电: {{ calculationReport.power.consumption }}</span>
+              <span class="power-margin-text">
+                余量: {{ calculationReport.power.margin >= 0 ? '+' : '' }}{{ calculationReport.power.margin }}
+              </span>
+              <span class="power-tag">
+                {{ calculationReport.power.sufficient ? '供电充足' : '供电不足' }}
+              </span>
+            </div>
+          </div>
+
+          <div v-if="calculationError" class="results-error-box" data-test="calculation-error">
+            <span class="error-icon">✕</span>
+            <span>{{ calculationError }}</span>
+          </div>
+
+          <div
+            v-else-if="calculationReport && !calculationReport.summary"
+            class="results-blocked-box"
+            data-test="results-blocked"
+          >
+            <div class="blocked-head">
+              <span class="blocked-icon">⚠</span>
+              <strong>当前排班未通过校验，无法生成产出数值</strong>
+            </div>
+            <ul
+              v-if="calculationReport.validationMessages && calculationReport.validationMessages.length > 0"
+              class="blocked-list"
+            >
+              <li v-for="msg in calculationReport.validationMessages" :key="msg">{{ msg }}</li>
+            </ul>
+          </div>
+
+          <div
+            v-else-if="calculationReport && calculationReport.summary"
+            class="results-grid"
+            data-test="results-metrics"
+          >
+            <!-- Total 82 Output Score (Req 14) -->
+            <div class="metric-card card-score82" data-test="metric-score82">
+              <span class="metric-tag">82 综合日产出</span>
+              <div class="metric-main">
+                <span class="metric-num text-score82">{{ formatNumber(calculationReport.summary.totalScore82, 1) }}</span>
+                <span class="metric-unit">分/日</span>
+              </div>
+              <span class="metric-sub">EXP + 0.8×赤金 + 0.2×龙门币</span>
+            </div>
+
+            <!-- Daily LMD Yield -->
+            <div class="metric-card card-lmd" data-test="metric-lmd">
+              <span class="metric-tag">贸易收益</span>
+              <div class="metric-main">
+                <span class="metric-num">{{ formatNumber(calculationReport.summary.orderLmd) }}</span>
+                <span class="metric-unit">龙门币/日</span>
+              </div>
+              <span class="metric-sub">日消耗赤金 {{ formatNumber(calculationReport.summary.goldConsumed, 1) }} 条</span>
+            </div>
+
+            <!-- Combat Records EXP -->
+            <div class="metric-card card-exp" data-test="metric-exp">
+              <span class="metric-tag">作战记录</span>
+              <div class="metric-main">
+                <span class="metric-num">{{ formatNumber(calculationReport.summary.exp) }}</span>
+                <span class="metric-unit">EXP/日</span>
+              </div>
+              <span class="metric-sub">中级经验书等效</span>
+            </div>
+
+            <!-- Gold Manufacture (Req 15 Tequila Virtual Gold) -->
+            <div class="metric-card card-gold" data-test="metric-gold">
+              <span class="metric-tag">赤金制造</span>
+              <div class="metric-main">
+                <span class="metric-num">{{ formatNumber(calculationReport.summary.goldValue) }}</span>
+                <span class="metric-unit">龙门币/日</span>
+              </div>
+              <span class="metric-sub">
+                净产出 {{ formatNumber(calculationReport.summary.netGoldCount, 1) }} 条
+                <template v-if="calculationReport.summary.virtualGoldCount > 0">
+                  · 虚拟赤金 +{{ formatNumber(calculationReport.summary.virtualGoldCount, 1) }} 条
+                </template>
+              </span>
+            </div>
+
+            <!-- Theoretical Drones -->
+            <div class="metric-card card-drones" data-test="metric-drones">
+              <span class="metric-tag">理论无人机</span>
+              <div class="metric-main">
+                <span class="metric-num">{{ formatNumber(calculationReport.drones, 1) }}</span>
+                <span class="metric-unit">架/日</span>
+              </div>
+              <span class="metric-sub">长期日均充能</span>
+            </div>
+
+            <!-- Orundum & Fragments (if present) -->
+            <div
+              v-if="calculationReport.summary.orundum > 0 || calculationReport.summary.fragments > 0"
+              class="metric-card card-orundum"
+              data-test="metric-orundum"
+            >
+              <span class="metric-tag">合成玉产出</span>
+              <div class="metric-main">
+                <span class="metric-num">{{ formatNumber(calculationReport.summary.orundum) }}</span>
+                <span class="metric-unit">玉/日</span>
+              </div>
+              <span class="metric-sub">源石碎片 {{ formatNumber(calculationReport.summary.fragments, 1) }} 个</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Exact Base Map Board (Horizontally scrollable without distortion) -->
+        <section class="board-section" data-test="base-map-section">
+          <div class="board-scroll-container">
+            <BaseMap ref="baseMapRef" />
+          </div>
+        </section>
+
+        <!-- Selected Facility Editor -->
+        <section
+          ref="facilityEditorSectionRef"
+          class="facility-editor-section"
+          data-test="facility-editor-section"
+        >
+          <FacilityEditor @request-picker="handleRequestPicker" />
+        </section>
+      </div>
+
+      <!-- Tab 2: 设置 (Settings) (Req 3, 4, 5, 6, 7, 9, 12) -->
+      <div v-show="activeTab === 'settings'" class="tab-panel settings-tab-panel" data-test="settings-tab-panel">
+        <SettingsView
+          v-model:settings="simSettings"
+          @inventory-change="handleInventoryChange"
         />
-      </section>
+      </div>
 
-      <!-- Compact Calculation Results Panel -->
-      <section
-        v-if="calculationReport || calculationError"
-        class="results-panel plan-container"
-        data-test="results-panel"
-      >
-        <div class="results-panel-header">
-          <div class="results-title-box">
-            <span class="results-kicker">SIMULATION REPORT</span>
-            <h3 class="results-title">基建收益测算结果</h3>
-          </div>
-          <div
-            v-if="calculationReport"
-            class="power-summary-badge"
-            :class="{ 'is-danger': !calculationReport.power.sufficient }"
-            data-test="results-power-badge"
-          >
-            <span>发电: {{ calculationReport.power.generation }}</span>
-            <span>耗电: {{ calculationReport.power.consumption }}</span>
-            <span class="power-margin-text">
-              余量: {{ calculationReport.power.margin >= 0 ? '+' : '' }}{{ calculationReport.power.margin }}
-            </span>
-            <span class="power-tag">
-              {{ calculationReport.power.sufficient ? '供电充足' : '供电不足' }}
-            </span>
-          </div>
-        </div>
-
-        <div v-if="calculationError" class="results-error-box" data-test="calculation-error">
-          <span class="error-icon">✕</span>
-          <span>{{ calculationError }}</span>
-        </div>
-
-        <div
-          v-else-if="calculationReport && !calculationReport.summary"
-          class="results-blocked-box"
-          data-test="results-blocked"
-        >
-          <div class="blocked-head">
-            <span class="blocked-icon">⚠</span>
-            <strong>当前排班未通过校验，无法生成产出数值</strong>
-          </div>
-          <ul
-            v-if="calculationReport.validationMessages && calculationReport.validationMessages.length > 0"
-            class="blocked-list"
-          >
-            <li v-for="msg in calculationReport.validationMessages" :key="msg">{{ msg }}</li>
-          </ul>
-        </div>
-
-        <div
-          v-else-if="calculationReport && calculationReport.summary"
-          class="results-grid"
-          data-test="results-metrics"
-        >
-          <!-- Daily LMD Yield -->
-          <div class="metric-card card-lmd" data-test="metric-lmd">
-            <span class="metric-tag">贸易收益</span>
-            <div class="metric-main">
-              <span class="metric-num">{{ formatNumber(calculationReport.summary.orderLmd) }}</span>
-              <span class="metric-unit">龙门币/日</span>
-            </div>
-            <span class="metric-sub">日消耗赤金 {{ formatNumber(calculationReport.summary.goldConsumed, 1) }} 条</span>
-          </div>
-
-          <!-- Combat Records EXP -->
-          <div class="metric-card card-exp" data-test="metric-exp">
-            <span class="metric-tag">作战记录</span>
-            <div class="metric-main">
-              <span class="metric-num">{{ formatNumber(calculationReport.summary.exp) }}</span>
-              <span class="metric-unit">EXP/日</span>
-            </div>
-            <span class="metric-sub">中级经验书等效</span>
-          </div>
-
-          <!-- Gold Manufacture -->
-          <div class="metric-card card-gold" data-test="metric-gold">
-            <span class="metric-tag">赤金制造</span>
-            <div class="metric-main">
-              <span class="metric-num">{{ formatNumber(calculationReport.summary.goldCount, 1) }}</span>
-              <span class="metric-unit">条/日</span>
-            </div>
-            <span class="metric-sub">基础价值 {{ formatNumber(calculationReport.summary.goldValue) }} 龙门币</span>
-          </div>
-
-          <!-- Theoretical Drones -->
-          <div class="metric-card card-drones" data-test="metric-drones">
-            <span class="metric-tag">理论无人机</span>
-            <div class="metric-main">
-              <span class="metric-num">{{ formatNumber(calculationReport.drones, 1) }}</span>
-              <span class="metric-unit">架/日</span>
-            </div>
-            <span class="metric-sub">长期日均充能</span>
-          </div>
-
-          <!-- Orundum & Fragments (if present) -->
-          <div
-            v-if="calculationReport.summary.orundum > 0 || calculationReport.summary.fragments > 0"
-            class="metric-card card-orundum"
-            data-test="metric-orundum"
-          >
-            <span class="metric-tag">合成玉产出</span>
-            <div class="metric-main">
-              <span class="metric-num">{{ formatNumber(calculationReport.summary.orundum) }}</span>
-              <span class="metric-unit">玉/日</span>
-            </div>
-            <span class="metric-sub">源石碎片 {{ formatNumber(calculationReport.summary.fragments, 1) }} 个</span>
-          </div>
-        </div>
-      </section>
-
-      <!-- Exact Base Map Board (Horizontally scrollable without distortion) -->
-      <section class="board-section" data-test="base-map-section">
-        <div class="board-scroll-container">
-          <BaseMap ref="baseMapRef" />
-        </div>
-      </section>
-
-      <!-- Selected Facility Editor -->
-      <section
-        ref="facilityEditorSectionRef"
-        class="facility-editor-section"
-        data-test="facility-editor-section"
-      >
-        <FacilityEditor @request-picker="handleRequestPicker" />
-      </section>
-
-      <!-- Policy Editor -->
-      <section
-        ref="policyEditorSectionRef"
-        class="policy-editor-section"
-        data-test="policy-editor-section"
-      >
-        <PolicyEditor />
-      </section>
+      <!-- Tab 3: 日志 (Logs) (Req 11, 13) -->
+      <div v-show="activeTab === 'logs'" class="tab-panel logs-tab-panel" data-test="logs-tab-panel">
+        <SimulationLogView
+          :report="simulationReport"
+          :error="calculationError"
+          @clear="simulationReport = null"
+        />
+      </div>
     </main>
 
     <!-- Compact Attribution Footer -->
@@ -586,6 +800,56 @@ h1 small {
   margin: 2px 0 0;
   color: #8da5ac;
   font-size: 11px;
+}
+
+/* Topbar Navigation Tabs */
+.topbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 4px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.nav-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #8da5ac;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-tab:hover {
+  color: #e9f2f4;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.nav-tab.active {
+  color: #071015;
+  background: #42d6c7;
+  font-weight: 600;
+}
+
+.tab-indicator {
+  font-size: 8px;
+  color: #00e676;
+}
+
+.nav-tab.active .tab-indicator {
+  color: #071015;
+}
+
+.tab-panel {
+  width: 100%;
 }
 
 .topbar-actions {
@@ -837,6 +1101,15 @@ h1 small {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.card-score82 {
+  border-left: 3px solid #00e676;
+  background: rgba(0, 230, 118, 0.06);
+}
+
+.text-score82 {
+  color: #00e676;
 }
 
 .card-lmd {

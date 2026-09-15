@@ -1,0 +1,6542 @@
+{
+  "source": {
+    "path": "E:/OneDrive/桌面/mower表.xlsx",
+    "sheet": "排班表",
+    "sha256": "ef32d52f9f70b5eafd515db9e23dcf2809613c94cde7875d219859832a1db74a"
+  },
+  "scope": "Instantaneous max-skill snapshot; no work fractions, dynamic shifts or income. Side columns only define explicit source context, not a feasible joint roster.",
+  "conditions": {
+    "officeLevel": 3,
+    "receptionLevel": 3,
+    "dormitoryOccupants": 20,
+    "durinCount": 4,
+    "irisDormLevel": 1,
+    "czernyDormLevel": 1,
+    "droneCapacity": 235,
+    "mainLancetMorale": 0,
+    "otherMoraleForNominalProbe": 24,
+    "warmup": "complete"
+  },
+  "blocks": [
+    {
+      "start": 6,
+      "label": "252钱书(4赤金)（31贸）",
+      "side": "D",
+      "control": [
+        "歌蕾蒂娅",
+        "斩业星熊",
+        "诗怀雅",
+        "森蚺",
+        "琴柳"
+      ],
+      "config": {
+        "schemaVersion": 7,
+        "planName": "243 标准方案",
+        "hours": 24,
+        "rooms": [
+          {
+            "id": "D9",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_237_gravel",
+              "char_446_aroma",
+              "char_243_waaifu"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D10",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_391_rosmon",
+              "char_263_skadi",
+              "char_4145_ulpia"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D11",
+            "type": "manufacture",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_218_cuttle",
+              "char_143_ghost"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D12",
+            "type": "manufacture",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_400_weedy",
+              "char_385_finlpp"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D15",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_190_clour",
+              "char_336_folivo",
+              "char_2013_cerber"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D18",
+            "type": "trading",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_478_kirara",
+              "char_4055_bgsnow",
+              "char_4046_ebnhlz"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D19",
+            "type": "trading",
+            "level": 1,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_402_tuye"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D22",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_1027_greyy2"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D23",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_285_medic2"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          }
+        ],
+        "facilities": {
+          "reception": 3,
+          "office": 3,
+          "training": 3,
+          "workshop": 3,
+          "dormitories": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "dormitoryOccupantCount": 20,
+        "facilityOperatorIds": {
+          "dormitories": [
+            [
+              "char_338_iris",
+              "char_501_durin",
+              "char_151_myrtle",
+              "char_4054_malist",
+              "char_4164_tecno"
+            ],
+            [
+              "char_4047_pianst"
+            ],
+            [],
+            []
+          ],
+          "reception": [],
+          "workshop": [],
+          "office": [
+            "char_436_whispr"
+          ],
+          "training": []
+        },
+        "efficiencyResources": {
+          "manufacturePerceptionInformation": 0,
+          "tradingPerceptionInformation": 0,
+          "additionalGoldProductionLines": 0,
+          "monsterCuisine": 0,
+          "worldlyFireworks": 0,
+          "suiFacilities": 0,
+          "droneCapacity": 235,
+          "extraWorkplaceOperatorIds": [],
+          "trainingOperatorIds": []
+        },
+        "controlOperatorIds": [
+          "char_474_glady",
+          "char_1044_hsgma2",
+          "char_308_swire",
+          "char_416_zumama",
+          "char_479_sleach"
+        ],
+        "zeroMoraleOperatorIds": [
+          "char_285_medic2"
+        ],
+        "workaholicOperatorIds": [],
+        "operatorMorale": {},
+        "operatorBackups": {},
+        "operatorGroups": [],
+        "droneTarget": "none"
+      },
+      "rows": [
+        {
+          "cell": "D9",
+          "facility": "manufacture",
+          "operators": [
+            "砾",
+            "阿罗玛",
+            "槐琥"
+          ],
+          "sheetBonus": 126,
+          "referenceBonus": 126,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D10",
+          "facility": "manufacture",
+          "operators": [
+            "迷迭香",
+            "斯卡蒂",
+            "乌尔比安"
+          ],
+          "sheetBonus": 148,
+          "referenceBonus": 148,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D11",
+          "facility": "manufacture",
+          "operators": [
+            "安哲拉",
+            "幽灵鲨"
+          ],
+          "sheetBonus": 85,
+          "referenceBonus": 85,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D12",
+          "facility": "manufacture",
+          "operators": [
+            "温蒂",
+            "清流"
+          ],
+          "sheetBonus": 120,
+          "referenceBonus": 120,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D15",
+          "facility": "manufacture",
+          "operators": [
+            "红云",
+            "稀音",
+            "刻俄柏"
+          ],
+          "sheetBonus": 112.0,
+          "referenceBonus": 112.0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D18",
+          "facility": "trading",
+          "operators": [
+            "绮良",
+            "鸿雪",
+            "黑键"
+          ],
+          "sheetBonus": 106,
+          "referenceBonus": 106,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D19",
+          "facility": "trading",
+          "operators": [
+            "图耶"
+          ],
+          "sheetBonus": 103,
+          "referenceBonus": 103,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D22",
+          "facility": "power",
+          "operators": [
+            "承曦格雷伊"
+          ],
+          "sheetBonus": 28.0,
+          "referenceBonus": 28.0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D23",
+          "facility": "power",
+          "operators": [
+            "lancet-2"
+          ],
+          "sheetBonus": 0,
+          "referenceBonus": 0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        }
+      ]
+    },
+    {
+      "start": 6,
+      "label": "252钱书(4赤金)（31贸）",
+      "side": "N",
+      "control": [
+        "薇薇安娜",
+        "Mon3tr",
+        "阿米娅",
+        "森蚺",
+        "八幡海铃"
+      ],
+      "config": {
+        "schemaVersion": 7,
+        "planName": "243 标准方案",
+        "hours": 24,
+        "rooms": [
+          {
+            "id": "N9",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_284_spot",
+              "char_4106_bryota",
+              "char_141_nights"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N10",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_437_mizuki",
+              "char_381_bubble",
+              "char_163_hpsts"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N11",
+            "type": "manufacture",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_496_wildmn",
+              "char_431_ashlok"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N12",
+            "type": "manufacture",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_400_weedy",
+              "char_385_finlpp"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N15",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_1502_crosly",
+              "char_1042_phatm2",
+              "char_4225_tanya"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N18",
+            "type": "trading",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_4037_demetr",
+              "char_4045_heidi",
+              "char_4203_kichi"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N19",
+            "type": "trading",
+            "level": 1,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_427_vigil"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N22",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_377_gdglow"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N23",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_253_greyy"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          }
+        ],
+        "facilities": {
+          "reception": 3,
+          "office": 3,
+          "training": 3,
+          "workshop": 3,
+          "dormitories": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "dormitoryOccupantCount": 20,
+        "facilityOperatorIds": {
+          "dormitories": [
+            [
+              "char_338_iris",
+              "char_501_durin",
+              "char_151_myrtle",
+              "char_4054_malist",
+              "char_4164_tecno"
+            ],
+            [
+              "char_4047_pianst"
+            ],
+            [],
+            []
+          ],
+          "reception": [],
+          "workshop": [],
+          "office": [
+            "char_180_amgoat"
+          ],
+          "training": []
+        },
+        "efficiencyResources": {
+          "manufacturePerceptionInformation": 0,
+          "tradingPerceptionInformation": 0,
+          "additionalGoldProductionLines": 0,
+          "monsterCuisine": 0,
+          "worldlyFireworks": 0,
+          "suiFacilities": 0,
+          "droneCapacity": 235,
+          "extraWorkplaceOperatorIds": [],
+          "trainingOperatorIds": []
+        },
+        "controlOperatorIds": [
+          "char_4098_vvana",
+          "char_4179_monstr",
+          "char_002_amiya",
+          "char_416_zumama",
+          "char_4186_tmoris"
+        ],
+        "zeroMoraleOperatorIds": [],
+        "workaholicOperatorIds": [],
+        "operatorMorale": {},
+        "operatorBackups": {},
+        "operatorGroups": [],
+        "droneTarget": "none"
+      },
+      "rows": [
+        {
+          "cell": "N9",
+          "facility": "manufacture",
+          "operators": [
+            "斑点",
+            "苍苔",
+            "夜烟"
+          ],
+          "sheetBonus": 110.0,
+          "referenceBonus": 110.0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N10",
+          "facility": "manufacture",
+          "operators": [
+            "水月",
+            "泡泡",
+            "火神"
+          ],
+          "sheetBonus": 97,
+          "referenceBonus": 97,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N11",
+          "facility": "manufacture",
+          "operators": [
+            "野鬃",
+            "灰毫"
+          ],
+          "sheetBonus": 68,
+          "referenceBonus": 68,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N12",
+          "facility": "manufacture",
+          "operators": [
+            "温蒂",
+            "清流"
+          ],
+          "sheetBonus": 104,
+          "referenceBonus": 74,
+          "referenceBasis": "15×2电站+40清流+2进驻+2中枢"
+        },
+        {
+          "cell": "N15",
+          "facility": "manufacture",
+          "operators": [
+            "弑君者",
+            "酒神",
+            "裂响"
+          ],
+          "sheetBonus": 110.0,
+          "referenceBonus": 110.0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N18",
+          "facility": "trading",
+          "operators": [
+            "贝洛内",
+            "海蒂",
+            "吉星"
+          ],
+          "sheetBonus": 130,
+          "referenceBonus": 130,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N19",
+          "facility": "trading",
+          "operators": [
+            "伺夜"
+          ],
+          "sheetBonus": 53,
+          "referenceBonus": 53,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N22",
+          "facility": "power",
+          "operators": [
+            "澄闪"
+          ],
+          "sheetBonus": 25,
+          "referenceBonus": 25,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N23",
+          "facility": "power",
+          "operators": [
+            "格雷伊"
+          ],
+          "sheetBonus": 25,
+          "referenceBonus": 25,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        }
+      ]
+    },
+    {
+      "start": 27,
+      "label": "252钱书(4赤金)（22贸）",
+      "side": "D",
+      "control": [
+        "歌蕾蒂娅",
+        "斩业星熊",
+        "诗怀雅",
+        "森蚺",
+        "琴柳"
+      ],
+      "config": {
+        "schemaVersion": 7,
+        "planName": "243 标准方案",
+        "hours": 24,
+        "rooms": [
+          {
+            "id": "D30",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_237_gravel",
+              "char_446_aroma",
+              "char_243_waaifu"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D31",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_391_rosmon",
+              "char_263_skadi",
+              "char_4145_ulpia"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D32",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_385_finlpp",
+              "char_218_cuttle",
+              "char_143_ghost"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D33",
+            "type": "manufacture",
+            "level": 1,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_400_weedy"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D36",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_190_clour",
+              "char_336_folivo",
+              "char_2013_cerber"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D39",
+            "type": "trading",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_4055_bgsnow",
+              "char_4046_ebnhlz"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D40",
+            "type": "trading",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_402_tuye",
+              "char_478_kirara"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D43",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_1027_greyy2"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D44",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_285_medic2"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          }
+        ],
+        "facilities": {
+          "reception": 3,
+          "office": 3,
+          "training": 3,
+          "workshop": 3,
+          "dormitories": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "dormitoryOccupantCount": 20,
+        "facilityOperatorIds": {
+          "dormitories": [
+            [
+              "char_338_iris",
+              "char_501_durin",
+              "char_151_myrtle",
+              "char_4054_malist",
+              "char_4164_tecno"
+            ],
+            [
+              "char_4047_pianst"
+            ],
+            [],
+            []
+          ],
+          "reception": [],
+          "workshop": [],
+          "office": [
+            "char_436_whispr"
+          ],
+          "training": []
+        },
+        "efficiencyResources": {
+          "manufacturePerceptionInformation": 0,
+          "tradingPerceptionInformation": 0,
+          "additionalGoldProductionLines": 0,
+          "monsterCuisine": 0,
+          "worldlyFireworks": 0,
+          "suiFacilities": 0,
+          "droneCapacity": 235,
+          "extraWorkplaceOperatorIds": [],
+          "trainingOperatorIds": []
+        },
+        "controlOperatorIds": [
+          "char_474_glady",
+          "char_1044_hsgma2",
+          "char_308_swire",
+          "char_416_zumama",
+          "char_479_sleach"
+        ],
+        "zeroMoraleOperatorIds": [
+          "char_285_medic2"
+        ],
+        "workaholicOperatorIds": [],
+        "operatorMorale": {},
+        "operatorBackups": {},
+        "operatorGroups": [],
+        "droneTarget": "none"
+      },
+      "rows": [
+        {
+          "cell": "D30",
+          "facility": "manufacture",
+          "operators": [
+            "砾",
+            "阿罗玛",
+            "槐琥"
+          ],
+          "sheetBonus": 126,
+          "referenceBonus": 126,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D31",
+          "facility": "manufacture",
+          "operators": [
+            "迷迭香",
+            "斯卡蒂",
+            "乌尔比安"
+          ],
+          "sheetBonus": 148,
+          "referenceBonus": 148,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D32",
+          "facility": "manufacture",
+          "operators": [
+            "清流",
+            "安哲拉",
+            "幽灵鲨"
+          ],
+          "sheetBonus": 126,
+          "referenceBonus": 126,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D33",
+          "facility": "manufacture",
+          "operators": [
+            "温蒂"
+          ],
+          "sheetBonus": 79,
+          "referenceBonus": 79,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D36",
+          "facility": "manufacture",
+          "operators": [
+            "红云",
+            "稀音",
+            "刻俄柏"
+          ],
+          "sheetBonus": 112.0,
+          "referenceBonus": 112.0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D39",
+          "facility": "trading",
+          "operators": [
+            "鸿雪",
+            "黑键"
+          ],
+          "sheetBonus": 100,
+          "referenceBonus": 100,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D40",
+          "facility": "trading",
+          "operators": [
+            "图耶",
+            "绮良"
+          ],
+          "sheetBonus": 109.0,
+          "referenceBonus": 109.0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D43",
+          "facility": "power",
+          "operators": [
+            "承曦格雷伊"
+          ],
+          "sheetBonus": 28.0,
+          "referenceBonus": 28.0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D44",
+          "facility": "power",
+          "operators": [
+            "lancet-2"
+          ],
+          "sheetBonus": 0,
+          "referenceBonus": 0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        }
+      ]
+    },
+    {
+      "start": 27,
+      "label": "252钱书(4赤金)（22贸）",
+      "side": "N",
+      "control": [
+        "薇薇安娜",
+        "Mon3tr",
+        "阿米娅",
+        "森蚺",
+        "八幡海铃"
+      ],
+      "config": {
+        "schemaVersion": 7,
+        "planName": "243 标准方案",
+        "hours": 24,
+        "rooms": [
+          {
+            "id": "N30",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_284_spot",
+              "char_4106_bryota",
+              "char_141_nights"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N31",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_437_mizuki",
+              "char_381_bubble",
+              "char_163_hpsts"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N32",
+            "type": "manufacture",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_496_wildmn",
+              "char_431_ashlok"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N33",
+            "type": "manufacture",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_400_weedy",
+              "char_385_finlpp"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N36",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_1502_crosly",
+              "char_1042_phatm2",
+              "char_4225_tanya"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N39",
+            "type": "trading",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_4193_lemuen",
+              "char_103_angel"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N40",
+            "type": "trading",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_4037_demetr",
+              "char_427_vigil"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N43",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_377_gdglow"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N44",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_253_greyy"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          }
+        ],
+        "facilities": {
+          "reception": 3,
+          "office": 3,
+          "training": 3,
+          "workshop": 3,
+          "dormitories": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "dormitoryOccupantCount": 20,
+        "facilityOperatorIds": {
+          "dormitories": [
+            [
+              "char_338_iris",
+              "char_501_durin",
+              "char_151_myrtle",
+              "char_4054_malist",
+              "char_4164_tecno"
+            ],
+            [
+              "char_4047_pianst"
+            ],
+            [],
+            []
+          ],
+          "reception": [],
+          "workshop": [],
+          "office": [
+            "char_180_amgoat"
+          ],
+          "training": []
+        },
+        "efficiencyResources": {
+          "manufacturePerceptionInformation": 0,
+          "tradingPerceptionInformation": 0,
+          "additionalGoldProductionLines": 0,
+          "monsterCuisine": 0,
+          "worldlyFireworks": 0,
+          "suiFacilities": 0,
+          "droneCapacity": 235,
+          "extraWorkplaceOperatorIds": [],
+          "trainingOperatorIds": []
+        },
+        "controlOperatorIds": [
+          "char_4098_vvana",
+          "char_4179_monstr",
+          "char_002_amiya",
+          "char_416_zumama",
+          "char_4186_tmoris"
+        ],
+        "zeroMoraleOperatorIds": [],
+        "workaholicOperatorIds": [],
+        "operatorMorale": {},
+        "operatorBackups": {},
+        "operatorGroups": [],
+        "droneTarget": "none"
+      },
+      "rows": [
+        {
+          "cell": "N30",
+          "facility": "manufacture",
+          "operators": [
+            "斑点",
+            "苍苔",
+            "夜烟"
+          ],
+          "sheetBonus": 110.0,
+          "referenceBonus": 110.0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N31",
+          "facility": "manufacture",
+          "operators": [
+            "水月",
+            "泡泡",
+            "火神"
+          ],
+          "sheetBonus": 97,
+          "referenceBonus": 97,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N32",
+          "facility": "manufacture",
+          "operators": [
+            "野鬃",
+            "灰毫"
+          ],
+          "sheetBonus": 68,
+          "referenceBonus": 68,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N33",
+          "facility": "manufacture",
+          "operators": [
+            "温蒂",
+            "清流"
+          ],
+          "sheetBonus": 104,
+          "referenceBonus": 74,
+          "referenceBasis": "15×2电站+40清流+2进驻+2中枢"
+        },
+        {
+          "cell": "N36",
+          "facility": "manufacture",
+          "operators": [
+            "弑君者",
+            "酒神",
+            "裂响"
+          ],
+          "sheetBonus": 110.0,
+          "referenceBonus": 110.0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N39",
+          "facility": "trading",
+          "operators": [
+            "蕾缪安",
+            "能天使"
+          ],
+          "sheetBonus": 89,
+          "referenceBonus": 89,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N40",
+          "facility": "trading",
+          "operators": [
+            "贝洛内",
+            "伺夜"
+          ],
+          "sheetBonus": 99,
+          "referenceBonus": 99,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N43",
+          "facility": "power",
+          "operators": [
+            "澄闪"
+          ],
+          "sheetBonus": 25,
+          "referenceBonus": 25,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N44",
+          "facility": "power",
+          "operators": [
+            "格雷伊"
+          ],
+          "sheetBonus": 25,
+          "referenceBonus": 25,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        }
+      ]
+    },
+    {
+      "start": 48,
+      "label": "252钱书(3赤金)",
+      "side": "D",
+      "control": [
+        "薇薇安娜",
+        "焰尾",
+        "玛恩纳",
+        "森蚺",
+        "琴柳"
+      ],
+      "config": {
+        "schemaVersion": 7,
+        "planName": "243 标准方案",
+        "hours": 24,
+        "rooms": [
+          {
+            "id": "D51",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_4106_bryota",
+              "char_141_nights",
+              "char_284_spot"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D52",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_237_gravel",
+              "char_446_aroma",
+              "char_243_waaifu"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D53",
+            "type": "manufacture",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_400_weedy",
+              "char_385_finlpp"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D56",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_4230_mcnist",
+              "char_1042_phatm2",
+              "char_430_fartth"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D57",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_391_rosmon",
+              "char_496_wildmn",
+              "char_431_ashlok"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D60",
+            "type": "trading",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_4055_bgsnow",
+              "char_4046_ebnhlz"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D61",
+            "type": "trading",
+            "level": 1,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_402_tuye"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D64",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_1027_greyy2"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D65",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_285_medic2"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          }
+        ],
+        "facilities": {
+          "reception": 3,
+          "office": 3,
+          "training": 3,
+          "workshop": 3,
+          "dormitories": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "dormitoryOccupantCount": 20,
+        "facilityOperatorIds": {
+          "dormitories": [
+            [
+              "char_338_iris",
+              "char_501_durin",
+              "char_151_myrtle",
+              "char_4054_malist",
+              "char_4164_tecno"
+            ],
+            [
+              "char_4047_pianst"
+            ],
+            [],
+            []
+          ],
+          "reception": [],
+          "workshop": [],
+          "office": [
+            "char_436_whispr"
+          ],
+          "training": []
+        },
+        "efficiencyResources": {
+          "manufacturePerceptionInformation": 0,
+          "tradingPerceptionInformation": 0,
+          "additionalGoldProductionLines": 0,
+          "monsterCuisine": 0,
+          "worldlyFireworks": 0,
+          "suiFacilities": 0,
+          "droneCapacity": 235,
+          "extraWorkplaceOperatorIds": [],
+          "trainingOperatorIds": []
+        },
+        "controlOperatorIds": [
+          "char_4098_vvana",
+          "char_420_flamtl",
+          "char_4064_mlynar",
+          "char_416_zumama",
+          "char_479_sleach"
+        ],
+        "zeroMoraleOperatorIds": [
+          "char_285_medic2"
+        ],
+        "workaholicOperatorIds": [],
+        "operatorMorale": {},
+        "operatorBackups": {},
+        "operatorGroups": [],
+        "droneTarget": "none"
+      },
+      "rows": [
+        {
+          "cell": "D51",
+          "facility": "manufacture",
+          "operators": [
+            "苍苔",
+            "夜烟",
+            "斑点"
+          ],
+          "sheetBonus": 108,
+          "referenceBonus": 108,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D52",
+          "facility": "manufacture",
+          "operators": [
+            "砾",
+            "阿罗玛",
+            "槐琥"
+          ],
+          "sheetBonus": 130,
+          "referenceBonus": 130,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D53",
+          "facility": "manufacture",
+          "operators": [
+            "温蒂",
+            "清流"
+          ],
+          "sheetBonus": 117,
+          "referenceBonus": 117,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D56",
+          "facility": "manufacture",
+          "operators": [
+            "机械师",
+            "酒神",
+            "远牙"
+          ],
+          "sheetBonus": 120,
+          "referenceBonus": 120,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D57",
+          "facility": "manufacture",
+          "operators": [
+            "迷迭香",
+            "野鬃",
+            "灰毫"
+          ],
+          "sheetBonus": 149,
+          "referenceBonus": 149,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D60",
+          "facility": "trading",
+          "operators": [
+            "鸿雪",
+            "黑键"
+          ],
+          "sheetBonus": 63,
+          "referenceBonus": 68,
+          "referenceBasis": "7×5鸿雪+31黑键+2进驻"
+        },
+        {
+          "cell": "D61",
+          "facility": "trading",
+          "operators": [
+            "图耶"
+          ],
+          "sheetBonus": 51,
+          "referenceBonus": 51,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D64",
+          "facility": "power",
+          "operators": [
+            "承曦格雷伊"
+          ],
+          "sheetBonus": 28.0,
+          "referenceBonus": 28.0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D65",
+          "facility": "power",
+          "operators": [
+            "lancet-2"
+          ],
+          "sheetBonus": 0,
+          "referenceBonus": 0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        }
+      ]
+    },
+    {
+      "start": 48,
+      "label": "252钱书(3赤金)",
+      "side": "N",
+      "control": [
+        "歌蕾蒂娅",
+        "Mon3tr",
+        "维什戴尔",
+        "森蚺",
+        "八幡海铃"
+      ],
+      "config": {
+        "schemaVersion": 7,
+        "planName": "243 标准方案",
+        "hours": 24,
+        "rooms": [
+          {
+            "id": "N51",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_4048_doroth",
+              "char_1031_slent2",
+              "char_1047_halo2"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N52",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_4062_totter",
+              "char_381_bubble",
+              "char_163_hpsts"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N53",
+            "type": "manufacture",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_400_weedy",
+              "char_385_finlpp"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N56",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_1502_crosly",
+              "char_263_skadi",
+              "char_4145_ulpia"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N57",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_241_panda",
+              "char_218_cuttle",
+              "char_143_ghost"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N60",
+            "type": "trading",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_4037_demetr",
+              "char_4045_heidi"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N61",
+            "type": "trading",
+            "level": 1,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_427_vigil"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N64",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_377_gdglow"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N65",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_253_greyy"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          }
+        ],
+        "facilities": {
+          "reception": 3,
+          "office": 3,
+          "training": 3,
+          "workshop": 3,
+          "dormitories": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "dormitoryOccupantCount": 20,
+        "facilityOperatorIds": {
+          "dormitories": [
+            [
+              "char_338_iris",
+              "char_501_durin",
+              "char_151_myrtle",
+              "char_4054_malist",
+              "char_4164_tecno"
+            ],
+            [
+              "char_4047_pianst"
+            ],
+            [],
+            []
+          ],
+          "reception": [],
+          "workshop": [],
+          "office": [
+            "char_180_amgoat"
+          ],
+          "training": []
+        },
+        "efficiencyResources": {
+          "manufacturePerceptionInformation": 0,
+          "tradingPerceptionInformation": 0,
+          "additionalGoldProductionLines": 0,
+          "monsterCuisine": 0,
+          "worldlyFireworks": 0,
+          "suiFacilities": 0,
+          "droneCapacity": 235,
+          "extraWorkplaceOperatorIds": [],
+          "trainingOperatorIds": []
+        },
+        "controlOperatorIds": [
+          "char_474_glady",
+          "char_4179_monstr",
+          "char_1035_wisdel",
+          "char_416_zumama",
+          "char_4186_tmoris"
+        ],
+        "zeroMoraleOperatorIds": [],
+        "workaholicOperatorIds": [],
+        "operatorMorale": {},
+        "operatorBackups": {},
+        "operatorGroups": [],
+        "droneTarget": "none"
+      },
+      "rows": [
+        {
+          "cell": "N51",
+          "facility": "manufacture",
+          "operators": [
+            "多萝西",
+            "淬羽赫默",
+            "溯光星源"
+          ],
+          "sheetBonus": 100,
+          "referenceBonus": 100,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N52",
+          "facility": "manufacture",
+          "operators": [
+            "铅踝",
+            "泡泡",
+            "火神"
+          ],
+          "sheetBonus": 97,
+          "referenceBonus": 97,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N53",
+          "facility": "manufacture",
+          "operators": [
+            "温蒂",
+            "清流"
+          ],
+          "sheetBonus": 104,
+          "referenceBonus": 74,
+          "referenceBasis": "15×2电站+40清流+2进驻+2中枢"
+        },
+        {
+          "cell": "N56",
+          "facility": "manufacture",
+          "operators": [
+            "弑君者",
+            "斯卡蒂",
+            "乌尔比安"
+          ],
+          "sheetBonus": 120,
+          "referenceBonus": 120,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N57",
+          "facility": "manufacture",
+          "operators": [
+            "食铁兽",
+            "安哲拉",
+            "幽灵鲨"
+          ],
+          "sheetBonus": 120,
+          "referenceBonus": 120,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N60",
+          "facility": "trading",
+          "operators": [
+            "贝洛内",
+            "海蒂"
+          ],
+          "sheetBonus": 82,
+          "referenceBonus": 82,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N61",
+          "facility": "trading",
+          "operators": [
+            "伺夜"
+          ],
+          "sheetBonus": 46,
+          "referenceBonus": 46,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N64",
+          "facility": "power",
+          "operators": [
+            "澄闪"
+          ],
+          "sheetBonus": 25,
+          "referenceBonus": 25,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N65",
+          "facility": "power",
+          "operators": [
+            "格雷伊"
+          ],
+          "sheetBonus": 25,
+          "referenceBonus": 25,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        }
+      ]
+    },
+    {
+      "start": 69,
+      "label": "252钱书(2赤金)",
+      "side": "D",
+      "control": [
+        "歌蕾蒂娅",
+        "斩业星熊",
+        "诗怀雅",
+        "森蚺",
+        "琴柳"
+      ],
+      "config": {
+        "schemaVersion": 7,
+        "planName": "243 标准方案",
+        "hours": 24,
+        "rooms": [
+          {
+            "id": "D72",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_237_gravel",
+              "char_446_aroma",
+              "char_243_waaifu"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D73",
+            "type": "manufacture",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_400_weedy",
+              "char_385_finlpp"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D76",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_190_clour",
+              "char_336_folivo",
+              "char_2013_cerber"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D77",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_391_rosmon",
+              "char_263_skadi",
+              "char_4145_ulpia"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D78",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_4230_mcnist",
+              "char_218_cuttle",
+              "char_143_ghost"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D81",
+            "type": "trading",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_4055_bgsnow",
+              "char_4046_ebnhlz"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D82",
+            "type": "trading",
+            "level": 1,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_402_tuye"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D85",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_1027_greyy2"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D86",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_285_medic2"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          }
+        ],
+        "facilities": {
+          "reception": 3,
+          "office": 3,
+          "training": 3,
+          "workshop": 3,
+          "dormitories": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "dormitoryOccupantCount": 20,
+        "facilityOperatorIds": {
+          "dormitories": [
+            [
+              "char_338_iris",
+              "char_501_durin",
+              "char_151_myrtle",
+              "char_4054_malist",
+              "char_4164_tecno"
+            ],
+            [
+              "char_4047_pianst"
+            ],
+            [],
+            []
+          ],
+          "reception": [],
+          "workshop": [],
+          "office": [
+            "char_436_whispr"
+          ],
+          "training": []
+        },
+        "efficiencyResources": {
+          "manufacturePerceptionInformation": 0,
+          "tradingPerceptionInformation": 0,
+          "additionalGoldProductionLines": 0,
+          "monsterCuisine": 0,
+          "worldlyFireworks": 0,
+          "suiFacilities": 0,
+          "droneCapacity": 235,
+          "extraWorkplaceOperatorIds": [],
+          "trainingOperatorIds": []
+        },
+        "controlOperatorIds": [
+          "char_474_glady",
+          "char_1044_hsgma2",
+          "char_308_swire",
+          "char_416_zumama",
+          "char_479_sleach"
+        ],
+        "zeroMoraleOperatorIds": [
+          "char_285_medic2"
+        ],
+        "workaholicOperatorIds": [],
+        "operatorMorale": {},
+        "operatorBackups": {},
+        "operatorGroups": [],
+        "droneTarget": "none"
+      },
+      "rows": [
+        {
+          "cell": "D72",
+          "facility": "manufacture",
+          "operators": [
+            "砾",
+            "阿罗玛",
+            "槐琥"
+          ],
+          "sheetBonus": 126,
+          "referenceBonus": 126,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D73",
+          "facility": "manufacture",
+          "operators": [
+            "温蒂",
+            "清流"
+          ],
+          "sheetBonus": 120,
+          "referenceBonus": 120,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D76",
+          "facility": "manufacture",
+          "operators": [
+            "红云",
+            "稀音",
+            "刻俄柏"
+          ],
+          "sheetBonus": 112.0,
+          "referenceBonus": 112.0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D77",
+          "facility": "manufacture",
+          "operators": [
+            "迷迭香",
+            "斯卡蒂",
+            "乌尔比安"
+          ],
+          "sheetBonus": 148,
+          "referenceBonus": 148,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D78",
+          "facility": "manufacture",
+          "operators": [
+            "机械师",
+            "安哲拉",
+            "幽灵鲨"
+          ],
+          "sheetBonus": 126,
+          "referenceBonus": 126,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D81",
+          "facility": "trading",
+          "operators": [
+            "鸿雪",
+            "黑键"
+          ],
+          "sheetBonus": 70,
+          "referenceBonus": 70,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D82",
+          "facility": "trading",
+          "operators": [
+            "图耶"
+          ],
+          "sheetBonus": 58.0,
+          "referenceBonus": 58.0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D85",
+          "facility": "power",
+          "operators": [
+            "承曦格雷伊"
+          ],
+          "sheetBonus": 28.0,
+          "referenceBonus": 28.0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D86",
+          "facility": "power",
+          "operators": [
+            "lancet-2"
+          ],
+          "sheetBonus": 0,
+          "referenceBonus": 0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        }
+      ]
+    },
+    {
+      "start": 69,
+      "label": "252钱书(2赤金)",
+      "side": "N",
+      "control": [
+        "薇薇安娜",
+        "焰尾",
+        "Mon3tr",
+        "森蚺",
+        "八幡海铃"
+      ],
+      "config": {
+        "schemaVersion": 7,
+        "planName": "243 标准方案",
+        "hours": 24,
+        "rooms": [
+          {
+            "id": "N72",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_284_spot",
+              "char_4106_bryota",
+              "char_141_nights"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N73",
+            "type": "manufacture",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_400_weedy",
+              "char_385_finlpp"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N76",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_1502_crosly",
+              "char_4048_doroth",
+              "char_1031_slent2"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N77",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_159_peacok",
+              "char_496_wildmn",
+              "char_431_ashlok"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N78",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_1042_phatm2",
+              "char_430_fartth",
+              "char_4225_tanya"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N81",
+            "type": "trading",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_4037_demetr",
+              "char_4045_heidi"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N82",
+            "type": "trading",
+            "level": 1,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_427_vigil"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N85",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_377_gdglow"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N86",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_253_greyy"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          }
+        ],
+        "facilities": {
+          "reception": 3,
+          "office": 3,
+          "training": 3,
+          "workshop": 3,
+          "dormitories": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "dormitoryOccupantCount": 20,
+        "facilityOperatorIds": {
+          "dormitories": [
+            [
+              "char_338_iris",
+              "char_501_durin",
+              "char_151_myrtle",
+              "char_4054_malist",
+              "char_4164_tecno"
+            ],
+            [
+              "char_4047_pianst"
+            ],
+            [],
+            []
+          ],
+          "reception": [],
+          "workshop": [],
+          "office": [
+            "char_180_amgoat"
+          ],
+          "training": []
+        },
+        "efficiencyResources": {
+          "manufacturePerceptionInformation": 0,
+          "tradingPerceptionInformation": 0,
+          "additionalGoldProductionLines": 0,
+          "monsterCuisine": 0,
+          "worldlyFireworks": 0,
+          "suiFacilities": 0,
+          "droneCapacity": 235,
+          "extraWorkplaceOperatorIds": [],
+          "trainingOperatorIds": []
+        },
+        "controlOperatorIds": [
+          "char_4098_vvana",
+          "char_420_flamtl",
+          "char_4179_monstr",
+          "char_416_zumama",
+          "char_4186_tmoris"
+        ],
+        "zeroMoraleOperatorIds": [],
+        "workaholicOperatorIds": [],
+        "operatorMorale": {},
+        "operatorBackups": {},
+        "operatorGroups": [],
+        "droneTarget": "none"
+      },
+      "rows": [
+        {
+          "cell": "N72",
+          "facility": "manufacture",
+          "operators": [
+            "斑点",
+            "苍苔",
+            "夜烟"
+          ],
+          "sheetBonus": 110.0,
+          "referenceBonus": 110.0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N73",
+          "facility": "manufacture",
+          "operators": [
+            "温蒂",
+            "清流"
+          ],
+          "sheetBonus": 104,
+          "referenceBonus": 74,
+          "referenceBasis": "15×2电站+40清流+2进驻+2中枢"
+        },
+        {
+          "cell": "N76",
+          "facility": "manufacture",
+          "operators": [
+            "弑君者",
+            "多萝西",
+            "淬羽赫默"
+          ],
+          "sheetBonus": 100,
+          "referenceBonus": 105,
+          "referenceBasis": "35弑君者+25多萝西+30淬羽赫默+2×5莱茵科技+3进驻+2中枢"
+        },
+        {
+          "cell": "N77",
+          "facility": "manufacture",
+          "operators": [
+            "断罪者",
+            "野鬃",
+            "灰毫"
+          ],
+          "sheetBonus": 119,
+          "referenceBonus": 124,
+          "referenceBasis": "35断罪者+25野鬃+25灰毫+20焰尾+14骑士+3进驻+2中枢"
+        },
+        {
+          "cell": "N78",
+          "facility": "manufacture",
+          "operators": [
+            "酒神",
+            "远牙",
+            "裂响"
+          ],
+          "sheetBonus": 115.0,
+          "referenceBonus": 117,
+          "referenceBasis": "35酒神+25远牙+35裂响+10焰尾+7骑士+3进驻+2中枢"
+        },
+        {
+          "cell": "N81",
+          "facility": "trading",
+          "operators": [
+            "贝洛内",
+            "海蒂"
+          ],
+          "sheetBonus": 82,
+          "referenceBonus": 82,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N82",
+          "facility": "trading",
+          "operators": [
+            "伺夜"
+          ],
+          "sheetBonus": 46,
+          "referenceBonus": 46,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N85",
+          "facility": "power",
+          "operators": [
+            "澄闪"
+          ],
+          "sheetBonus": 25,
+          "referenceBonus": 25,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N86",
+          "facility": "power",
+          "operators": [
+            "格雷伊"
+          ],
+          "sheetBonus": 25,
+          "referenceBonus": 25,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        }
+      ]
+    },
+    {
+      "start": 90,
+      "label": "252钱书(2赤金)测试",
+      "side": "D",
+      "control": [
+        "薇薇安娜",
+        "焰尾",
+        "Mon3tr",
+        "森蚺",
+        "琴柳"
+      ],
+      "config": {
+        "schemaVersion": 7,
+        "planName": "243 标准方案",
+        "hours": 24,
+        "rooms": [
+          {
+            "id": "D93",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_237_gravel",
+              "char_446_aroma",
+              "char_243_waaifu"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D94",
+            "type": "manufacture",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_400_weedy",
+              "char_385_finlpp"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D97",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_190_clour",
+              "char_336_folivo",
+              "char_2013_cerber"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D98",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_391_rosmon",
+              "char_496_wildmn",
+              "char_431_ashlok"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D99",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_4230_mcnist",
+              "char_1042_phatm2",
+              "char_430_fartth"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D102",
+            "type": "trading",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_4055_bgsnow",
+              "char_4046_ebnhlz"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D103",
+            "type": "trading",
+            "level": 1,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_402_tuye"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D106",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_1027_greyy2"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D107",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_285_medic2"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          }
+        ],
+        "facilities": {
+          "reception": 3,
+          "office": 3,
+          "training": 3,
+          "workshop": 3,
+          "dormitories": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "dormitoryOccupantCount": 20,
+        "facilityOperatorIds": {
+          "dormitories": [
+            [
+              "char_338_iris",
+              "char_501_durin",
+              "char_151_myrtle",
+              "char_4054_malist",
+              "char_4164_tecno"
+            ],
+            [
+              "char_4047_pianst"
+            ],
+            [],
+            []
+          ],
+          "reception": [],
+          "workshop": [],
+          "office": [
+            "char_436_whispr"
+          ],
+          "training": []
+        },
+        "efficiencyResources": {
+          "manufacturePerceptionInformation": 0,
+          "tradingPerceptionInformation": 0,
+          "additionalGoldProductionLines": 0,
+          "monsterCuisine": 0,
+          "worldlyFireworks": 0,
+          "suiFacilities": 0,
+          "droneCapacity": 235,
+          "extraWorkplaceOperatorIds": [],
+          "trainingOperatorIds": []
+        },
+        "controlOperatorIds": [
+          "char_4098_vvana",
+          "char_420_flamtl",
+          "char_4179_monstr",
+          "char_416_zumama",
+          "char_479_sleach"
+        ],
+        "zeroMoraleOperatorIds": [
+          "char_285_medic2"
+        ],
+        "workaholicOperatorIds": [],
+        "operatorMorale": {},
+        "operatorBackups": {},
+        "operatorGroups": [],
+        "droneTarget": "none"
+      },
+      "rows": [
+        {
+          "cell": "D93",
+          "facility": "manufacture",
+          "operators": [
+            "砾",
+            "阿罗玛",
+            "槐琥"
+          ],
+          "sheetBonus": 132,
+          "referenceBonus": 132,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D94",
+          "facility": "manufacture",
+          "operators": [
+            "温蒂",
+            "清流"
+          ],
+          "sheetBonus": 119,
+          "referenceBonus": 119,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D97",
+          "facility": "manufacture",
+          "operators": [
+            "红云",
+            "稀音",
+            "刻俄柏"
+          ],
+          "sheetBonus": 111.0,
+          "referenceBonus": 111.0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D98",
+          "facility": "manufacture",
+          "operators": [
+            "迷迭香",
+            "野鬃",
+            "灰毫"
+          ],
+          "sheetBonus": 151,
+          "referenceBonus": 151,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D99",
+          "facility": "manufacture",
+          "operators": [
+            "机械师",
+            "酒神",
+            "远牙"
+          ],
+          "sheetBonus": 122,
+          "referenceBonus": 122,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D102",
+          "facility": "trading",
+          "operators": [
+            "鸿雪",
+            "黑键"
+          ],
+          "sheetBonus": 63,
+          "referenceBonus": 63,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D103",
+          "facility": "trading",
+          "operators": [
+            "图耶"
+          ],
+          "sheetBonus": 51,
+          "referenceBonus": 51,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D106",
+          "facility": "power",
+          "operators": [
+            "承曦格雷伊"
+          ],
+          "sheetBonus": 28.0,
+          "referenceBonus": 28.0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D107",
+          "facility": "power",
+          "operators": [
+            "lancet-2"
+          ],
+          "sheetBonus": 0,
+          "referenceBonus": 0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        }
+      ]
+    },
+    {
+      "start": 90,
+      "label": "252钱书(2赤金)测试",
+      "side": "N",
+      "control": [
+        "歌蕾蒂娅",
+        "斩业星熊",
+        "诗怀雅",
+        "森蚺",
+        "八幡海铃"
+      ],
+      "config": {
+        "schemaVersion": 7,
+        "planName": "243 标准方案",
+        "hours": 24,
+        "rooms": [
+          {
+            "id": "N93",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_284_spot",
+              "char_4106_bryota",
+              "char_141_nights"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N94",
+            "type": "manufacture",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_400_weedy",
+              "char_385_finlpp"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N97",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_159_peacok",
+              "char_4048_doroth",
+              "char_1031_slent2"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N98",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_241_panda",
+              "char_263_skadi",
+              "char_4145_ulpia"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N99",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_1502_crosly",
+              "char_218_cuttle",
+              "char_143_ghost"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N102",
+            "type": "trading",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_4037_demetr",
+              "char_4045_heidi"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N103",
+            "type": "trading",
+            "level": 1,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_427_vigil"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N106",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_377_gdglow"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N107",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_253_greyy"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          }
+        ],
+        "facilities": {
+          "reception": 3,
+          "office": 3,
+          "training": 3,
+          "workshop": 3,
+          "dormitories": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "dormitoryOccupantCount": 20,
+        "facilityOperatorIds": {
+          "dormitories": [
+            [
+              "char_338_iris",
+              "char_501_durin",
+              "char_151_myrtle",
+              "char_4054_malist",
+              "char_4164_tecno"
+            ],
+            [
+              "char_4047_pianst"
+            ],
+            [],
+            []
+          ],
+          "reception": [],
+          "workshop": [],
+          "office": [
+            "char_180_amgoat"
+          ],
+          "training": []
+        },
+        "efficiencyResources": {
+          "manufacturePerceptionInformation": 0,
+          "tradingPerceptionInformation": 0,
+          "additionalGoldProductionLines": 0,
+          "monsterCuisine": 0,
+          "worldlyFireworks": 0,
+          "suiFacilities": 0,
+          "droneCapacity": 235,
+          "extraWorkplaceOperatorIds": [],
+          "trainingOperatorIds": []
+        },
+        "controlOperatorIds": [
+          "char_474_glady",
+          "char_1044_hsgma2",
+          "char_308_swire",
+          "char_416_zumama",
+          "char_4186_tmoris"
+        ],
+        "zeroMoraleOperatorIds": [],
+        "workaholicOperatorIds": [],
+        "operatorMorale": {},
+        "operatorBackups": {},
+        "operatorGroups": [],
+        "droneTarget": "none"
+      },
+      "rows": [
+        {
+          "cell": "N93",
+          "facility": "manufacture",
+          "operators": [
+            "斑点",
+            "苍苔",
+            "夜烟"
+          ],
+          "sheetBonus": 111.0,
+          "referenceBonus": 111.0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N94",
+          "facility": "manufacture",
+          "operators": [
+            "温蒂",
+            "清流"
+          ],
+          "sheetBonus": 105,
+          "referenceBonus": 75,
+          "referenceBasis": "15×2电站+40清流+2进驻+3中枢"
+        },
+        {
+          "cell": "N97",
+          "facility": "manufacture",
+          "operators": [
+            "断罪者",
+            "多萝西",
+            "淬羽赫默"
+          ],
+          "sheetBonus": 106,
+          "referenceBonus": 106,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N98",
+          "facility": "manufacture",
+          "operators": [
+            "食铁兽",
+            "斯卡蒂",
+            "乌尔比安"
+          ],
+          "sheetBonus": 121,
+          "referenceBonus": 121,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N99",
+          "facility": "manufacture",
+          "operators": [
+            "弑君者",
+            "安哲拉",
+            "幽灵鲨"
+          ],
+          "sheetBonus": 121,
+          "referenceBonus": 121,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N102",
+          "facility": "trading",
+          "operators": [
+            "贝洛内",
+            "海蒂"
+          ],
+          "sheetBonus": 89,
+          "referenceBonus": 89,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N103",
+          "facility": "trading",
+          "operators": [
+            "伺夜"
+          ],
+          "sheetBonus": 53,
+          "referenceBonus": 53,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N106",
+          "facility": "power",
+          "operators": [
+            "澄闪"
+          ],
+          "sheetBonus": 25,
+          "referenceBonus": 25,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N107",
+          "facility": "power",
+          "operators": [
+            "格雷伊"
+          ],
+          "sheetBonus": 25,
+          "referenceBonus": 25,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        }
+      ]
+    },
+    {
+      "start": 111,
+      "label": "342纯钱",
+      "side": "D",
+      "control": [
+        "歌蕾蒂娅",
+        "斩业星熊",
+        "诗怀雅",
+        "森蚺",
+        "琴柳"
+      ],
+      "config": {
+        "schemaVersion": 7,
+        "planName": "243 标准方案",
+        "hours": 24,
+        "rooms": [
+          {
+            "id": "D114",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_391_rosmon",
+              "char_446_aroma",
+              "char_243_waaifu"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D115",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_237_gravel",
+              "char_263_skadi",
+              "char_4145_ulpia"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D116",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_437_mizuki",
+              "char_218_cuttle",
+              "char_143_ghost"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D117",
+            "type": "manufacture",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_400_weedy",
+              "char_385_finlpp"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D120",
+            "type": "trading",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_478_kirara",
+              "char_4055_bgsnow",
+              "char_4046_ebnhlz"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D121",
+            "type": "trading",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_4193_lemuen",
+              "char_103_angel"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D122",
+            "type": "trading",
+            "level": 1,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_402_tuye"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D127",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_1027_greyy2"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D128",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_285_medic2"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          }
+        ],
+        "facilities": {
+          "reception": 3,
+          "office": 3,
+          "training": 3,
+          "workshop": 3,
+          "dormitories": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "dormitoryOccupantCount": 20,
+        "facilityOperatorIds": {
+          "dormitories": [
+            [
+              "char_338_iris",
+              "char_501_durin",
+              "char_151_myrtle",
+              "char_4054_malist",
+              "char_4164_tecno"
+            ],
+            [
+              "char_4047_pianst"
+            ],
+            [],
+            []
+          ],
+          "reception": [],
+          "workshop": [],
+          "office": [
+            "char_436_whispr"
+          ],
+          "training": []
+        },
+        "efficiencyResources": {
+          "manufacturePerceptionInformation": 0,
+          "tradingPerceptionInformation": 0,
+          "additionalGoldProductionLines": 0,
+          "monsterCuisine": 0,
+          "worldlyFireworks": 0,
+          "suiFacilities": 0,
+          "droneCapacity": 235,
+          "extraWorkplaceOperatorIds": [],
+          "trainingOperatorIds": []
+        },
+        "controlOperatorIds": [
+          "char_474_glady",
+          "char_1044_hsgma2",
+          "char_308_swire",
+          "char_416_zumama",
+          "char_479_sleach"
+        ],
+        "zeroMoraleOperatorIds": [
+          "char_285_medic2"
+        ],
+        "workaholicOperatorIds": [],
+        "operatorMorale": {},
+        "operatorBackups": {},
+        "operatorGroups": [],
+        "droneTarget": "none"
+      },
+      "rows": [
+        {
+          "cell": "D114",
+          "facility": "manufacture",
+          "operators": [
+            "迷迭香",
+            "阿罗玛",
+            "槐琥"
+          ],
+          "sheetBonus": 153,
+          "referenceBonus": 153,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D115",
+          "facility": "manufacture",
+          "operators": [
+            "砾",
+            "斯卡蒂",
+            "乌尔比安"
+          ],
+          "sheetBonus": 121,
+          "referenceBonus": 121,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D116",
+          "facility": "manufacture",
+          "operators": [
+            "水月",
+            "安哲拉",
+            "幽灵鲨"
+          ],
+          "sheetBonus": 116.0,
+          "referenceBonus": 116.0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D117",
+          "facility": "manufacture",
+          "operators": [
+            "温蒂",
+            "清流"
+          ],
+          "sheetBonus": 140,
+          "referenceBonus": 140,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D120",
+          "facility": "trading",
+          "operators": [
+            "绮良",
+            "鸿雪",
+            "黑键"
+          ],
+          "sheetBonus": 106,
+          "referenceBonus": 106,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D121",
+          "facility": "trading",
+          "operators": [
+            "蕾缪安",
+            "能天使"
+          ],
+          "sheetBonus": 89,
+          "referenceBonus": 89,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D122",
+          "facility": "trading",
+          "operators": [
+            "图耶"
+          ],
+          "sheetBonus": 103,
+          "referenceBonus": 103,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D127",
+          "facility": "power",
+          "operators": [
+            "承曦格雷伊"
+          ],
+          "sheetBonus": 28.0,
+          "referenceBonus": 28.0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D128",
+          "facility": "power",
+          "operators": [
+            "lancet-2"
+          ],
+          "sheetBonus": 0,
+          "referenceBonus": 0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        }
+      ]
+    },
+    {
+      "start": 111,
+      "label": "342纯钱",
+      "side": "N",
+      "control": [
+        "薇薇安娜",
+        "戴菲恩",
+        "阿斯卡纶",
+        "森蚺",
+        "八幡海铃"
+      ],
+      "config": {
+        "schemaVersion": 7,
+        "planName": "243 标准方案",
+        "hours": 24,
+        "rooms": [
+          {
+            "id": "N114",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_4062_totter",
+              "char_4048_doroth",
+              "char_1031_slent2"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N115",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_284_spot",
+              "char_4106_bryota",
+              "char_141_nights"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N116",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_430_fartth",
+              "char_496_wildmn",
+              "char_431_ashlok"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N117",
+            "type": "manufacture",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_400_weedy",
+              "char_385_finlpp"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N120",
+            "type": "trading",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_4037_demetr",
+              "char_4045_heidi",
+              "char_4203_kichi"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N121",
+            "type": "trading",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_112_siege",
+              "char_154_morgan"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N122",
+            "type": "trading",
+            "level": 1,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_427_vigil"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N127",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_377_gdglow"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N128",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_253_greyy"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          }
+        ],
+        "facilities": {
+          "reception": 3,
+          "office": 3,
+          "training": 3,
+          "workshop": 3,
+          "dormitories": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "dormitoryOccupantCount": 20,
+        "facilityOperatorIds": {
+          "dormitories": [
+            [
+              "char_338_iris",
+              "char_501_durin",
+              "char_151_myrtle",
+              "char_4054_malist",
+              "char_4164_tecno"
+            ],
+            [
+              "char_4047_pianst"
+            ],
+            [],
+            []
+          ],
+          "reception": [],
+          "workshop": [],
+          "office": [
+            "char_180_amgoat"
+          ],
+          "training": []
+        },
+        "efficiencyResources": {
+          "manufacturePerceptionInformation": 0,
+          "tradingPerceptionInformation": 0,
+          "additionalGoldProductionLines": 0,
+          "monsterCuisine": 0,
+          "worldlyFireworks": 0,
+          "suiFacilities": 0,
+          "droneCapacity": 235,
+          "extraWorkplaceOperatorIds": [],
+          "trainingOperatorIds": []
+        },
+        "controlOperatorIds": [
+          "char_4098_vvana",
+          "char_4110_delphn",
+          "char_4132_ascln",
+          "char_416_zumama",
+          "char_4186_tmoris"
+        ],
+        "zeroMoraleOperatorIds": [],
+        "workaholicOperatorIds": [],
+        "operatorMorale": {},
+        "operatorBackups": {},
+        "operatorGroups": [],
+        "droneTarget": "none"
+      },
+      "rows": [
+        {
+          "cell": "N114",
+          "facility": "manufacture",
+          "operators": [
+            "铅踝",
+            "多萝西",
+            "淬羽赫默"
+          ],
+          "sheetBonus": 98,
+          "referenceBonus": 98,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N115",
+          "facility": "manufacture",
+          "operators": [
+            "斑点",
+            "苍苔",
+            "夜烟"
+          ],
+          "sheetBonus": 108,
+          "referenceBonus": 108,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N116",
+          "facility": "manufacture",
+          "operators": [
+            "远牙",
+            "野鬃",
+            "灰毫"
+          ],
+          "sheetBonus": 99,
+          "referenceBonus": 99,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N117",
+          "facility": "manufacture",
+          "operators": [
+            "温蒂",
+            "清流"
+          ],
+          "sheetBonus": 122,
+          "referenceBonus": 92,
+          "referenceBasis": "15×2电站+60清流+2进驻"
+        },
+        {
+          "cell": "N120",
+          "facility": "trading",
+          "operators": [
+            "贝洛内",
+            "海蒂",
+            "吉星"
+          ],
+          "sheetBonus": 130,
+          "referenceBonus": 130,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N121",
+          "facility": "trading",
+          "operators": [
+            "推进之王",
+            "摩根"
+          ],
+          "sheetBonus": 104,
+          "referenceBonus": 104,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N122",
+          "facility": "trading",
+          "operators": [
+            "伺夜"
+          ],
+          "sheetBonus": 53,
+          "referenceBonus": 53,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N127",
+          "facility": "power",
+          "operators": [
+            "澄闪"
+          ],
+          "sheetBonus": 25,
+          "referenceBonus": 25,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N128",
+          "facility": "power",
+          "operators": [
+            "格雷伊"
+          ],
+          "sheetBonus": 25,
+          "referenceBonus": 25,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        }
+      ]
+    },
+    {
+      "start": 132,
+      "label": "342搓玉",
+      "side": "D",
+      "control": [
+        "歌蕾蒂娅",
+        "斩业星熊",
+        "诗怀雅",
+        "森蚺",
+        "琴柳"
+      ],
+      "config": {
+        "schemaVersion": 7,
+        "planName": "243 标准方案",
+        "hours": 24,
+        "rooms": [
+          {
+            "id": "D135",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_391_rosmon",
+              "char_446_aroma",
+              "char_243_waaifu"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D136",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_237_gravel",
+              "char_263_skadi",
+              "char_4145_ulpia"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D137",
+            "type": "manufacture",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_400_weedy",
+              "char_385_finlpp"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D140",
+            "type": "trading",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_4193_lemuen",
+              "char_103_angel"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D141",
+            "type": "trading",
+            "level": 1,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_402_tuye"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D146",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_4041_chnut",
+              "char_218_cuttle",
+              "char_143_ghost"
+            ],
+            "skillBonus": 0,
+            "product": "fragment",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D147",
+            "type": "trading",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_478_kirara",
+              "char_4055_bgsnow",
+              "char_4046_ebnhlz"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "orundum",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D148",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_1027_greyy2"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D149",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_285_medic2"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          }
+        ],
+        "facilities": {
+          "reception": 3,
+          "office": 3,
+          "training": 3,
+          "workshop": 3,
+          "dormitories": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "dormitoryOccupantCount": 20,
+        "facilityOperatorIds": {
+          "dormitories": [
+            [
+              "char_338_iris",
+              "char_501_durin",
+              "char_151_myrtle",
+              "char_4054_malist",
+              "char_4164_tecno"
+            ],
+            [
+              "char_4047_pianst"
+            ],
+            [],
+            []
+          ],
+          "reception": [],
+          "workshop": [],
+          "office": [
+            "char_436_whispr"
+          ],
+          "training": []
+        },
+        "efficiencyResources": {
+          "manufacturePerceptionInformation": 0,
+          "tradingPerceptionInformation": 0,
+          "additionalGoldProductionLines": 0,
+          "monsterCuisine": 0,
+          "worldlyFireworks": 0,
+          "suiFacilities": 0,
+          "droneCapacity": 235,
+          "extraWorkplaceOperatorIds": [],
+          "trainingOperatorIds": []
+        },
+        "controlOperatorIds": [
+          "char_474_glady",
+          "char_1044_hsgma2",
+          "char_308_swire",
+          "char_416_zumama",
+          "char_479_sleach"
+        ],
+        "zeroMoraleOperatorIds": [
+          "char_285_medic2"
+        ],
+        "workaholicOperatorIds": [],
+        "operatorMorale": {},
+        "operatorBackups": {},
+        "operatorGroups": [],
+        "droneTarget": "none"
+      },
+      "rows": [
+        {
+          "cell": "D135",
+          "facility": "manufacture",
+          "operators": [
+            "迷迭香",
+            "阿罗玛",
+            "槐琥"
+          ],
+          "sheetBonus": 153,
+          "referenceBonus": 153,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D136",
+          "facility": "manufacture",
+          "operators": [
+            "砾",
+            "斯卡蒂",
+            "乌尔比安"
+          ],
+          "sheetBonus": 121,
+          "referenceBonus": 121,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D137",
+          "facility": "manufacture",
+          "operators": [
+            "温蒂",
+            "清流"
+          ],
+          "sheetBonus": 140,
+          "referenceBonus": 140,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D140",
+          "facility": "trading",
+          "operators": [
+            "蕾缪安",
+            "能天使"
+          ],
+          "sheetBonus": 89,
+          "referenceBonus": 89,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D141",
+          "facility": "trading",
+          "operators": [
+            "图耶"
+          ],
+          "sheetBonus": 73,
+          "referenceBonus": 73,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D146",
+          "facility": "manufacture",
+          "operators": [
+            "褐果",
+            "安哲拉",
+            "幽灵鲨"
+          ],
+          "sheetBonus": 128,
+          "referenceBonus": 131,
+          "referenceBasis": "15+30褐果+80深海+3进驻+3中枢"
+        },
+        {
+          "cell": "D147",
+          "facility": "trading",
+          "operators": [
+            "绮良",
+            "鸿雪",
+            "黑键"
+          ],
+          "sheetBonus": 91,
+          "referenceBonus": 91,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D148",
+          "facility": "power",
+          "operators": [
+            "承曦格雷伊"
+          ],
+          "sheetBonus": 28.0,
+          "referenceBonus": 28.0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D149",
+          "facility": "power",
+          "operators": [
+            "lancet-2"
+          ],
+          "sheetBonus": 0,
+          "referenceBonus": 0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        }
+      ]
+    },
+    {
+      "start": 132,
+      "label": "342搓玉",
+      "side": "N",
+      "control": [
+        "玛恩纳",
+        "戴菲恩",
+        "阿斯卡纶",
+        "薇薇安娜",
+        "八幡海铃"
+      ],
+      "config": {
+        "schemaVersion": 7,
+        "planName": "243 标准方案",
+        "hours": 24,
+        "rooms": [
+          {
+            "id": "N135",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_437_mizuki",
+              "char_4048_doroth",
+              "char_1031_slent2"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N136",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_284_spot",
+              "char_4106_bryota",
+              "char_141_nights"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N137",
+            "type": "manufacture",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_400_weedy",
+              "char_385_finlpp"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N140",
+            "type": "trading",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_112_siege",
+              "char_154_morgan"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N141",
+            "type": "trading",
+            "level": 1,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_427_vigil"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N146",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_121_lava",
+              "char_183_skgoat",
+              "char_388_mint"
+            ],
+            "skillBonus": 0,
+            "product": "fragment",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N147",
+            "type": "trading",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_4037_demetr",
+              "char_4045_heidi",
+              "char_4203_kichi"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "orundum",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N148",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_377_gdglow"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N149",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_253_greyy"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          }
+        ],
+        "facilities": {
+          "reception": 3,
+          "office": 3,
+          "training": 3,
+          "workshop": 3,
+          "dormitories": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "dormitoryOccupantCount": 20,
+        "facilityOperatorIds": {
+          "dormitories": [
+            [
+              "char_338_iris",
+              "char_501_durin",
+              "char_151_myrtle",
+              "char_4054_malist",
+              "char_4164_tecno"
+            ],
+            [
+              "char_4047_pianst"
+            ],
+            [],
+            []
+          ],
+          "reception": [],
+          "workshop": [],
+          "office": [
+            "char_180_amgoat"
+          ],
+          "training": []
+        },
+        "efficiencyResources": {
+          "manufacturePerceptionInformation": 0,
+          "tradingPerceptionInformation": 0,
+          "additionalGoldProductionLines": 0,
+          "monsterCuisine": 0,
+          "worldlyFireworks": 0,
+          "suiFacilities": 0,
+          "droneCapacity": 235,
+          "extraWorkplaceOperatorIds": [],
+          "trainingOperatorIds": []
+        },
+        "controlOperatorIds": [
+          "char_4064_mlynar",
+          "char_4110_delphn",
+          "char_4132_ascln",
+          "char_4098_vvana",
+          "char_4186_tmoris"
+        ],
+        "zeroMoraleOperatorIds": [],
+        "workaholicOperatorIds": [],
+        "operatorMorale": {},
+        "operatorBackups": {},
+        "operatorGroups": [],
+        "droneTarget": "none"
+      },
+      "rows": [
+        {
+          "cell": "N135",
+          "facility": "manufacture",
+          "operators": [
+            "水月",
+            "多萝西",
+            "淬羽赫默"
+          ],
+          "sheetBonus": 98,
+          "referenceBonus": 98,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N136",
+          "facility": "manufacture",
+          "operators": [
+            "斑点",
+            "苍苔",
+            "夜烟"
+          ],
+          "sheetBonus": 108,
+          "referenceBonus": 108,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N137",
+          "facility": "manufacture",
+          "operators": [
+            "温蒂",
+            "清流"
+          ],
+          "sheetBonus": 122,
+          "referenceBonus": 92,
+          "referenceBasis": "15×2电站+60清流+2进驻；该侧中枢无森蚺"
+        },
+        {
+          "cell": "N140",
+          "facility": "trading",
+          "operators": [
+            "推进之王",
+            "摩根"
+          ],
+          "sheetBonus": 104,
+          "referenceBonus": 104,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N141",
+          "facility": "trading",
+          "operators": [
+            "伺夜"
+          ],
+          "sheetBonus": 53,
+          "referenceBonus": 53,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N146",
+          "facility": "manufacture",
+          "operators": [
+            "炎熔",
+            "地灵",
+            "薄绿"
+          ],
+          "sheetBonus": 105,
+          "referenceBonus": 103,
+          "referenceBasis": "35炎熔+35地灵+30薄绿+3进驻"
+        },
+        {
+          "cell": "N147",
+          "facility": "trading",
+          "operators": [
+            "贝洛内",
+            "海蒂",
+            "吉星"
+          ],
+          "sheetBonus": 130,
+          "referenceBonus": 130,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N148",
+          "facility": "power",
+          "operators": [
+            "澄闪"
+          ],
+          "sheetBonus": 25,
+          "referenceBonus": 25,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N149",
+          "facility": "power",
+          "operators": [
+            "格雷伊"
+          ],
+          "sheetBonus": 25,
+          "referenceBonus": 25,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        }
+      ]
+    },
+    {
+      "start": 153,
+      "label": "342搓玉(一狗粮)",
+      "side": "D",
+      "control": [
+        "歌蕾蒂娅",
+        "斩业星熊",
+        "诗怀雅",
+        "森蚺",
+        "琴柳"
+      ],
+      "config": {
+        "schemaVersion": 7,
+        "planName": "243 标准方案",
+        "hours": 24,
+        "rooms": [
+          {
+            "id": "D156",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_4230_mcnist",
+              "char_263_skadi",
+              "char_4145_ulpia"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D158",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_391_rosmon",
+              "char_446_aroma",
+              "char_243_waaifu"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D159",
+            "type": "manufacture",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_400_weedy",
+              "char_385_finlpp"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D162",
+            "type": "trading",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_4193_lemuen",
+              "char_103_angel"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D163",
+            "type": "trading",
+            "level": 1,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_402_tuye"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D168",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_4041_chnut",
+              "char_218_cuttle",
+              "char_143_ghost"
+            ],
+            "skillBonus": 0,
+            "product": "fragment",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D169",
+            "type": "trading",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_478_kirara",
+              "char_4055_bgsnow",
+              "char_4046_ebnhlz"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "orundum",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D170",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_1027_greyy2"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D171",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_285_medic2"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          }
+        ],
+        "facilities": {
+          "reception": 3,
+          "office": 3,
+          "training": 3,
+          "workshop": 3,
+          "dormitories": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "dormitoryOccupantCount": 20,
+        "facilityOperatorIds": {
+          "dormitories": [
+            [
+              "char_338_iris",
+              "char_501_durin",
+              "char_151_myrtle",
+              "char_4054_malist",
+              "char_4164_tecno"
+            ],
+            [
+              "char_4047_pianst"
+            ],
+            [],
+            []
+          ],
+          "reception": [],
+          "workshop": [],
+          "office": [
+            "char_436_whispr"
+          ],
+          "training": []
+        },
+        "efficiencyResources": {
+          "manufacturePerceptionInformation": 0,
+          "tradingPerceptionInformation": 0,
+          "additionalGoldProductionLines": 0,
+          "monsterCuisine": 0,
+          "worldlyFireworks": 0,
+          "suiFacilities": 0,
+          "droneCapacity": 235,
+          "extraWorkplaceOperatorIds": [],
+          "trainingOperatorIds": []
+        },
+        "controlOperatorIds": [
+          "char_474_glady",
+          "char_1044_hsgma2",
+          "char_308_swire",
+          "char_416_zumama",
+          "char_479_sleach"
+        ],
+        "zeroMoraleOperatorIds": [
+          "char_285_medic2"
+        ],
+        "workaholicOperatorIds": [],
+        "operatorMorale": {},
+        "operatorBackups": {},
+        "operatorGroups": [],
+        "droneTarget": "none"
+      },
+      "rows": [
+        {
+          "cell": "D156",
+          "facility": "manufacture",
+          "operators": [
+            "机械师",
+            "斯卡蒂",
+            "乌尔比安"
+          ],
+          "sheetBonus": 126,
+          "referenceBonus": 126,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D158",
+          "facility": "manufacture",
+          "operators": [
+            "迷迭香",
+            "阿罗玛",
+            "槐琥"
+          ],
+          "sheetBonus": 153,
+          "referenceBonus": 153,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D159",
+          "facility": "manufacture",
+          "operators": [
+            "温蒂",
+            "清流"
+          ],
+          "sheetBonus": 140,
+          "referenceBonus": 140,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D162",
+          "facility": "trading",
+          "operators": [
+            "蕾缪安",
+            "能天使"
+          ],
+          "sheetBonus": 89,
+          "referenceBonus": 89,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D163",
+          "facility": "trading",
+          "operators": [
+            "图耶"
+          ],
+          "sheetBonus": 73,
+          "referenceBonus": 73,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D168",
+          "facility": "manufacture",
+          "operators": [
+            "褐果",
+            "安哲拉",
+            "幽灵鲨"
+          ],
+          "sheetBonus": 128,
+          "referenceBonus": 131,
+          "referenceBasis": "15+30褐果+80深海+3进驻+3中枢"
+        },
+        {
+          "cell": "D169",
+          "facility": "trading",
+          "operators": [
+            "绮良",
+            "鸿雪",
+            "黑键"
+          ],
+          "sheetBonus": 91,
+          "referenceBonus": 86,
+          "referenceBasis": "5绮良+8×5鸿雪+31黑键+3进驻+7中枢"
+        },
+        {
+          "cell": "D170",
+          "facility": "power",
+          "operators": [
+            "承曦格雷伊"
+          ],
+          "sheetBonus": 28.0,
+          "referenceBonus": 28.0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D171",
+          "facility": "power",
+          "operators": [
+            "lancet-2"
+          ],
+          "sheetBonus": 0,
+          "referenceBonus": 0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        }
+      ]
+    },
+    {
+      "start": 153,
+      "label": "342搓玉(一狗粮)",
+      "side": "N",
+      "control": [
+        "玛恩纳",
+        "戴菲恩",
+        "阿斯卡纶",
+        "丰川祥子",
+        "八幡海铃"
+      ],
+      "config": {
+        "schemaVersion": 7,
+        "planName": "243 标准方案",
+        "hours": 24,
+        "rooms": [
+          {
+            "id": "N156",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_1502_crosly",
+              "char_159_peacok",
+              "char_1042_phatm2"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N158",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_284_spot",
+              "char_4106_bryota",
+              "char_237_gravel"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N159",
+            "type": "manufacture",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_400_weedy",
+              "char_385_finlpp"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N162",
+            "type": "trading",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_112_siege",
+              "char_154_morgan"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N163",
+            "type": "trading",
+            "level": 1,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_427_vigil"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N168",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_121_lava",
+              "char_183_skgoat",
+              "char_388_mint"
+            ],
+            "skillBonus": 0,
+            "product": "fragment",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N169",
+            "type": "trading",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_4037_demetr",
+              "char_4045_heidi",
+              "char_4203_kichi"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "orundum",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N170",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_377_gdglow"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N171",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_253_greyy"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          }
+        ],
+        "facilities": {
+          "reception": 3,
+          "office": 3,
+          "training": 3,
+          "workshop": 3,
+          "dormitories": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "dormitoryOccupantCount": 20,
+        "facilityOperatorIds": {
+          "dormitories": [
+            [
+              "char_338_iris",
+              "char_501_durin",
+              "char_151_myrtle",
+              "char_4054_malist",
+              "char_4164_tecno"
+            ],
+            [
+              "char_4047_pianst"
+            ],
+            [],
+            []
+          ],
+          "reception": [],
+          "workshop": [],
+          "office": [
+            "char_180_amgoat"
+          ],
+          "training": []
+        },
+        "efficiencyResources": {
+          "manufacturePerceptionInformation": 0,
+          "tradingPerceptionInformation": 0,
+          "additionalGoldProductionLines": 0,
+          "monsterCuisine": 0,
+          "worldlyFireworks": 0,
+          "suiFacilities": 0,
+          "droneCapacity": 235,
+          "extraWorkplaceOperatorIds": [],
+          "trainingOperatorIds": []
+        },
+        "controlOperatorIds": [
+          "char_4064_mlynar",
+          "char_4110_delphn",
+          "char_4132_ascln",
+          "char_4182_oblvns",
+          "char_4186_tmoris"
+        ],
+        "zeroMoraleOperatorIds": [],
+        "workaholicOperatorIds": [],
+        "operatorMorale": {},
+        "operatorBackups": {},
+        "operatorGroups": [],
+        "droneTarget": "none"
+      },
+      "rows": [
+        {
+          "cell": "N156",
+          "facility": "manufacture",
+          "operators": [
+            "弑君者",
+            "断罪者",
+            "酒神"
+          ],
+          "sheetBonus": 108,
+          "referenceBonus": 108,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N158",
+          "facility": "manufacture",
+          "operators": [
+            "斑点",
+            "苍苔",
+            "砾"
+          ],
+          "sheetBonus": 108,
+          "referenceBonus": 114,
+          "referenceBasis": "30斑点+30苍苔+35砾+15标准化联动+3进驻+1丰川祥子"
+        },
+        {
+          "cell": "N159",
+          "facility": "manufacture",
+          "operators": [
+            "温蒂",
+            "清流"
+          ],
+          "sheetBonus": 122,
+          "referenceBonus": 93,
+          "referenceBasis": "15×2电站+60清流+2进驻+1丰川祥子；有效电站若4则123"
+        },
+        {
+          "cell": "N162",
+          "facility": "trading",
+          "operators": [
+            "推进之王",
+            "摩根"
+          ],
+          "sheetBonus": 104,
+          "referenceBonus": 104,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N163",
+          "facility": "trading",
+          "operators": [
+            "伺夜"
+          ],
+          "sheetBonus": 53,
+          "referenceBonus": 53,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N168",
+          "facility": "manufacture",
+          "operators": [
+            "炎熔",
+            "地灵",
+            "薄绿"
+          ],
+          "sheetBonus": 105,
+          "referenceBonus": 103,
+          "referenceBasis": "35炎熔+35地灵+30薄绿+3进驻"
+        },
+        {
+          "cell": "N169",
+          "facility": "trading",
+          "operators": [
+            "贝洛内",
+            "海蒂",
+            "吉星"
+          ],
+          "sheetBonus": 130,
+          "referenceBonus": 130,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N170",
+          "facility": "power",
+          "operators": [
+            "澄闪"
+          ],
+          "sheetBonus": 25,
+          "referenceBonus": 25,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N171",
+          "facility": "power",
+          "operators": [
+            "格雷伊"
+          ],
+          "sheetBonus": 25,
+          "referenceBonus": 25,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        }
+      ]
+    },
+    {
+      "start": 175,
+      "label": "252搓玉",
+      "side": "D",
+      "control": [
+        "歌蕾蒂娅",
+        "斩业星熊",
+        "诗怀雅",
+        "森蚺",
+        "琴柳"
+      ],
+      "config": {
+        "schemaVersion": 7,
+        "planName": "243 标准方案",
+        "hours": 24,
+        "rooms": [
+          {
+            "id": "D178",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_237_gravel",
+              "char_446_aroma",
+              "char_243_waaifu"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D179",
+            "type": "manufacture",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_400_weedy",
+              "char_385_finlpp"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D182",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_4230_mcnist",
+              "char_218_cuttle",
+              "char_143_ghost"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D183",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_391_rosmon",
+              "char_263_skadi",
+              "char_4145_ulpia"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D186",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_4041_chnut",
+              "char_183_skgoat",
+              "char_180_amgoat"
+            ],
+            "skillBonus": 0,
+            "product": "fragment",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D187",
+            "type": "trading",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_4055_bgsnow",
+              "char_4046_ebnhlz"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D188",
+            "type": "trading",
+            "level": 1,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_402_tuye"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D191",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_1027_greyy2"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D192",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_285_medic2"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          }
+        ],
+        "facilities": {
+          "reception": 3,
+          "office": 3,
+          "training": 3,
+          "workshop": 3,
+          "dormitories": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "dormitoryOccupantCount": 20,
+        "facilityOperatorIds": {
+          "dormitories": [
+            [
+              "char_338_iris",
+              "char_501_durin",
+              "char_151_myrtle",
+              "char_4054_malist",
+              "char_4164_tecno"
+            ],
+            [
+              "char_4047_pianst"
+            ],
+            [],
+            []
+          ],
+          "reception": [],
+          "workshop": [],
+          "office": [
+            "char_436_whispr"
+          ],
+          "training": []
+        },
+        "efficiencyResources": {
+          "manufacturePerceptionInformation": 0,
+          "tradingPerceptionInformation": 0,
+          "additionalGoldProductionLines": 0,
+          "monsterCuisine": 0,
+          "worldlyFireworks": 0,
+          "suiFacilities": 0,
+          "droneCapacity": 235,
+          "extraWorkplaceOperatorIds": [],
+          "trainingOperatorIds": []
+        },
+        "controlOperatorIds": [
+          "char_474_glady",
+          "char_1044_hsgma2",
+          "char_308_swire",
+          "char_416_zumama",
+          "char_479_sleach"
+        ],
+        "zeroMoraleOperatorIds": [
+          "char_285_medic2"
+        ],
+        "workaholicOperatorIds": [],
+        "operatorMorale": {},
+        "operatorBackups": {},
+        "operatorGroups": [],
+        "droneTarget": "none"
+      },
+      "rows": [
+        {
+          "cell": "D178",
+          "facility": "manufacture",
+          "operators": [
+            "砾",
+            "阿罗玛",
+            "槐琥"
+          ],
+          "sheetBonus": 126,
+          "referenceBonus": 126,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D179",
+          "facility": "manufacture",
+          "operators": [
+            "温蒂",
+            "清流"
+          ],
+          "sheetBonus": 120,
+          "referenceBonus": 120,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D182",
+          "facility": "manufacture",
+          "operators": [
+            "机械师",
+            "安哲拉",
+            "幽灵鲨"
+          ],
+          "sheetBonus": 121,
+          "referenceBonus": 126,
+          "referenceBasis": "40机械师+80深海+3进驻+3中枢"
+        },
+        {
+          "cell": "D183",
+          "facility": "manufacture",
+          "operators": [
+            "迷迭香",
+            "斯卡蒂",
+            "乌尔比安"
+          ],
+          "sheetBonus": 148,
+          "referenceBonus": 148,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D186",
+          "facility": "manufacture",
+          "operators": [
+            "褐果",
+            "地灵",
+            "艾雅法拉"
+          ],
+          "sheetBonus": 121,
+          "referenceBonus": 121,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D187",
+          "facility": "trading",
+          "operators": [
+            "鸿雪",
+            "黑键"
+          ],
+          "sheetBonus": 70,
+          "referenceBonus": 70,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D188",
+          "facility": "trading",
+          "operators": [
+            "图耶"
+          ],
+          "sheetBonus": 58.0,
+          "referenceBonus": 58.0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D191",
+          "facility": "power",
+          "operators": [
+            "承曦格雷伊"
+          ],
+          "sheetBonus": 28.0,
+          "referenceBonus": 28.0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D192",
+          "facility": "power",
+          "operators": [
+            "lancet-2"
+          ],
+          "sheetBonus": 0,
+          "referenceBonus": 0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        }
+      ]
+    },
+    {
+      "start": 175,
+      "label": "252搓玉",
+      "side": "N",
+      "control": [
+        "薇薇安娜",
+        "焰尾",
+        "阿斯卡纶",
+        "森蚺",
+        "八幡海铃"
+      ],
+      "config": {
+        "schemaVersion": 7,
+        "planName": "243 标准方案",
+        "hours": 24,
+        "rooms": [
+          {
+            "id": "N178",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_284_spot",
+              "char_4106_bryota",
+              "char_141_nights"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N179",
+            "type": "manufacture",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_400_weedy",
+              "char_385_finlpp"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N182",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_430_fartth",
+              "char_1042_phatm2",
+              "char_159_peacok"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N183",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_1502_crosly",
+              "char_496_wildmn",
+              "char_431_ashlok"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N186",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_121_lava",
+              "char_388_mint",
+              "char_283_midn"
+            ],
+            "skillBonus": 0,
+            "product": "fragment",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N187",
+            "type": "trading",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_4037_demetr",
+              "char_4045_heidi"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N188",
+            "type": "trading",
+            "level": 1,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_427_vigil"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N191",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_377_gdglow"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N192",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_253_greyy"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          }
+        ],
+        "facilities": {
+          "reception": 3,
+          "office": 3,
+          "training": 3,
+          "workshop": 3,
+          "dormitories": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "dormitoryOccupantCount": 20,
+        "facilityOperatorIds": {
+          "dormitories": [
+            [
+              "char_338_iris",
+              "char_501_durin",
+              "char_151_myrtle",
+              "char_4054_malist",
+              "char_4164_tecno"
+            ],
+            [
+              "char_4047_pianst"
+            ],
+            [],
+            []
+          ],
+          "reception": [],
+          "workshop": [],
+          "office": [
+            "char_180_amgoat"
+          ],
+          "training": []
+        },
+        "efficiencyResources": {
+          "manufacturePerceptionInformation": 0,
+          "tradingPerceptionInformation": 0,
+          "additionalGoldProductionLines": 0,
+          "monsterCuisine": 0,
+          "worldlyFireworks": 0,
+          "suiFacilities": 0,
+          "droneCapacity": 235,
+          "extraWorkplaceOperatorIds": [],
+          "trainingOperatorIds": []
+        },
+        "controlOperatorIds": [
+          "char_4098_vvana",
+          "char_420_flamtl",
+          "char_4132_ascln",
+          "char_416_zumama",
+          "char_4186_tmoris"
+        ],
+        "zeroMoraleOperatorIds": [],
+        "workaholicOperatorIds": [],
+        "operatorMorale": {},
+        "operatorBackups": {},
+        "operatorGroups": [],
+        "droneTarget": "none"
+      },
+      "rows": [
+        {
+          "cell": "N178",
+          "facility": "manufacture",
+          "operators": [
+            "斑点",
+            "苍苔",
+            "夜烟"
+          ],
+          "sheetBonus": 108,
+          "referenceBonus": 108,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N179",
+          "facility": "manufacture",
+          "operators": [
+            "温蒂",
+            "清流"
+          ],
+          "sheetBonus": 102,
+          "referenceBonus": 72,
+          "referenceBasis": "15×2电站+40清流+2进驻"
+        },
+        {
+          "cell": "N182",
+          "facility": "manufacture",
+          "operators": [
+            "远牙",
+            "酒神",
+            "断罪者"
+          ],
+          "sheetBonus": 115.0,
+          "referenceBonus": 115.0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N183",
+          "facility": "manufacture",
+          "operators": [
+            "弑君者",
+            "野鬃",
+            "灰毫"
+          ],
+          "sheetBonus": 122,
+          "referenceBonus": 122,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N186",
+          "facility": "manufacture",
+          "operators": [
+            "炎熔",
+            "薄绿",
+            "月见夜"
+          ],
+          "sheetBonus": 108,
+          "referenceBonus": 98,
+          "referenceBasis": "35炎熔+30薄绿+30月见夜+3进驻"
+        },
+        {
+          "cell": "N187",
+          "facility": "trading",
+          "operators": [
+            "贝洛内",
+            "海蒂"
+          ],
+          "sheetBonus": 89,
+          "referenceBonus": 89,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N188",
+          "facility": "trading",
+          "operators": [
+            "伺夜"
+          ],
+          "sheetBonus": 53,
+          "referenceBonus": 53,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N191",
+          "facility": "power",
+          "operators": [
+            "澄闪"
+          ],
+          "sheetBonus": 25,
+          "referenceBonus": 25,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N192",
+          "facility": "power",
+          "operators": [
+            "格雷伊"
+          ],
+          "sheetBonus": 25,
+          "referenceBonus": 25,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        }
+      ]
+    },
+    {
+      "start": 196,
+      "label": "342卖玉",
+      "side": "D",
+      "control": [
+        "歌蕾蒂娅",
+        "斩业星熊",
+        "诗怀雅",
+        "森蚺",
+        "琴柳"
+      ],
+      "config": {
+        "schemaVersion": 7,
+        "planName": "243 标准方案",
+        "hours": 24,
+        "rooms": [
+          {
+            "id": "D199",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_391_rosmon",
+              "char_446_aroma",
+              "char_243_waaifu"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D200",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_237_gravel",
+              "char_263_skadi",
+              "char_4145_ulpia"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D201",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_437_mizuki",
+              "char_218_cuttle",
+              "char_143_ghost"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D202",
+            "type": "manufacture",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_400_weedy",
+              "char_385_finlpp"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D205",
+            "type": "trading",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_4193_lemuen",
+              "char_103_angel"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D206",
+            "type": "trading",
+            "level": 1,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_402_tuye"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D211",
+            "type": "trading",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_478_kirara",
+              "char_4055_bgsnow",
+              "char_4046_ebnhlz"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "orundum",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D212",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_1027_greyy2"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "D213",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_285_medic2"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          }
+        ],
+        "facilities": {
+          "reception": 3,
+          "office": 3,
+          "training": 3,
+          "workshop": 3,
+          "dormitories": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "dormitoryOccupantCount": 20,
+        "facilityOperatorIds": {
+          "dormitories": [
+            [
+              "char_338_iris",
+              "char_501_durin",
+              "char_151_myrtle",
+              "char_4054_malist",
+              "char_4164_tecno"
+            ],
+            [
+              "char_4047_pianst"
+            ],
+            [],
+            []
+          ],
+          "reception": [],
+          "workshop": [],
+          "office": [
+            "char_436_whispr"
+          ],
+          "training": []
+        },
+        "efficiencyResources": {
+          "manufacturePerceptionInformation": 0,
+          "tradingPerceptionInformation": 0,
+          "additionalGoldProductionLines": 0,
+          "monsterCuisine": 0,
+          "worldlyFireworks": 0,
+          "suiFacilities": 0,
+          "droneCapacity": 235,
+          "extraWorkplaceOperatorIds": [],
+          "trainingOperatorIds": []
+        },
+        "controlOperatorIds": [
+          "char_474_glady",
+          "char_1044_hsgma2",
+          "char_308_swire",
+          "char_416_zumama",
+          "char_479_sleach"
+        ],
+        "zeroMoraleOperatorIds": [
+          "char_285_medic2"
+        ],
+        "workaholicOperatorIds": [],
+        "operatorMorale": {},
+        "operatorBackups": {},
+        "operatorGroups": [],
+        "droneTarget": "none"
+      },
+      "rows": [
+        {
+          "cell": "D199",
+          "facility": "manufacture",
+          "operators": [
+            "迷迭香",
+            "阿罗玛",
+            "槐琥"
+          ],
+          "sheetBonus": 153,
+          "referenceBonus": 153,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D200",
+          "facility": "manufacture",
+          "operators": [
+            "砾",
+            "斯卡蒂",
+            "乌尔比安"
+          ],
+          "sheetBonus": 121,
+          "referenceBonus": 121,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D201",
+          "facility": "manufacture",
+          "operators": [
+            "水月",
+            "安哲拉",
+            "幽灵鲨"
+          ],
+          "sheetBonus": 111.0,
+          "referenceBonus": 116,
+          "referenceBasis": "25水月+5标准化联动+80深海+3进驻+3中枢"
+        },
+        {
+          "cell": "D202",
+          "facility": "manufacture",
+          "operators": [
+            "温蒂",
+            "清流"
+          ],
+          "sheetBonus": 140,
+          "referenceBonus": 140,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D205",
+          "facility": "trading",
+          "operators": [
+            "蕾缪安",
+            "能天使"
+          ],
+          "sheetBonus": 89,
+          "referenceBonus": 89,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D206",
+          "facility": "trading",
+          "operators": [
+            "图耶"
+          ],
+          "sheetBonus": 103,
+          "referenceBonus": 103,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D211",
+          "facility": "trading",
+          "operators": [
+            "绮良",
+            "鸿雪",
+            "黑键"
+          ],
+          "sheetBonus": 106,
+          "referenceBonus": 106,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D212",
+          "facility": "power",
+          "operators": [
+            "承曦格雷伊"
+          ],
+          "sheetBonus": 28.0,
+          "referenceBonus": 28.0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "D213",
+          "facility": "power",
+          "operators": [
+            "lancet-2"
+          ],
+          "sheetBonus": 0,
+          "referenceBonus": 0,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        }
+      ]
+    },
+    {
+      "start": 196,
+      "label": "342卖玉",
+      "side": "N",
+      "control": [
+        "薇薇安娜",
+        "戴菲恩",
+        "阿斯卡纶",
+        "玛恩纳",
+        "八幡海铃"
+      ],
+      "config": {
+        "schemaVersion": 7,
+        "planName": "243 标准方案",
+        "hours": 24,
+        "rooms": [
+          {
+            "id": "N199",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_4062_totter",
+              "char_381_bubble",
+              "char_163_hpsts"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N200",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_284_spot",
+              "char_4106_bryota",
+              "char_141_nights"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N201",
+            "type": "manufacture",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_128_plosis",
+              "char_496_wildmn",
+              "char_431_ashlok"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N202",
+            "type": "manufacture",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_4105_almond",
+              "char_385_finlpp"
+            ],
+            "skillBonus": 0,
+            "product": "gold",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N205",
+            "type": "trading",
+            "level": 2,
+            "operatorCount": 2,
+            "operatorIds": [
+              "char_112_siege",
+              "char_154_morgan"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N206",
+            "type": "trading",
+            "level": 1,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_427_vigil"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N211",
+            "type": "trading",
+            "level": 3,
+            "operatorCount": 3,
+            "operatorIds": [
+              "char_4037_demetr",
+              "char_4045_heidi",
+              "char_4203_kichi"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "orundum",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N212",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_377_gdglow"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          },
+          {
+            "id": "N213",
+            "type": "power",
+            "level": 3,
+            "operatorCount": 1,
+            "operatorIds": [
+              "char_253_greyy"
+            ],
+            "skillBonus": 0,
+            "product": "exp",
+            "strategy": "gold",
+            "quality": "normal",
+            "specialOrder": "none",
+            "powerStaffed": false
+          }
+        ],
+        "facilities": {
+          "reception": 3,
+          "office": 3,
+          "training": 3,
+          "workshop": 3,
+          "dormitories": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "dormitoryOccupantCount": 20,
+        "facilityOperatorIds": {
+          "dormitories": [
+            [
+              "char_338_iris",
+              "char_501_durin",
+              "char_151_myrtle",
+              "char_4054_malist",
+              "char_4164_tecno"
+            ],
+            [
+              "char_4047_pianst"
+            ],
+            [],
+            []
+          ],
+          "reception": [],
+          "workshop": [],
+          "office": [
+            "char_180_amgoat"
+          ],
+          "training": []
+        },
+        "efficiencyResources": {
+          "manufacturePerceptionInformation": 0,
+          "tradingPerceptionInformation": 0,
+          "additionalGoldProductionLines": 0,
+          "monsterCuisine": 0,
+          "worldlyFireworks": 0,
+          "suiFacilities": 0,
+          "droneCapacity": 235,
+          "extraWorkplaceOperatorIds": [],
+          "trainingOperatorIds": []
+        },
+        "controlOperatorIds": [
+          "char_4098_vvana",
+          "char_4110_delphn",
+          "char_4132_ascln",
+          "char_4064_mlynar",
+          "char_4186_tmoris"
+        ],
+        "zeroMoraleOperatorIds": [],
+        "workaholicOperatorIds": [],
+        "operatorMorale": {},
+        "operatorBackups": {},
+        "operatorGroups": [],
+        "droneTarget": "none"
+      },
+      "rows": [
+        {
+          "cell": "N199",
+          "facility": "manufacture",
+          "operators": [
+            "铅踝",
+            "泡泡",
+            "火神"
+          ],
+          "sheetBonus": 105,
+          "referenceBonus": 95,
+          "referenceBasis": "30满心情铅踝+10泡泡基础容量转换+19×3火神容量转换-5火神+3进驻"
+        },
+        {
+          "cell": "N200",
+          "facility": "manufacture",
+          "operators": [
+            "斑点",
+            "苍苔",
+            "夜烟"
+          ],
+          "sheetBonus": 108,
+          "referenceBonus": 108,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N201",
+          "facility": "manufacture",
+          "operators": [
+            "白面鸮",
+            "野鬃",
+            "灰毫"
+          ],
+          "sheetBonus": 94,
+          "referenceBonus": 92,
+          "referenceBasis": "25白面鸮+25野鬃+25灰毫+14骑士+3进驻"
+        },
+        {
+          "cell": "N202",
+          "facility": "manufacture",
+          "operators": [
+            "杏仁",
+            "清流"
+          ],
+          "sheetBonus": 100,
+          "referenceBonus": 89,
+          "referenceBasis": "25杏仁+2×1黑钢+60清流+2进驻；黑钢1至3人时89/91/93"
+        },
+        {
+          "cell": "N205",
+          "facility": "trading",
+          "operators": [
+            "推进之王",
+            "摩根"
+          ],
+          "sheetBonus": 104,
+          "referenceBonus": 104,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N206",
+          "facility": "trading",
+          "operators": [
+            "伺夜"
+          ],
+          "sheetBonus": 53,
+          "referenceBonus": 53,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N211",
+          "facility": "trading",
+          "operators": [
+            "贝洛内",
+            "海蒂",
+            "吉星"
+          ],
+          "sheetBonus": 130,
+          "referenceBonus": 130,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N212",
+          "facility": "power",
+          "operators": [
+            "澄闪"
+          ],
+          "sheetBonus": 25,
+          "referenceBonus": 25,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        },
+        {
+          "cell": "N213",
+          "facility": "power",
+          "operators": [
+            "格雷伊"
+          ],
+          "sheetBonus": 25,
+          "referenceBonus": 25,
+          "referenceBasis": "表格独立参考值；在本快照条件下核对"
+        }
+      ]
+    }
+  ]
+}

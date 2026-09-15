@@ -115,4 +115,28 @@ describe('base income calculator', () => {
     expect(result.lmd / result.orders).toBeCloseTo(2200)
     expect(result.goldConsumed / result.orders).toBeCloseTo(4.4)
   })
+
+  it('accounts Tequila bonus as virtual pure gold and includes it in 82 score', () => {
+    const config = createDefaultConfig()
+    const room = config.rooms[4]!
+    room.level = 3
+    room.specialOrder = 'shiftRun'
+    const report = calculate(config)
+    const trade = report.trading.find((item) => item.roomId === room.id)!
+
+    // For level 3 standard quality: .2 of orders are 4-gold orders yielding +500 LMD without consuming gold
+    expect(trade.virtualGold).toBeGreaterThan(0)
+    expect(trade.virtualGoldValue).toBeCloseTo(trade.virtualGold! * 500)
+
+    expect(report.summary).not.toBeNull()
+    if (report.summary) {
+      const expectedTotalVirtualGold = report.trading.reduce((sum, item) => sum + (item.virtualGold ?? 0), 0)
+      expect(report.summary.virtualGoldCount).toBeCloseTo(expectedTotalVirtualGold)
+      expect(report.summary.totalScore82).toBeCloseTo(
+        report.summary.exp +
+          0.8 * (report.summary.goldValue + report.summary.virtualGoldValue) +
+          0.2 * report.summary.orderLmd,
+      )
+    }
+  })
 })

@@ -165,7 +165,7 @@ describe('FacilityEditor.vue and subcomponents', () => {
     expect(store.workspace.mainPlan.facilities.central.level).toBe(5)
   })
 
-  it('disables and rejects level edits in inferred 2/3-power layouts without truncating operators', async () => {
+  it('allows level edits in 2/3-power layouts and updates room level', async () => {
     const store = useRosterWorkbenchStore()
     const room = store.workspace.mainPlan.facilities.room_1_1
     store.updateSlotOccupant('room_1_1', 0, { kind: 'operator', operatorId: 'char_a' })
@@ -175,27 +175,22 @@ describe('FacilityEditor.vue and subcomponents', () => {
 
     const wrapper = mount(FacilityEditor)
     const levelSelect = asVueWrapper(wrapper.findComponent('.level-select'))
-    expect(getProps(levelSelect)['disabled']).toBe(true)
+    expect(getProps(levelSelect)['disabled']).toBeFalsy()
 
-    levelSelect.vm.$emit('update:value', 1)
+    levelSelect.vm.$emit('update:value', 2)
     await wrapper.vm.$nextTick()
 
-    expect(room.level).toBe(3)
-    expect(room.slots).toHaveLength(3)
-    expect(room.slots.map((slot) => slot.occupant)).toEqual([
-      { kind: 'operator', operatorId: 'char_a' },
-      { kind: 'operator', operatorId: 'char_b' },
-      { kind: 'operator', operatorId: 'char_c' },
-    ])
+    expect(room.level).toBe(2)
+    expect(room.slots).toHaveLength(2)
 
     store.updateFacility('room_3_3', { type: 'trading', product: 'money' })
     await wrapper.vm.$nextTick()
-    expect(getProps(levelSelect)['disabled']).toBe(true)
+    expect(getProps(levelSelect)['disabled']).toBeFalsy()
 
     levelSelect.vm.$emit('update:value', 1)
     await wrapper.vm.$nextTick()
-    expect(room.level).toBe(3)
-    expect(room.slots).toHaveLength(3)
+    expect(room.level).toBe(1)
+    expect(room.slots).toHaveLength(1)
   })
 
   it('renders product select for manufacture and trading with images, hidden for power', async () => {

@@ -1,3 +1,4 @@
+import { matchesRiicFaction as isFaction, isRiicAlter as isAlter } from '../domain/riicIdentity'
 import { OPERATOR_MAP, type OperatorRecord, type OperatorSkill } from '../domain/operators'
 import type { AppConfig, OperatorMoraleResult, OutputRoom, RoomType } from '../domain/types'
 import { evaluateOperators } from './operatorRules'
@@ -8,7 +9,7 @@ import { buildRiicGlobalContext, deriveWorldlyFireworks } from './globalContext'
 interface Assignment {
   operator: OperatorRecord
   roomId: string
-  roomType: RoomType | 'control'
+  roomType: RoomType | 'control' | 'office' | 'reception'
   room?: OutputRoom
   peers: OperatorRecord[]
 }
@@ -25,6 +26,8 @@ interface RateSnapshot {
 }
 
 export interface CurrentMoraleRates {
+  /** Explicit gaps in legacy numeric rate rules; callers must surface these. */
+  unquantified: string[]
   rates: Record<string, number>
   details: Record<string, string[]>
 }
@@ -76,25 +79,19 @@ function assignments(config: AppConfig): Assignment[] {
       result.push({ operator, roomId: room.id, roomType: room.type, room, peers })
     }
   }
+  for (const roomType of ['office', 'reception'] as const) {
+    const peers = selected(config.facilityOperatorIds[roomType])
+    for (const operator of peers) result.push({ operator, roomId: roomType, roomType, peers })
+  }
   return result
 }
 
 function relevantRoomType(roomType: Assignment['roomType']) {
-  return roomType === 'control' ? 'CONTROL' : roomType.toUpperCase()
+  return roomType === 'office' ? 'HIRE' : roomType === 'reception' ? 'MEETING' : roomType === 'control' ? 'CONTROL' : roomType.toUpperCase()
 }
 
 function activeAssignments(all: Assignment[], activeIds: Set<string>) {
   return all.filter((assignment) => activeIds.has(assignment.operator.charId))
-}
-
-function isFaction(operator: OperatorRecord, ...ids: string[]) {
-  return ids.some((id) =>
-    operator.groupId === id || operator.teamId === id || operator.nationId === id,
-  )
-}
-
-function isAlter(operator: OperatorRecord) {
-  return /^char_10\d{2}_/.test(operator.charId)
 }
 
 function conditionMatches(skill: OperatorSkill, assignment: Assignment, activeIds: Set<string>) {
@@ -263,8 +260,8 @@ function computeRates(
   if (activeIds.has('char_226_hmau')) {
     const leeOperators = activeControl.filter((item) => isFaction(item.operator, 'lee'))
     if (leeOperators.length) {
-      addAll(activeControl, -leeOperators.length * 0.05, `吽·坚毅随和：全员 -${(leeOperators.length * 0.05).toFixed(2)}/h`)
-      addAll(leeOperators, -leeOperators.length * 0.2, `吽·坚毅随和：鲤氏额外 -${(leeOperators.length * 0.2).toFixed(2)}/h`)
+      addAll(activeControl, -leeOperators.length * 0.2, `吽·坚毅随和：全员 -${(leeOperators.length * 0.2).toFixed(2)}/h`)
+      // The faction-only extra has no numeric value in the verified tooltip; diagnose it instead of inventing one.
     }
   }
 
@@ -313,8 +310,15 @@ function computeRates(
 
   const gladiia = activeControl.find((item) => item.operator.charId === 'char_474_glady')
   if (gladiia) {
-    const abyssalOutsideDorm = active.filter((item) => isFaction(item.operator, 'abyssal')).length
-    add(gladiia, abyssalOutsideDorm * 0.5, `歌蕾蒂娅·潮汐守望：宿舍外深海猎人 ${abyssalOutsideDorm} 人，+${(abyssalOutsideDorm * 0.5).toFixed(2)}/h`)
+    // cc.g.abyssal: physical presence, not productive/positive-morale workers.
+    const dormIds = new Set(config.facilityOperatorIds.dormitories.flat())
+    const hunters = buildRiicGlobalContext(config, activeIds, morale).presentOperators.filter(op => isFaction(op, 'abyssal'))
+    const outside = hunters.filter(op => !dormIds.has(op.charId)).length
+    const resting = hunters.filter(op => dormIds.has(op.charId))
+    const full = resting.filter(op => (morale.get(op.charId) ?? (config.zeroMoraleOperatorIds.includes(op.charId) ? 0 : config.operatorMorale[op.charId] ?? 24)) >= 24 - 1e-8).length
+    const delta = .5 * (outside - resting.length - full)
+    add(gladiia, delta, `歌蕾蒂娅·潮汐守望：宿舍外 ${outside}，宿舍内 ${resting.length}（满心情 ${full}），${delta >= 0 ? '+' : ''}${delta}/h`)
+
   }
 
   const chimes = active.find((item) => item.operator.charId === 'char_4083_chimes' && item.roomType === 'trading')
@@ -327,19 +331,10 @@ function computeRates(
     )
   }
 
-  if (activeControl.some((item) => item.operator.charId === 'char_4064_mlynar')) {
-    addAll(active.filter((item) => item.roomType === 'power'), -0.1, '玛恩纳·公事公办：发电站 -0.1/h')
-    const extendCount = activeControl.reduce((count, item) => count + item.operator.skills.filter(
-      (skill) => skill.roomType === 'CONTROL' && MLYNAR_EXTENDED_SKILLS.has(skill.name),
-    ).length, 0)
-    if (extendCount) {
-      addAll(
-        active.filter((item) => item.roomType !== 'control'),
-        -extendCount * 0.05,
-        `玛恩纳·公事公办：中枢可扩散技能 ${extendCount} 个，-${(extendCount * 0.05).toFixed(2)}/h`,
-      )
-    }
-  }
+  const mlynarActive = activeControl.some(item => item.operator.charId === 'char_4064_mlynar')
+  const mlynarExpansion = mlynarActive ? activeControl.reduce((count, item) => count + item.operator.skills.filter(
+    skill => skill.roomType === 'CONTROL' && MLYNAR_EXTENDED_SKILLS.has(skill.name),
+  ).length, 0) * .05 : 0
 
   let otherFacilityRecovery = 0
   let otherFacilityLabel = ''
@@ -357,12 +352,11 @@ function computeRates(
       otherFacilityLabel = `重岳·孤光共照（人间烟火 ${resourceValues.fireworks}）`
     }
   }
-  if (otherFacilityRecovery) {
-    addAll(
-      active.filter((item) => item.roomType !== 'control'),
-      -otherFacilityRecovery,
-      `${otherFacilityLabel}：其他设施 -${otherFacilityRecovery.toFixed(2)}/h（同类取最高）`,
-    )
+  for (const target of active.filter(item => item.roomType !== 'control')) {
+    const mlynarRecovery = mlynarActive ? mlynarExpansion + (['power','office','reception'].includes(target.roomType) ? .1 : 0) : 0
+    const recovery = Math.max(mlynarRecovery, otherFacilityRecovery)
+    if (mlynarActive && target.roomType === 'power') add(target, 0, '玛恩纳候选效果：发电站 -0.1/h，与扩展合计后参与同类最高')
+    if (recovery) add(target, -recovery, `公事公办/孤光共照/巴别塔之帜：同类最高 -${recovery.toFixed(2)}/h（${mlynarRecovery >= otherFacilityRecovery ? '玛恩纳' : otherFacilityLabel}）`)
   }
 
   return { rates, details, resources: resourceValues }
@@ -380,7 +374,10 @@ export function currentMoraleRates(config: AppConfig): CurrentMoraleRates {
     .map(({ operator }) => operator.charId)
     .filter((id) => (morale.get(id) ?? 0) > 0))
   const snapshot = computeRates(config, all, activeIds, morale)
+  const unquantified: string[] = []
+  if (all.some(a => a.roomType === 'control' && a.operator.charId === 'char_226_hmau' && activeIds.has(a.operator.charId))) unquantified.push('吽·坚毅随和 (control_mp_cost&faction2[000])：原文全员每鲤氏恢复+0.2/h，派系额外恢复量未量化；当前只计算原文明示的全员恢复，不计未知的派系额外值')
   return {
+    unquantified,
     rates: Object.fromEntries(snapshot.rates),
     details: Object.fromEntries(snapshot.details),
   }

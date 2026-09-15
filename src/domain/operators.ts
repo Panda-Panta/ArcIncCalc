@@ -28,9 +28,12 @@ export interface OperatorRecord {
   appellation: string
   rarity: number
   profession: string
+  isAlter: boolean
   nationId: string | null
   groupId: string | null
   teamId: string | null
+  /** All versions grouped by slot; skills remains the maximum-stage snapshot. */
+  skillSlots?: OperatorSkill[][]
   skills: OperatorSkill[]
 }
 
@@ -63,6 +66,7 @@ export const FACTION_LABELS: Record<string, string> = {
 }
 
 export function factionLabel(operator: OperatorRecord): string {
+  if (operator.isAlter) return '异格者'
   const id = operator.groupId ?? operator.teamId ?? operator.nationId
   return id ? (FACTION_LABELS[id] ?? id) : '未分类'
 }

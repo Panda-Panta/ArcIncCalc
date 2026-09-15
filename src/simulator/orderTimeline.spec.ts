@@ -3,6 +3,17 @@ import { getOrderDistribution } from '../rules/orderRules'
 import { advanceOrder, finishOrder, startOrder } from './orderTimeline'
 
 describe('order acquisition timeline', () => {
+  it('preserves leftover wall time for fixed-efficiency orders even when live efficiency is zero', () => {
+    const initial = startOrder({ id: 'pepe-zero', startedAt: 100, base: getOrderDistribution(3, 'normal', 'pepe')[0]! })
+    const result = advanceOrder(initial, { elapsedMinutes: 300, efficiency: 0 })
+    expect(result.completed).toBe(true)
+    expect(result.unusedMinutes).toBe(30)
+  })
+  it('rejects completion timestamps before acquisition starts', () => {
+    const initial = startOrder({ id: 'chronology', startedAt: 100, base: getOrderDistribution(1)[0]! })
+    const result = advanceOrder(initial, { elapsedMinutes: 144, efficiency: 1 })
+    expect(() => finishOrder(result.order, {}, 99)).toThrow(/completion/i)
+  })
   it('integrates changing live efficiency and adds drones without multiplying them', () => {
     const base = getOrderDistribution(3)[0]!
     const initial = startOrder({ id: 'a', startedAt: 0, base })

@@ -45,6 +45,7 @@ export function compiledScheduleToRuntimeConfig(schedule: CompiledSchedule): Run
   }
 
   for (const room of schedule.rooms) {
+    if (room.type === 'gaming' || room.type === '') continue
     const isDorm = room.type === 'dormitory'
     for (const slot of room.slots) {
       if (!slot.primaryOperatorId) continue
@@ -63,10 +64,7 @@ export function compiledScheduleToRuntimeConfig(schedule: CompiledSchedule): Run
 
       const exhaustRequired = Boolean(schedule.policies.exhaust_require?.includes(primary))
       const restToFull = Boolean(schedule.policies.rest_in_full?.includes(primary))
-      const restingPriority = schedule.policies.resting_priority?.includes(primary)
-        || schedule.policies.ope_resting_priority?.includes(primary)
-        ? 'high'
-        : undefined
+      const restingPriority = schedule.policies.resting_priority?.includes(primary) ? 'low' : 'high'
 
       const position: RuntimePosition = {
         id: `${room.roomId}_${slot.slotIndex}`,
@@ -75,7 +73,7 @@ export function compiledScheduleToRuntimeConfig(schedule: CompiledSchedule): Run
         candidates,
         group: slot.groupId?.trim() ? slot.groupId.trim() : undefined,
         dormitory: isDorm,
-        permanent: (isDormKeeper && candidates.length === 0) || undefined,
+        permanent: (isDormKeeper && candidates.length === 0) || schedule.policies.workaholic?.includes(primary) || undefined,
         exhaustRequired: exhaustRequired || undefined,
         restToFull: restToFull || undefined,
         restingPriority,
@@ -83,6 +81,31 @@ export function compiledScheduleToRuntimeConfig(schedule: CompiledSchedule): Run
 
       positions.push(position)
     }
+  }
+
+  // operators.py:init_mood_limit: policy limits are separate from skill boundaries.
+  const mode = Number(schedule.policies.ling_xi ?? 1)
+  const named = (name: string) => positions.find(p => p.primary === resolveOperatorCharId(name))
+  for (const p of positions) { p.lowerLimit = 0; p.upperLimit = 24 }
+  if (mode === 1 || mode === 2) {
+    const lowHalf = named(mode === 1 ? '令' : '夕')
+    const highHalf = named(mode === 1 ? '夕' : '令')
+    if (lowHalf) lowHalf.upperLimit = 12
+    if (highHalf) highHalf.lowerLimit = 12
+    const groups = new Set([named('令')?.group, named('夕')?.group].filter(Boolean))
+    for (const p of positions) if (p.group && groups.has(p.group) && !['令', '夕'].includes(OPERATOR_MAP.get(p.primary)?.name ?? '')) p.lowerLimit = 12
+  }
+  const totter = named('铅踝')
+  if (totter) {
+    const vermeil = named('红云')
+    totter.lowerLimit = vermeil?.roomId === totter.roomId ? 8 : 20
+    totter.upperLimit = vermeil?.roomId === totter.roomId ? 12 : 24
+  }
+  const restingThreshold = schedule.assumptions.restingThreshold ?? 0.65
+  const exhaustedGroups = new Set(positions.filter(p => p.exhaustRequired && p.group).map(p => p.group))
+  for (const p of positions) {
+    const exhaustGroup = p.group && exhaustedGroups.has(p.group)
+    p.shiftOffThreshold = p.exhaustRequired ? p.lowerLimit : exhaustGroup ? -1 : Math.floor((p.upperLimit! - p.lowerLimit!) * restingThreshold + p.lowerLimit!)
   }
 
   // Beds from restPools
@@ -103,6 +126,7 @@ export function compiledScheduleToRuntimeConfig(schedule: CompiledSchedule): Run
   for (const [id, st] of Object.entries(schedule.operators)) {
     initialMorale[id] = st.morale
   }
+  for (const id of [...positions.flatMap(p=>p.candidates),...schedule.runOrderPolicies.flatMap(p=>p.orderedOperatorIds),...schedule.fiammettaPolicies.flatMap(p=>p.orderedTargets),...(schedule.assumptions.idleOperators ?? [])]) initialMorale[id] ??= schedule.assumptions.initialMorale
   if (schedule.assumptions.operatorMorale) {
     for (const [id, m] of Object.entries(schedule.assumptions.operatorMorale)) {
       initialMorale[id] = m
@@ -116,7 +140,8 @@ export function compiledScheduleToRuntimeConfig(schedule: CompiledSchedule): Run
     fiammetta = {
       operatorId: fp.operatorId,
       orderedTargets: [...fp.orderedTargets],
-      threshold: 21.6,
+      threshold: (schedule.assumptions.fiammettaFool === false ? schedule.assumptions.fiammettaThreshold ?? 0.9 : 0.9) * 24,
+      fool: schedule.assumptions.fiammettaFool ?? true,
     }
   }
 
@@ -127,6 +152,8 @@ export function compiledScheduleToRuntimeConfig(schedule: CompiledSchedule): Run
   }))
 
   return {
+    idleOperators: schedule.assumptions.idleOperators,
+    mowerPolicy: { restingThreshold, rescueThreshold: schedule.assumptions.rescueThreshold ?? 0.75, taskBuffers: true, powerPlantCount: schedule.rooms.filter(r => r.type === 'power').length, opeRestingPriority: [...(schedule.policies.ope_resting_priority ?? [])] },
     positions,
     beds,
     initialMorale,

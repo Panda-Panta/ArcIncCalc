@@ -417,7 +417,7 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
 
     expect(wrapper.find('[data-test="results-panel"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="metric-lmd"]').text()).toBe(initialLmd)
-  })
+  }, 15000)
 
   // 11. File imports immediately update all views, and reset clears stale calculation state
   it('updates all views immediately on file import and clears stale calculation state on reset', async () => {

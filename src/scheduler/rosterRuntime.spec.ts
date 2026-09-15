@@ -4,6 +4,31 @@ import { simulateMoraleTimeline } from '../simulator/moraleTimeline'
 
 const rates = { workRate: () => 1, recoveryRate: () => 2 }
 describe('event roster runtime', () => {
+  it('keeps recurring shifts when recovery and fatigue happen simultaneously', () => {
+    const result = simulateMoraleTimeline({
+      positions: [{ id: 'a', roomId: 'r', primary: 'A', candidates: ['B'] }],
+      beds: [{ id: 'bed', roomId: 'd', vip: true }],
+    }, 100, { workRate: () => 1, recoveryRate: () => 1 })
+    expect(result.finalState.events.map(e => [e.time, e.type])).toEqual([
+      [24, 'shift-off'], [48, 'shift-on'], [72, 'shift-off'], [96, 'shift-on'],
+    ])
+    expect(result.finalState.morale.A).toBe(20)
+  })
+
+  it('reuses a recovered substitute and its bed at the same timestamp', () => {
+    const s = createRosterRuntime({
+      positions: [{ id: 'a', roomId: 'r', primary: 'A', candidates: ['B'] }],
+      beds: [{ id: 'bed', roomId: 'd', vip: true }],
+      initialMorale: { A: 0, B: 24 },
+    })
+    s.bedOccupants.bed = 'B'
+    settleRoster(s)
+    expect(s.occupants.a).toBe('B')
+    expect(s.bedOccupants).toEqual({ bed: 'A' })
+    expect(s.events).toHaveLength(1)
+    settleRoster(s)
+    expect(s.events).toHaveLength(1)
+  })
   it('selects the next available candidate and reserves shared candidates atomically', () => {
     const s = createRosterRuntime({ positions: [
       { id: 'a', roomId: 'r', primary: 'A', candidates: ['X', 'Y'], group: 'g' },

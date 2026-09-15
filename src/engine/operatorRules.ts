@@ -1,3 +1,8 @@
+import { temporalSkillBonus, type TimeContext } from './timeDependentSkills'
+import { evaluateHighestPhaseJaye } from './jayeRules'
+import { matchesRiicIdentity } from '../domain/riicIdentity'
+import { evaluateTradeConditionalSkill, evaluateAigisPowerSkill, snowsantCopiedTradeBonus } from './tradeConditionalRules'
+import { hasRiicTag } from '../domain/riicTags'
 import type { AppConfig, OutputRoom, QualityRule, SpecialOrder } from '../domain/types'
 import { OPERATOR_MAP, type OperatorRecord, type OperatorSkill } from '../domain/operators'
 import { buildRiicGlobalContext, deriveCentralManufactureBonus, type RiicGlobalContext } from './globalContext'
@@ -95,7 +100,13 @@ function manufactureWarehouseCapacity(
   room: OutputRoom,
   operator?: OperatorRecord,
   morale?: number,
+  context?: RiicGlobalContext,
+  classCounts?: SkillClassCounts | null,
 ): number {
+  if (skill.roomType !== 'MANUFACTURE') return 0
+  if (skill.buffId === 'manu_prod_bd[000]') return (context?.ursuSpecialDrink ?? 0) * 2
+  if (skill.buffId === 'manu_skill_limit[000]') return (classCounts?.莱茵科技 ?? 0) * 5
+  if (skill.buffId === 'manu_prod_spd&manu[000]' || skill.buffId === 'manu_prod_spd&manu[100]') return room.operatorIds.length * 5
   if (skill.buffId === 'manu_formula_limit[0000]') {
     return room.product === 'exp' ? 12 : 0
   }
@@ -214,7 +225,7 @@ function sameRoomTargetBonus(
 ): number | null {
   const roomName = roomType === 'trading' ? '贸易站' : '制造站'
   const match = skill.description.match(
-    new RegExp(`当与(.+?)在同一个${roomName}时，.*?(?:生产力|订单获取效率)\\+([\\d.]+)%`),
+    new RegExp(`当与(.+?)在同一个${roomName}时，.*?(?:生产力|订单获取效率)(?:额外)?\\+([\\d.]+)%`),
   )
   if (!match) return null
   return operatorNames.has(match[1]!) ? Number(match[2]) : 0
@@ -271,6 +282,11 @@ function controlGlobalBonus(
   const unquantifiedSkills: string[] = []
   const operatorBonuses = new Map<string, OperatorBonusItem[]>()
   const roomBonuses: RoomBonusItem[] = []
+  const activeControlIds = new Set(controlOperators.map(op => op.charId))
+  const enthusiasm = (activeControlIds.has('char_4186_tmoris') ? 10 : 0)
+    + (activeControlIds.has('char_4183_mortis') ? 20 : 0)
+    + (activeControlIds.has('char_4185_amoris') ? 10 : 0)
+    + (activeControlIds.has('char_4184_dolris') ? config.dormitoryOccupantCount : 0)
 
   if (room.type === 'manufacture') {
     const staticManufacture =
@@ -296,7 +312,7 @@ function controlGlobalBonus(
     }
 
     if (controlOperators.some((operator) => operator.charId === 'char_1034_jesca2')) {
-      const blacksteelOps = roomOperators.filter((operator) => operator.groupId === 'blacksteel')
+      const blacksteelOps = roomOperators.filter((operator) => matchesRiicIdentity(operator, 'groupId', 'blacksteel'))
       if (blacksteelOps.length) {
         const value = blacksteelOps.length * 5
         bonus += value
@@ -313,12 +329,6 @@ function controlGlobalBonus(
       controlOperators.some((operator) => operator.charId === 'char_4182_oblvns') &&
       room.product === 'gold'
     ) {
-      let enthusiasm = 0
-      const activeControlIds = new Set(controlOperators.map((op) => op.charId))
-      if (activeControlIds.has('char_4186_tmoris')) enthusiasm += 10
-      if (activeControlIds.has('char_4183_mortis')) enthusiasm += 20
-      if (activeControlIds.has('char_4185_amoris')) enthusiasm += 10
-      if (activeControlIds.has('char_4184_dolris')) enthusiasm += config.dormitoryOccupantCount
       const sakikoBonus = 1 + Math.floor(enthusiasm / 20)
       bonus += sakikoBonus
       details.push(`丰川祥子·丰富工作经验：贵金属生产力 +${sakikoBonus}%（热情值 ${enthusiasm}）`)
@@ -348,7 +358,7 @@ function controlGlobalBonus(
     }
 
     if (controlOperators.some((operator) => operator.charId === 'char_4098_vvana')) {
-      const knightOps = roomOperators.filter((operator) => operator.nationId === 'kazimierz')
+      const knightOps = roomOperators.filter((operator) => hasRiicTag(operator, 'knight'))
       if (knightOps.length) {
         const value = knightOps.length * 7
         bonus += value
@@ -361,25 +371,19 @@ function controlGlobalBonus(
       }
     }
 
-    if (controlOperators.some((operator) => operator.name === '歌蕾蒂娅')) {
-      const allFacilityIds = [
-        ...config.rooms.flatMap((r) => r.operatorIds),
-        ...config.facilityOperatorIds.dormitories.flat(),
-        ...config.facilityOperatorIds.reception,
-        ...config.facilityOperatorIds.workshop,
-        ...config.facilityOperatorIds.office,
-        ...config.facilityOperatorIds.training,
-      ]
-      const globalAbyssalCount = new Set(
-        allFacilityIds
-          .filter((id) => activeInContext(id, config, activeOperatorIds))
-          .filter((id) => id !== 'char_474_glady' && OPERATOR_MAP.get(id)?.groupId === 'abyssal'),
+    if (controlOperators.some((operator) => operator.name === '歌蕾蒂娅') &&
+      !roomOperators.some(operator => operator.skills.some(isAutomationSkill))) {
+      // cc.c.abyssal2_2 and 2_3: manufacturing presence only, 90% per-room cap;
+      // automation wins, and the grant must not be copied by Waai Fu.
+      const manufacturingAbyssalCount = new Set(
+        config.rooms.filter(r => r.type === 'manufacture').flatMap(r => r.operatorIds)
+          .filter(id => { const operator = OPERATOR_MAP.get(id); return operator !== undefined && matchesRiicIdentity(operator, 'groupId', 'abyssal') }),
       ).size
-      const perBeneficiaryValue = Math.min(40, globalAbyssalCount * 10)
-      const abyssalInRoom = roomOperators.filter((operator) => operator.groupId === 'abyssal')
-      if (abyssalInRoom.length > 0 && perBeneficiaryValue > 0) {
-        const value = abyssalInRoom.length * perBeneficiaryValue
+      const abyssalInRoom = roomOperators.filter(operator => matchesRiicIdentity(operator, 'groupId', 'abyssal'))
+      const value = Math.min(90, manufacturingAbyssalCount * abyssalInRoom.length * 10)
+      if (value > 0) {
         bonus += value
+        const perBeneficiaryValue = value / abyssalInRoom.length
         details.push(
           abyssalInRoom.length > 1
             ? `歌蕾蒂娅·集群狩猎：深海猎人制造联动 ${abyssalInRoom.length} 人，+${value}%（每人 +${perBeneficiaryValue}%）`
@@ -387,18 +391,15 @@ function controlGlobalBonus(
         )
         for (const op of abyssalInRoom) {
           const list = operatorBonuses.get(op.charId) ?? []
-          list.push({
-            name: '歌蕾蒂娅·集群狩猎',
-            value: perBeneficiaryValue,
-            detail: `深海猎人制造联动（全局 ${globalAbyssalCount} 人）`,
-          })
+          list.push({ name: '歌蕾蒂娅·集群狩猎', value: perBeneficiaryValue,
+            detail: `制造站内共 ${manufacturingAbyssalCount} 名深海猎人，单站最高90%` })
           operatorBonuses.set(op.charId, list)
         }
       }
     }
 
     if (controlOperators.some((operator) => operator.name === '焰尾')) {
-      const pinusOps = roomOperators.filter((operator) => operator.groupId === 'pinus')
+      const pinusOps = roomOperators.filter((operator) => matchesRiicIdentity(operator, 'groupId', 'pinus'))
       if (pinusOps.length) {
         const val = room.product === 'exp' ? 10 : room.product === 'gold' ? -10 : 0
         const value = pinusOps.length * val
@@ -419,8 +420,18 @@ function controlGlobalBonus(
     let staticMax = 0
     for (const operator of controlOperators) {
       for (const skill of operator.skills.filter((item) => item.roomType === 'CONTROL')) {
-        if (operator.charId === 'char_2027_wang') {
-          unquantifiedSkills.push('望·权变')
+        if (operator.name === '望') {
+          const external = config.rooms.filter(r => r.type === 'trading' || r.type === 'power').length
+          const actual = config.rooms.filter(r => r.type === 'manufacture').length
+          if (external >= actual) staticMax = Math.max(staticMax, 7)
+          continue
+        }
+        if (skill.buffId === 'control_token_tra_spd[000]') {
+          if (controlOperators.some(other => other.charId !== operator.charId && hasRiicTag(other, 'monsterHunter'))) staticMax = Math.max(staticMax, 7)
+          continue
+        }
+        if (skill.buffId === 'control_mp_bd&trade[000]') {
+          staticMax = Math.max(staticMax, Math.floor(enthusiasm / 8))
           continue
         }
         const match = skill.description.match(/所有贸易站订单效率\+([\d.]+)%/)
@@ -436,8 +447,22 @@ function controlGlobalBonus(
         detail: '同类取最高',
       })
     }
+    if (controlOperators.some(operator => operator.name === '戴菲恩')) {
+      for (const op of roomOperators.filter(operator => matchesRiicIdentity(operator, 'groupId', 'glasgow'))) {
+        bonus += 10
+        const list = operatorBonuses.get(op.charId) ?? []
+        list.push({ name: '戴菲恩·运筹好手', value: 10 })
+        operatorBonuses.set(op.charId, list)
+        details.push('戴菲恩·运筹好手：' + op.name + ' +10%')
+      }
+    }
+    if (controlOperators.some(operator => operator.name === '凛御银灰') && roomOperators.filter(operator => matchesRiicIdentity(operator, 'nationId', 'kjerag')).length >= 3) {
+      bonus += 10
+      roomBonuses.push({ source: '凛御银灰·商业版图', value: 10 })
+      details.push('凛御银灰·商业版图：本贸易站3名谢拉格干员 +10%')
+    }
     if (controlOperators.some((operator) => operator.charId === 'char_4186_tmoris')) {
-      const siracusaOps = roomOperators.filter((operator) => operator.nationId === 'siracusa')
+      const siracusaOps = roomOperators.filter((operator) => matchesRiicIdentity(operator, 'nationId', 'siracusa'))
       if (siracusaOps.length) {
         const value = siracusaOps.length * 5
         bonus += value
@@ -450,7 +475,7 @@ function controlGlobalBonus(
       }
     }
     if (controlOperators.some((operator) => operator.charId === 'char_206_gnosis')) {
-      const kjeragOps = roomOperators.filter((operator) => operator.nationId === 'kjerag')
+      const kjeragOps = roomOperators.filter((operator) => matchesRiicIdentity(operator, 'nationId', 'kjerag'))
       if (kjeragOps.length) {
         bonus -= kjeragOps.length * 15
         for (const op of kjeragOps) {
@@ -466,12 +491,32 @@ function controlGlobalBonus(
   return { bonus, details, unquantifiedSkills, operatorBonuses, roomBonuses }
 }
 
+/** Exposes the existing warehouse-capacity rule for event timelines without changing efficiency evaluation. */
+export function evaluateManufacturingCapacity(
+  room: OutputRoom,
+  config: AppConfig,
+  activeOperatorIds?: Set<string>,
+  moraleValues?: Map<string, number>,
+  preparedContext?: RiicGlobalContext,
+): number {
+  if (room.type !== 'manufacture') return 0
+  const activeOperators = selectedOperators(room.operatorIds).filter((operator) => activeInContext(operator.charId, config, activeOperatorIds))
+  const globalContext = preparedContext ?? buildRiicGlobalContext(config, activeOperatorIds, moraleValues)
+  const classCounts = roomClassCounts(activeOperators)
+  return activeOperators
+    .flatMap((operator) => {
+      const morale = moraleValues?.get(operator.charId) ?? config.operatorMorale[operator.charId] ?? 24
+      return operator.skills.map((skill) => manufactureWarehouseCapacity(skill, room, operator, morale, globalContext, classCounts))
+    })
+    .reduce((sum, capacity) => sum + capacity, 0)
+}
 export function evaluateOperators(
   room: OutputRoom,
   config: AppConfig,
   activeOperatorIds?: Set<string>,
   moraleValues?: Map<string, number>,
   preparedContext?: RiicGlobalContext,
+  timeContext?: TimeContext,
 ): OperatorEfficiencyResult {
   const operators = selectedOperators(room.operatorIds)
   const activeOperators = operators.filter(
@@ -497,14 +542,13 @@ export function evaluateOperators(
           .flatMap((operator) => {
             const opMorale = moraleValues?.get(operator.charId) ?? config.operatorMorale[operator.charId] ?? 24
             return operator.skills.map((skill) =>
-              manufactureWarehouseCapacity(skill, room, operator, opMorale),
+              manufactureWarehouseCapacity(skill, room, operator, opMorale, globalContext, classCounts),
             )
           })
           .reduce((sum, skill) => sum + skill, 0)
       : 0
   const manufacturePerceptionInformation = globalContext.thoughtChain.effective
   const tradingPerceptionInformation = globalContext.silentResonance.effective
-  const assignedOperators = globalContext.assignedOperators
   const goldProductionLines = globalContext.goldProductionLines.effective
   const kiraraGoldLines = Math.max(
     0,
@@ -521,10 +565,10 @@ export function evaluateOperators(
           let opLimit = op.skills
             .filter((skill) => skill.roomType === 'TRADING')
             .reduce((s, skill) => s + orderLimitDelta(skill, room, operatorNames), 0)
-          if (gnosisInControl && op.nationId === 'kjerag') {
+          if (gnosisInControl && matchesRiicIdentity(op, 'nationId', 'kjerag')) {
             opLimit += 6
           }
-          if (wisdelInControl && op.charId === 'char_1031_hemdr') {
+          if (wisdelInControl && op.name === '赫德雷') {
             opLimit += 2
           }
           return sum + Math.max(0, opLimit)
@@ -540,28 +584,9 @@ export function evaluateOperators(
   const vivianaActive =
     config.controlOperatorIds.includes('char_4098_vvana') &&
     activeInContext('char_4098_vvana', config, activeOperatorIds)
-  const waaiFuCopiedBonus =
-    room.type === 'manufacture' && activeOperators.some((operator) => operator.charId === 'char_243_waaifu')
-      ? Math.min(
-          40,
-          Math.floor(
-            activeOperators
-              .filter((operator) => operator.charId !== 'char_243_waaifu')
-              .reduce((operatorTotal, operator) => {
-                const ownSkills = operator.skills
-                  .filter((skill) => skill.roomType === 'MANUFACTURE')
-                  .reduce((sum, skill) => {
-                    const direct = directManufactureBonus(skill, room) ?? 0
-                    const stable = stableManufactureBonus(skill) ?? 0
-                    const linked = classCounts ? classLinkBonus(skill, classCounts) ?? 0 : 0
-                    return sum + direct + stable + linked
-                  }, 0)
-                const knightSupport = vivianaActive && operator.nationId === 'kazimierz' ? 7 : 0
-                return operatorTotal + ownSkills + knightSupport
-              }, 0) / 5,
-          ) * 5,
-        )
-      : 0
+  // Copy the same resolved, non-facility values that are actually applied below.
+  // The copy skill itself is deferred until every colleague has been evaluated.
+  let waaiFuCopyableBonus = 0
 
   if (operators.length) {
     details.push(`进驻基础：${operators.length} 人，+${staffBonus}%`)
@@ -593,7 +618,20 @@ export function evaluateOperators(
       if (room.type === 'manufacture') {
         const morale = moraleValues?.get(operator.charId) ?? config.operatorMorale[operator.charId] ?? 24
         const moraleGap = Math.max(0, 24 - morale)
-        if (skill.buffId === 'manu_prod_spd_bd[400]') {
+        if (skill.buffId === 'manu_prod_spd&bd[000]') {
+          const count = globalContext.presentOperators.filter(op => hasRiicTag(op, 'sees')).length
+          applied = 20 + Math.min(4, count) * 5
+          facilityDetail = `S.E.E.S. 入驻人数 ${count}`
+        } else if (skill.buffId === 'manu_prod_spd&manu[100]') {
+          applied = operators.length * 10
+          facilityDetail = '当前站内人数 ' + operators.length
+        } else if (skill.buffId === 'manu_prod_spd&limit&bd[000]') {
+          applied = 5 + globalContext.woodCatnip
+          facilityDetail = '木天蓼 ' + globalContext.woodCatnip
+        } else if (skill.buffId === 'manu_formula_spd&bd[001]') {
+          const studentPartner = activeOperators.some(item => item.charId !== operator.charId && matchesRiicIdentity(item, 'teamId', 'student'))
+          applied = room.product === 'exp' ? 30 + (studentPartner ? 10 : 0) : 0
+        } else if (skill.buffId === 'manu_prod_spd_bd[400]') {
           applied = monsterCuisine
           facilityDetail = `monster cuisine ${monsterCuisine}`
         } else if (skill.buffId === 'manu_formula_spd&dorm&lv[000]') {
@@ -603,7 +641,7 @@ export function evaluateOperators(
               : 0
           facilityBased = true
         } else if (skill.buffId === 'manu_formula_spd&cost_bd[100]') {
-          const count = Math.min(5, assignedOperators.filter((item) => item.groupId === 'rhine').length)
+          const count = Math.min(5, globalContext.presentOperators.filter((item) => matchesRiicIdentity(item, 'groupId', 'rhine')).length)
           applied = room.product === 'gold' ? count * 3 : 0
           facilityDetail = `Rhine operators ${count}`
         } else if (skill.buffId === 'manu_prod_spd_bd[300]') {
@@ -631,7 +669,7 @@ export function evaluateOperators(
           facilityBased = true
           facilityDetail = `work platforms ${count}`
         } else if (skill.buffId === 'manu_prod_spd&fraction[000]') {
-          applied = activeOperators.filter((item) => item.teamId === 'reserve1').length * 10
+          applied = activeOperators.filter((item) => matchesRiicIdentity(item, 'teamId', 'reserve1')).length * 10
         } else if (skill.buffId === 'manu_formula_spd_P[000]') {
           const gummyInTrading = config.rooms
             .filter((item) => item.type === 'trading')
@@ -644,7 +682,7 @@ export function evaluateOperators(
         } else if (skill.buffId === 'manu_formula_spd&cost_bd[000]') {
           const count = Math.min(
             3,
-            assignedOperators.filter((item) => item.groupId === 'blacksteel').length,
+            globalContext.presentOperators.filter((item) => matchesRiicIdentity(item, 'groupId', 'blacksteel')).length,
           )
           applied = room.product === 'gold' ? count * 2 : 0
           facilityDetail = `Blacksteel operators ${count}`
@@ -657,7 +695,7 @@ export function evaluateOperators(
             const itemMorale = moraleValues?.get(item.charId) ?? config.operatorMorale[item.charId] ?? 24
             const capacity = item.skills.reduce(
               (itemSum, itemSkill) =>
-                itemSum + manufactureWarehouseCapacity(itemSkill, room, item, itemMorale),
+                itemSum + manufactureWarehouseCapacity(itemSkill, room, item, itemMorale, globalContext, classCounts),
               0,
             )
             const increasedCapacity = Math.max(0, capacity)
@@ -670,7 +708,7 @@ export function evaluateOperators(
           applied = manufacturePerceptionInformation
           facilityDetail = `perception information ${manufacturePerceptionInformation}`
         } else if (skill.buffId === 'manu_prod_spd_variable2[000]') {
-          applied = waaiFuCopiedBonus
+          applied = 0 // Deferred until all colleague skills are resolved.
           facilityDetail = 'copied from other operators'
         } else if (skill.buffId === 'manu_cost_all[000]') {
           applied = 0
@@ -682,9 +720,9 @@ export function evaluateOperators(
             : warehouseCapacity * 2
           facilityDetail = `warehouse capacity +${warehouseCapacity}`
         } else if (stableManufactureBonus(skill) !== null) {
-          applied = stableManufactureBonus(skill)
+          applied = temporalSkillBonus(skill.buffId, operator.charId, timeContext) ?? stableManufactureBonus(skill)
         } else if (
-          manufactureWarehouseCapacity(skill, room, operator, morale) !== 0 &&
+          manufactureWarehouseCapacity(skill, room, operator, morale, globalContext, classCounts) !== 0 &&
           directManufactureBonus(skill, room) === null
         ) {
           applied = 0
@@ -707,7 +745,11 @@ export function evaluateOperators(
         }
         const link = classCounts ? classLinkBonus(skill, classCounts) : null
         if (link !== null) applied = (applied ?? 0) + link
-        const target = sameRoomTargetBonus(skill, operatorNames, room.type)
+        const partnerProductMatches =
+          (!skill.description.includes('贵金属类配方') || room.product === 'gold') &&
+          (!skill.description.includes('作战记录类配方') || room.product === 'exp') &&
+          (!skill.description.includes('源石类配方') || room.product === 'fragment')
+        const target = partnerProductMatches ? sameRoomTargetBonus(skill, operatorNames, room.type) : 0
         if (target !== null) applied = (applied ?? 0) + target
         if (
           skill.description.includes('莱茵科技类') &&
@@ -718,10 +760,27 @@ export function evaluateOperators(
           details.push(`${operator.name}·${skill.name}：莱茵/红松技能计入标准化`)
         }
       } else if (room.type === 'trading') {
-        if (skill.buffId === 'trade_ord_spd_ext[021]') {
-          const vigilInBase = assignedOperators.some((item) => item.charId === 'char_427_vigil')
-          applied = 30 + (vigilInBase ? 10 : 0)
-          facilityDetail = vigilInBase ? 'Vigil assigned in base' : 'Vigil absent'
+        const conditional = evaluateTradeConditionalSkill(skill, {
+          config, roomOperators: activeOperators, presentOperators: globalContext.presentOperators,
+          eliteFacilities: globalContext.eliteFacilities, woodCatnip: globalContext.woodCatnip,
+        })
+        if (conditional) {
+          applied = conditional.value
+        } else if (skill.buffId === 'trade_ord_spd&dorm&lv[010]') {
+          applied = config.facilities.dormitories.reduce((sum, level) => sum + level, 0) * 2
+        } else if (skill.buffId === 'trade_ord_spd&meet[010]') {
+          applied = Math.min(30, 15 + config.facilities.reception * 5)
+        } else if (skill.buffId === 'trade_ord_par&per[001]') {
+          const workplaceNames = new Set(selectedOperators([
+            ...config.controlOperatorIds, ...config.rooms.flatMap(r => r.operatorIds),
+            ...config.facilityOperatorIds.reception, ...config.facilityOperatorIds.workshop,
+            ...config.facilityOperatorIds.office, ...config.facilityOperatorIds.training,
+            ...config.efficiencyResources.extraWorkplaceOperatorIds,
+          ]).map(op => op.name))
+          applied = 30 + (workplaceNames.has('伊内丝') ? 5 : 0) + (workplaceNames.has('W') ? 5 : 0)
+        } else if (skill.buffId === 'trade_ord_spd_ext[001]') {
+          applied = 30 + (globalContext.presentOperators.some(op => op.name === '乌尔比安') ? 10 : 0)
+
         } else if (skill.buffId === 'trade_ord_spd&meet[000]') {
           applied = Math.min(40, 25 + config.facilities.reception * 5)
           facilityDetail = `reception level ${config.facilities.reception}`
@@ -732,10 +791,10 @@ export function evaluateOperators(
           applied = roomOrderLimitIncrease * 4
           facilityDetail = `order limit +${roomOrderLimitIncrease}`
         } else if (skill.buffId === 'trade_ord_spd_par[001]') {
-          applied = activeOperators.filter((item) => item.nationId === 'laterano').length * 15
+          applied = activeOperators.filter((item) => matchesRiicIdentity(item, 'nationId', 'laterano')).length * 15
         } else if (skill.buffId === 'trade_ord_spd&limit_tag[000]') {
-          applied = 0
-          facilityDetail = 'requires Bubble Kingdom Hunter assignments'
+          const tradeIds = new Set(config.rooms.filter(r => r.type === 'trading').flatMap(r => r.operatorIds))
+          applied = globalContext.presentOperators.filter(op => tradeIds.has(op.charId) && hasRiicTag(op, 'bubbleHunter')).length * 20
         } else if (skill.buffId === 'trade_ord_spd&tag[020]') {
           const count = Math.min(5, globalContext.suiFacilities)
           applied = count * 4
@@ -744,9 +803,7 @@ export function evaluateOperators(
           applied = Math.max(0, staffCount - 1) * 15
         } else if (skill.buffId === 'trade_ord_spd&share[002]') {
           applied = Math.max(0, staffCount - 1) * 20
-        } else if (skill.buffId === 'trade_ord_spd_par[000]') {
-          const glasgowCount = activeOperators.filter((item) => item.groupId === 'glasgow').length
-          applied = glasgowCount * 20 + (operatorNames.has('推进之王') ? 35 : 0)
+
         } else if (skill.buffId === 'trade_ord_spd_bd[100]') {
           applied = monsterCuisine
           facilityDetail = `monster cuisine ${monsterCuisine}`
@@ -755,18 +812,14 @@ export function evaluateOperators(
           facilityDetail = `worldly fireworks ${worldlyFireworks}`
         } else if (skill.buffId === 'trade_ord_vodfox[000]') {
           applied = Math.max(0, staffCount - 1) * 45
-        } else if (skill.buffId === 'trade_ord_spd_variable2[001]') {
-          const otherEfficiency = activeOperators
-            .filter((item) => item.charId !== operator.charId)
-            .flatMap((item) => item.skills.filter((itemSkill) => itemSkill.roomType === 'TRADING'))
-            .reduce((sum, itemSkill) => sum + (directTradingBonus(itemSkill) ?? 0), 0)
-          applied = Math.min(35, Math.floor(otherEfficiency / 5) * 5)
+        } else if (skill.buffId === 'trade_ord_spd_variable2[001]' || skill.buffId === 'trade_ord_spd_variable2[000]') {
+          applied = 0 // Resolved after all other conditional contributions below.
         } else if (
           skill.buffId === 'trade_ord_limit_diff[000]' ||
           skill.buffId === 'trade_ord_limit_count[000]'
         ) {
           applied = 0
-          facilityDetail = 'depends on the live order queue'
+          facilityDetail = '最高阶段双技能在队友效率与容量求值后统一结算'
         } else if (skill.buffId === 'trade_ord_spd_bd_n1[000]') {
           applied = 0
         } else if (skill.buffId === 'trade_ord_spd_bd[010]') {
@@ -786,8 +839,12 @@ export function evaluateOperators(
         } else {
           applied = directTradingBonus(skill)
         }
-        const target = sameRoomTargetBonus(skill, operatorNames, room.type)
+        const target = conditional?.includesNamedTarget ? null
+          : skill.buffId === 'trade_ord_spd&multiPar[100]'
+            ? (activeOperators.some(op => hasRiicTag(op, 'exusiai')) ? 25 : 0)
+            : sameRoomTargetBonus(skill, operatorNames, room.type)
         if (target !== null) applied = (applied ?? 0) + target
+        if (skill.buffId === 'trade_ord_limit&cost_P[020]') applied = 0 // Capacity/morale are evaluated in their own layers.
         if (/高品质|特别订单|独占订单|违约订单|赤金交付数/.test(skill.description)) {
           applied = applied ?? 0
         }
@@ -812,15 +869,25 @@ export function evaluateOperators(
           'char_4188_confes',
           'char_4227_gallus',
         ])
-        if (stablePowerBonus(skill) !== null) {
-          applied = stablePowerBonus(skill)
+        const aigisBonus = evaluateAigisPowerSkill(skill, selectedOperators(config.rooms.filter(r => r.type === 'manufacture').flatMap(r => r.operatorIds)))
+        if (aigisBonus !== null) {
+          applied = aigisBonus
+        } else if (skill.buffId === 'power_rec_spd&dorm&lv[000]') {
+          applied = config.facilities.dormitories.reduce((sum, level) => sum + level, 0) * 0.5
+        } else if (skill.buffId === 'power_rec_rhine[000]') {
+          const count = globalContext.presentOperators.filter(op => op.charId !== operator.charId && matchesRiicIdentity(op, 'groupId', 'rhine')).length
+          applied = 10 + Math.min(5, count) * 3
+        } else if (stablePowerBonus(skill) !== null) {
+          applied = temporalSkillBonus(skill.buffId, operator.charId, timeContext) ?? stablePowerBonus(skill)
+        } else if (skill.buffId === 'power_count[000]') {
+          applied = 0 // Virtual station count is resolved by deriveEffectivePowerStations.
         } else if (skill.buffId === 'power_rec_drone[000]') {
           applied = Math.min(25, Math.floor(globalContext.droneCapacity / 10))
         } else if (skill.buffId === 'power_prod_spd_P[000]') {
           applied = 0
           facilityDetail = 'applied to the Wild Mane factory'
         } else if (skill.buffId === 'power_rec_spd_ext&faction[000]') {
-          applied = otherPowerOperators.some((item) => item.nationId === 'laterano') ? 5 : 0
+          applied = otherPowerOperators.some((item) => matchesRiicIdentity(item, 'nationId', 'laterano')) ? 5 : 0
         } else if (skill.buffId === 'power_rec_spd_P[000]') {
           applied = selectedOperators(config.controlOperatorIds).some((item) => item.name === '凯尔希')
             ? 5
@@ -828,11 +895,15 @@ export function evaluateOperators(
         } else if (skill.buffId === 'power_rec_spd_ext&tag[000]') {
           applied = otherPowerOperators.some((item) => workPlatformIds.has(item.charId)) ? 5 : 0
         } else if (skill.buffId === 'power_rec_spd_P[001]') {
-          applied = globalContext.trainingOperatorIds.some(
-            (id) => id === '逻各斯' || OPERATOR_MAP.get(id)?.name === '逻各斯',
+          const logosPresent = globalContext.trainingOperatorIds.some(
+            id => id === '逻各斯' || OPERATOR_MAP.get(id)?.name === '逻各斯',
           )
-            ? 5
-            : 0
+          applied = 0
+          if (logosPresent) {
+            unquantifiedSkills.push(operator.name + '·' + skill.name)
+            facilityDetail = '训练名单未区分协助位与受训位，额外5%尚不能确定'
+            details.push(`${operator.name}·${skill.name}：${facilityDetail}`)
+          }
         } else {
           applied = directPowerBonus(skill)
         }
@@ -858,6 +929,9 @@ export function evaluateOperators(
         applied = 0
       }
 
+      if (room.type === 'manufacture' && operator.charId !== 'char_243_waaifu' && !facilityBased && applied !== null) {
+        waaiFuCopyableBonus += applied
+      }
       if (applied !== null) {
         skillBonus += applied
         opSkillTotal += applied
@@ -889,6 +963,88 @@ export function evaluateOperators(
       totalBonus: opStaff + opSkillTotal,
       items: opItems,
     })
+  }
+
+  if (room.type === 'manufacture' && automationOperators.size === 0) {
+    const copyOperator = activeOperators.find(operator => operator.skills.some(skill => skill.buffId === 'manu_prod_spd_variable2[000]'))
+    if (copyOperator) {
+      // Preserve the separately granted knight support already included by this rule.
+      const knightSupport = vivianaActive
+        ? activeOperators.filter(operator => operator.charId !== copyOperator.charId && hasRiicTag(operator, 'knight')).length * 7
+        : 0
+      const copied = Math.min(40, Math.floor((waaiFuCopyableBonus + knightSupport) / 5) * 5)
+      const contribution = operatorContributions.find(item => item.operatorId === copyOperator.charId)!
+      if (copied !== 0) {
+        const name = copyOperator.name + '·配合意识'
+        contribution.items.push({ name, value: copied, detail: '复制其他干员已结算的非设施数量生产力' })
+        contribution.skillBonus += copied
+        contribution.totalBonus += copied
+        skillBonus += copied
+        details.push(name + '：+' + copied + '%')
+      }
+    }
+  }
+
+  const jaye = room.type === 'trading' ? activeOperators.find(op =>
+    op.skills.some(skill => skill.buffId === 'trade_ord_limit_diff[000]')) : undefined
+  if (jaye) {
+    const snowsant = activeOperators.find(op => op.skills.some(skill => /^trade_ord_spd_variable2\[(000|001)\]$/.test(skill.buffId)))
+    const copySkill = snowsant?.skills.find(skill => /^trade_ord_spd_variable2\[(000|001)\]$/.test(skill.buffId))
+    const partners = activeOperators.filter(op => op.charId !== jaye.charId && op.charId !== snowsant?.charId)
+    const resolved = evaluateHighestPhaseJaye({
+      roomLevel: room.level,
+      hasBothJayeSkills: jaye.skills.some(skill => skill.buffId === 'trade_ord_limit_count[000]'),
+      clearedByShamare: shamareActive,
+      snowsant: snowsant && copySkill ? { operatorId: snowsant.charId, cap: copySkill.buffId.endsWith('[001]') ? 35 : 25 } : undefined,
+      partners: partners.map(op => {
+        const contribution = operatorContributions.find(item => item.operatorId === op.charId)!
+        const skills = op.skills.filter(skill => skill.roomType === 'TRADING')
+        let capacity = skills.reduce((sum, skill) => sum + orderLimitDelta(skill, room, operatorNames), 0)
+        if (gnosisInControl && matchesRiicIdentity(op, 'nationId', 'kjerag')) capacity += 6
+        if (wisdelInControl && op.name === '赫德雷') capacity += 2
+        return { operatorId: op.charId, efficiency: contribution.skillBonus,
+          snowsantCopyableEfficiency: contribution.skillBonus, orderLimitDelta: capacity,
+          dependsOnOrderLimit: skills.some(skill => ['trade_ord_spd_variable[000]', 'trade_ord_spd_variable3[000]'].includes(skill.buffId)) }
+      }),
+    })
+    if (resolved.supported) {
+      for (const [op, value, label] of [
+        [jaye, resolved.jayeEfficiency, '摊贩经济 / 市井之道'],
+        [snowsant, resolved.snowsantEfficiency, copySkill?.name ?? '天道酬勤'],
+      ] as const) {
+        if (!op || value === 0) continue
+        const contribution = operatorContributions.find(item => item.operatorId === op.charId)!
+        const name = op.name + '·' + label
+        const detail = op === jaye ? `订单上限 ${resolved.effectiveOrderLimit}，双技能队列项抵消` : '先复制第三人，再计入孑的容量折减'
+        contribution.items.push({ name, value, detail })
+        contribution.skillBonus += value
+        contribution.totalBonus += value
+        skillBonus += value
+        details.push(`${name}：+${value}%（${detail}）`)
+      }
+    } else {
+      unquantifiedSkills.push('孑·摊贩经济', '孑·市井之道')
+      if (snowsant) unquantifiedSkills.push(snowsant.name + '·' + copySkill!.name)
+      details.push(`${resolved.reason}：${resolved.detail}`)
+    }
+  }
+
+  if (room.type === 'trading' && !shamareActive && !jaye) {
+    const copyOperators = activeOperators.filter(op => op.skills.some(skill => /^trade_ord_spd_variable2\[(000|001)\]$/.test(skill.buffId)))
+    const copyIds = new Set(copyOperators.map(op => op.charId))
+    for (const operator of copyOperators) {
+      const copySkill = operator.skills.find(skill => /^trade_ord_spd_variable2\[(000|001)\]$/.test(skill.buffId))!
+      const copied = snowsantCopiedTradeBonus(operatorContributions, copyIds, copySkill.buffId.endsWith('[001]') ? 35 : 25)
+      const contribution = operatorContributions.find(item => item.operatorId === operator.charId)!
+      if (copied !== 0) {
+        const name = operator.name + '·' + copySkill.name
+        contribution.items.push({ name, value: copied, detail: '复制其他干员已结算订单效率' })
+        contribution.skillBonus += copied
+        contribution.totalBonus += copied
+        skillBonus += copied
+        details.push(name + '：+' + copied + '%')
+      }
+    }
   }
 
   const exhausted = operators.filter((operator) => !activeOperators.some((a) => a.charId === operator.charId))

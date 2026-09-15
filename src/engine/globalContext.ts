@@ -1,5 +1,7 @@
+import { matchesRiicIdentity } from '../domain/riicIdentity'
 import type { AppConfig } from '../domain/types'
 import { OPERATOR_MAP, type OperatorRecord } from '../domain/operators'
+import { hasRiicTag } from '../domain/riicTags'
 
 export interface GlobalResourceValue {
   derived: number
@@ -16,6 +18,8 @@ export interface EffectivePowerStations {
 }
 
 export interface RiicGlobalContext {
+  /** Physical presence, including exhausted occupants; use assignedOperators for active providers. */
+  presentOperators: readonly OperatorRecord[]
   assignedOperators: readonly OperatorRecord[]
   perceptionInformation: GlobalResourceValue
   thoughtChain: GlobalResourceValue
@@ -29,6 +33,9 @@ export interface RiicGlobalContext {
   monsterCuisine: number
   worldlyFireworks: number
   suiFacilities: number
+  eliteFacilities: number
+  woodCatnip: number
+  ursuSpecialDrink: number
   droneCapacity: number
   trainingOperatorIds: readonly string[]
   centralManufactureBonus: number
@@ -41,6 +48,8 @@ function selectedOperators(ids: readonly string[]): OperatorRecord[] {
 }
 
 function isActive(id: string, config: AppConfig, activeOperatorIds?: ReadonlySet<string>): boolean {
+  // Exhaustion disables workplace skills, not the recovery/resource skills of resting occupants.
+  if (config.facilityOperatorIds.dormitories.some(ids => ids.includes(id))) return true
   const isDynamicAssignment =
     config.controlOperatorIds.includes(id) ||
     config.rooms.some((room) => room.operatorIds.includes(id))
@@ -60,14 +69,38 @@ function occupiedFacilityOperatorIds(config: AppConfig): readonly string[][] {
   ]
 }
 
-function deriveSuiFacilities(
-  config: AppConfig,
-  activeOperatorIds?: ReadonlySet<string>,
-): number {
+function occupiedGroupFacilities(config: AppConfig, groupId: string): number {
   return occupiedFacilityOperatorIds(config).filter((ids) =>
-    selectedOperators(ids.filter((id) => isActive(id, config, activeOperatorIds)))
-      .some((operator) => operator.groupId === 'sui'),
+    selectedOperators(ids).some((operator) => matchesRiicIdentity(operator, 'groupId', groupId)),
   ).length
+}
+
+function deriveControlResources(config: AppConfig, activeOperatorIds?: ReadonlySet<string>) {
+  const present = selectedOperators(config.controlOperatorIds)
+  const active = present.filter(op => isActive(op.charId, config, activeOperatorIds))
+  const woodCatnip = (active.some(op => op.name === '麒麟R夜刀') ? 8 : 0)
+    + (active.some(op => op.name === '火龙S黑角') ? present.filter(op => hasRiicTag(op, 'monsterHunter')).length * 2 : 0)
+  const ursuSpecialDrink = active.some(op => op.name === '战车')
+    ? present.filter(op => matchesRiicIdentity(op, 'teamId', 'student')).length : 0
+  return { woodCatnip, ursuSpecialDrink }
+}
+
+function deriveDirectSilentResonance(config: AppConfig, activeOperatorIds?: ReadonlySet<string>) {
+  let value = 0
+  const details: string[] = []
+  for (const ids of config.facilityOperatorIds.dormitories) {
+    if (ids.includes('char_245_cello') && isActive('char_245_cello', config, activeOperatorIds)) {
+      const amount = selectedOperators([...new Set(ids)]).length
+      value += amount
+      details.push(`塑心 +${amount}`)
+    }
+  }
+  if (config.facilityOperatorIds.office.includes('char_4109_baslin') && isActive('char_4109_baslin', config, activeOperatorIds)) {
+    const amount = Math.max(0, config.facilities.office - 1) * 15
+    value += amount
+    details.push(`深律 +${amount}`)
+  }
+  return { value, details }
 }
 
 export function deriveWorldlyFireworks(
@@ -96,14 +129,14 @@ export function deriveWorldlyFireworks(
     ]
     const activeSui = selectedOperators(
       workOperatorIds.filter((id) => isActive(id, config, activeOperatorIds)),
-    ).filter((operator) => operator.groupId === 'sui')
+    ).filter((operator) => matchesRiicIdentity(operator, 'groupId', 'sui'))
     value += Math.min(5, activeSui.length) * 5
   }
   if (
     config.facilityOperatorIds.office.includes('char_473_mberry') &&
     isActive('char_473_mberry', config, activeOperatorIds)
   ) {
-    value += config.facilities.office * 10
+    value += Math.max(0, config.facilities.office - 1) * 10
   }
   const wuYouActive = config.rooms
     .filter((room) => room.type === 'trading')
@@ -136,10 +169,7 @@ function resource(derived: number, override: number, details: string[]): GlobalR
   }
 }
 
-function allAssignedOperators(
-  config: AppConfig,
-  activeOperatorIds?: ReadonlySet<string>,
-): OperatorRecord[] {
+function allPresentOperators(config: AppConfig): OperatorRecord[] {
   const ids = new Set([
     ...config.rooms.flatMap((room) => room.operatorIds),
     ...config.controlOperatorIds,
@@ -150,7 +180,7 @@ function allAssignedOperators(
     ...config.facilityOperatorIds.training,
     ...config.efficiencyResources.extraWorkplaceOperatorIds,
   ])
-  return selectedOperators([...ids].filter((id) => isActive(id, config, activeOperatorIds)))
+  return selectedOperators([...ids])
 }
 
 function derivePerceptionInformation(
@@ -228,8 +258,7 @@ function deriveAdditionalGoldProductionLines(
     .flatMap((room) => room.operatorIds)
     .some((id) => id === 'char_4055_bgsnow' && isActive(id, config, activeOperatorIds))
   if (!pozemkaActive) return 0
-  const durinNames = new Set(['至简', '桃金娘', '褐果', '杜林', '特克诺'])
-  return Math.min(4, assignedOperators.filter((operator) => durinNames.has(operator.name)).length)
+  return Math.min(4, assignedOperators.filter((operator) => hasRiicTag(operator, 'durin')).length)
 }
 
 function deriveKiraraGoldProductionLines(
@@ -317,7 +346,7 @@ export function deriveCentralManufactureBonus(
       }
       if (operator.charId === 'char_1044_hsgma2') {
         const hasOtherLgd = controlOperators.some(
-          (other) => other.charId !== 'char_1044_hsgma2' && other.groupId === 'lgd',
+          (other) => other.charId !== 'char_1044_hsgma2' && matchesRiicIdentity(other, 'groupId', 'lgd'),
         )
         if (hasOtherLgd) {
           staticMax = Math.max(staticMax, 3)
@@ -325,18 +354,8 @@ export function deriveCentralManufactureBonus(
         continue
       }
       if (operator.charId === 'char_1029_yato2') {
-        const mhIds = new Set([
-          'char_1029_yato2',
-          'char_1030_noirc2',
-          'char_4077_palico',
-          'char_1049_catap2',
-          'char_1048_orchd2',
-          'char_4215_buddy',
-        ])
         const hasOtherMh = controlOperators.some(
-          (other) =>
-            other.charId !== 'char_1029_yato2' &&
-            (mhIds.has(other.charId) || other.teamId === 'mh' || other.teamId === 'monsterhunter'),
+          (other) => other.charId !== operator.charId && hasRiicTag(other, 'monsterHunter'),
         )
         if (hasOtherMh) {
           staticMax = Math.max(staticMax, 2)
@@ -360,7 +379,7 @@ export function deriveCentralManufactureBonus(
           .filter((id) => isActive(id, config, activeOperatorIds))
           .filter((id) => {
             const op = OPERATOR_MAP.get(id)
-            return op?.rarity === 1 || platformIds.has(id)
+            return Boolean(op && hasRiicTag(op, 'workPlatform')) || platformIds.has(id)
           }).length
         if (activeRobotCount >= 2) {
           staticMax = Math.max(staticMax, 2)
@@ -368,7 +387,9 @@ export function deriveCentralManufactureBonus(
         continue
       }
       if (operator.charId === 'char_2027_wang') {
-        unquantifiedSkills.push('望·权变')
+        const external = config.rooms.filter(r => r.type === 'trading' || r.type === 'power').length
+        const actual = config.rooms.filter(r => r.type === 'manufacture').length
+        if (actual > external) staticMax = Math.max(staticMax, 2)
         continue
       }
       if (/^进驻控制中枢时，所有制造站生产力\+([\d.]+)%/.test(skill.description)) {
@@ -392,7 +413,8 @@ export function buildRiicGlobalContext(
   activeOperatorIds?: ReadonlySet<string>,
   moraleValues?: ReadonlyMap<string, number>,
 ): RiicGlobalContext {
-  const assignedOperators = allAssignedOperators(config, activeOperatorIds)
+  const presentOperators = allPresentOperators(config)
+  const assignedOperators = presentOperators.filter(op => isActive(op.charId, config, activeOperatorIds))
   const perception = derivePerceptionInformation(config, activeOperatorIds, moraleValues)
   const perceptionInformation = resource(perception.value, 0, perception.details)
   const thoughtChain = resource(
@@ -400,17 +422,18 @@ export function buildRiicGlobalContext(
     config.efficiencyResources.manufacturePerceptionInformation,
     perception.details,
   )
+  const directResonance = deriveDirectSilentResonance(config, activeOperatorIds)
   const silentResonance = resource(
-    perception.ebenholzActive ? perception.value : 0,
+    (perception.ebenholzActive ? perception.value : 0) + directResonance.value,
     config.efficiencyResources.tradingPerceptionInformation,
-    perception.details,
+    [...(perception.ebenholzActive ? perception.details : []), ...directResonance.details],
   )
   const physicalGoldLines = config.rooms.filter(
     (room) => room.type === 'manufacture' && room.product === 'gold',
   ).length
   const derivedAdditionalGoldLines = deriveAdditionalGoldProductionLines(
     config,
-    assignedOperators,
+    presentOperators,
     activeOperatorIds,
   )
   const derivedKiraraGoldLines = deriveKiraraGoldProductionLines(config, activeOperatorIds)
@@ -430,11 +453,15 @@ export function buildRiicGlobalContext(
   )
   const derivedWorldlyFireworks = deriveWorldlyFireworks(config, activeOperatorIds, moraleValues)
   const derivedMonsterCuisine = deriveMonsterCuisine(config, activeOperatorIds)
-  const derivedSuiFacilityCount = deriveSuiFacilities(config, activeOperatorIds)
+  const derivedSuiFacilityCount = occupiedGroupFacilities(config, 'sui')
+  const controlResources = deriveControlResources(config, activeOperatorIds)
   const centralManufacture = deriveCentralManufactureBonus(config, activeOperatorIds)
 
   return {
+    presentOperators,
     assignedOperators,
+    ...controlResources,
+    eliteFacilities: occupiedGroupFacilities(config, 'elite'),
     perceptionInformation,
     thoughtChain,
     silentResonance,

@@ -115,6 +115,8 @@ export interface TradeResult {
   orders: number
   lmd: number
   goldConsumed: number
+  virtualGold?: number
+  virtualGoldValue?: number
   orundum: number
   fragmentsConsumed: number
   droneExtraOrders: number
@@ -134,6 +136,7 @@ export interface CalculationReport {
   power: PowerBalance
   layoutValid: boolean
   validationMessages: string[]
+  efficiencyNotes?: string[]
   manufacture: ManufactureResult[]
   trading: TradeResult[]
   drones: number
@@ -143,10 +146,18 @@ export interface CalculationReport {
     exp: number
     goldCount: number
     goldValue: number
+    virtualGoldCount: number
+    virtualGoldValue: number
     orderLmd: number
     fragments: number
     orundum: number
     goldConsumed: number
     fragmentsConsumed: number
+    netGoldCount: number
+    netGoldValue: number
+    totalScore82: number
+    totalEquivalentLmd: number
   } | null
 }
+
+export type SummaryOutput = NonNullable<CalculationReport['summary']>

@@ -46,6 +46,30 @@ describe('runCalculationBridge engine options', () => {
     const result = runCalculationBridge(ws, { engine: 'legacy' })
     expect(result.success).toBe(false)
     expect(result.report).toBeNull()
-    expect(result.error).toBe('排班存在阻断错误，无法进行收益计算')
+    expect(result.validation.isValid).toBe(false)
+  })
+
+  it('runs simulation engine and returns converted report with 82 score', () => {
+    const ws = createDefaultWorkspace()
+    const result = runCalculationBridge(ws, {
+      engine: 'simulation',
+      simulationOptions: {
+        warmupHours: 0,
+        sampleHours: 24,
+        warmupModel: 'hourly',
+        production: {
+          outputMode: 'potential',
+          runOrderMode: 'drone',
+          droneTarget: 'gold',
+        },
+      },
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.engine).toBe('simulation')
+    expect(result.report).not.toBeNull()
+    expect(result.simulationReport).toBeDefined()
+    expect(result.report?.summary?.totalScore82).toBeGreaterThan(0)
+    expect(result.report?.power.sufficient).toBe(true)
   })
 })

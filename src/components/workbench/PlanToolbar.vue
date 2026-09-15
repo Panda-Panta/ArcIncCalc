@@ -17,6 +17,20 @@
           新建/重置
         </button>
 
+        <!-- Import Operator Inventory (MAA & SKLand) -->
+        <button
+          type="button"
+          class="mower-btn btn-import-inventory"
+          data-test="import-inventory-btn"
+          :disabled="disabled || isExportingImage"
+          @click="importModalOpen = true"
+        >
+          <svg class="mower-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+          </svg>
+          导入干员库
+        </button>
+
         <!-- Import Button (accepts .json, .jpg, .jpeg) -->
         <button
           type="button"
@@ -72,8 +86,23 @@
         </div>
       </div>
 
-      <!-- Right actions: Global Replace & Yield Calculation -->
+      <!-- Right actions: Auto Roster, Replace & Yield Calculation -->
       <div class="action-cluster right-cluster">
+        <!-- Auto Generate Roster (Req 10) -->
+        <button
+          type="button"
+          class="mower-btn btn-auto-roster"
+          data-test="auto-roster-btn"
+          :disabled="disabled || isExportingImage || isGeneratingRoster"
+          @click="onAutoGenerateClick"
+        >
+          <span v-if="isGeneratingRoster" class="mower-spinner" aria-hidden="true"></span>
+          <svg v-else class="mower-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0 0 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 0 0 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+          </svg>
+          {{ isGeneratingRoster ? '正在排班...' : '自动生成排班' }}
+        </button>
+
         <!-- One-Click Global Operator Replace -->
         <button
           type="button"
@@ -125,6 +154,13 @@
         ×
       </button>
     </div>
+
+    <!-- Modal for importing operator inventory -->
+    <OperatorImportModal
+      :open="importModalOpen"
+      @update:open="importModalOpen = $event"
+      @imported="onInventoryImported"
+    />
   </div>
 </template>
 
@@ -146,6 +182,8 @@
  */
 
 import { computed, inject, ref } from 'vue'
+import OperatorImportModal from './OperatorImportModal.vue'
+import type { OwnedOperatorInput } from '../../domain/operatorInventory'
 import {
   exportPlanToImage,
   exportPlanToJson,
@@ -163,6 +201,7 @@ export interface PlanToolbarProps {
   theme?: 'light' | 'dark'
   adapters?: PlanFileAdapters
   disabled?: boolean
+  isGeneratingRoster?: boolean
 }
 
 const props = withDefaults(defineProps<PlanToolbarProps>(), {
@@ -171,6 +210,7 @@ const props = withDefaults(defineProps<PlanToolbarProps>(), {
   theme: 'light',
   adapters: undefined,
   disabled: false,
+  isGeneratingRoster: false,
 })
 
 const emit = defineEmits<{
@@ -181,12 +221,15 @@ const emit = defineEmits<{
   (e: 'exported-json'): void
   (e: 'exported-image'): void
   (e: 'error', message: string): void
+  (e: 'auto-generate'): void
+  (e: 'inventory-imported', entries: OwnedOperatorInput[], text: string): void
 }>()
 
 const store = useRosterWorkbenchStore()
 
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const isExportingImage = ref(false)
+const importModalOpen = ref(false)
 
 export interface StatusMessage {
   type: 'success' | 'error' | 'info'
@@ -346,14 +389,29 @@ async function onExportImageClick(): Promise<void> {
 }
 
 /**
- * 5. 一键替换干员
+ * 5. 导入干员库回调
+ */
+function onInventoryImported(entries: OwnedOperatorInput[], text: string): void {
+  setStatus('success', `成功导入 ${entries.length} 名干员至干员库！`)
+  emit('inventory-imported', entries, text)
+}
+
+/**
+ * 6. 自动生成排班
+ */
+function onAutoGenerateClick(): void {
+  emit('auto-generate')
+}
+
+/**
+ * 7. 一键替换干员
  */
 function onReplaceClick(): void {
   emit('open-replace')
 }
 
 /**
- * 6. 计算产出
+ * 8. 计算产出
  */
 function onCalculateClick(): void {
   if (!props.isValid) return

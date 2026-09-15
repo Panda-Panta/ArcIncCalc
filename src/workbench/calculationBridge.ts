@@ -1,12 +1,14 @@
-import type { AppConfig, CalculationReport } from '../domain/types'
+import type { AppConfig, CalculationReport, SummaryOutput } from '../domain/types'
 import { createDefaultConfig } from '../domain/defaults'
 import { calculate } from '../engine/calculate'
 import { compileRosterSchedule } from '../scheduler/compileRosterSchedule'
 import { compileMainPlanToAppConfig } from './adapter'
 import type { RosterWorkspace } from './model'
 import { validateRosterWorkspace, type ValidationResult } from './validate'
+import { runScheduleSimulationBridge } from './scheduleSimulationBridge'
+import type { ScheduleSimulationOptions, ScheduleSimulationReport } from '../simulator/scheduleSimulation'
 
-export type CalculationEngineKind = 'legacy' | 'event-v2'
+export type CalculationEngineKind = 'legacy' | 'simulation' | 'event-v2'
 
 export interface CalculationDiagnostic {
   code: string
@@ -17,21 +19,88 @@ export interface CalculationDiagnostic {
 export interface CalculationBridgeOptions {
   engine?: CalculationEngineKind
   baseConfig?: AppConfig
+  simulationOptions?: ScheduleSimulationOptions
 }
 
 export interface CalculationBridgeResult {
   success: boolean
   report: CalculationReport | null
+  simulationReport?: ScheduleSimulationReport | null
   validation: ValidationResult
   engine?: CalculationEngineKind
   diagnostics?: CalculationDiagnostic[]
   error?: string
 }
 
+export function simulationReportToCalculationReport(
+  workspace: RosterWorkspace,
+  simReport: ScheduleSimulationReport,
+  baseConfig: AppConfig = createDefaultConfig(),
+): CalculationReport {
+  const days = simReport.observedHours > 0 ? simReport.observedHours / 24 : 1
+  const completed = simReport.production?.sample.completed
+  const outflows = simReport.production?.sample.outflows
+  const inflows = simReport.production?.sample.inflows
+
+  const exp = (completed?.exp ?? 0) / days
+  const goldCount = (completed?.gold ?? 0) / days
+  const goldValue = goldCount * 500
+  const orderLmd = (completed?.orderLmd ?? 0) / days
+
+  const warmupHours = simReport.assumptions?.warmupHours ?? 0
+  const sampleOrderEvents = simReport.production?.events.filter(
+    e => e.type === 'order-completed' && e.time >= warmupHours
+  ) ?? []
+  const ordersGoldCost = sampleOrderEvents.reduce((n, e) => n + (e.order?.goldCost ?? 0), 0) / days
+  const goldConsumed = (outflows?.gold ?? 0) > 0 ? (outflows?.gold ?? 0) / days : ordersGoldCost
+  const netGoldCount = goldCount - goldConsumed
+
+  // Tequila virtual gold (within sample period)
+  const tequilaOrders = sampleOrderEvents.filter(
+    e => e.order?.kind === 'tequila'
+  ).length
+  const virtualGoldCount = tequilaOrders / days
+  const virtualGoldValue = virtualGoldCount * 500
+
+  // 82 score: exp + 0.8 * (goldValue + virtualGoldValue) + 0.2 * orderLmd
+  const totalScore82 = exp + 0.8 * (goldValue + virtualGoldValue) + 0.2 * orderLmd
+  const totalEquivalentLmd = orderLmd + exp + (netGoldCount + virtualGoldCount) * 500
+
+  const fragments = (inflows?.fragment ?? 0) / days
+  const orundum = (inflows?.orundum ?? 0) / days
+  const drones = (inflows?.drone ?? 0) / days
+
+  const compiledConfig = compileMainPlanToAppConfig(workspace.mainPlan, workspace, baseConfig)
+  const legacyReport = calculate(compiledConfig)
+
+  const summary: SummaryOutput = {
+    exp,
+    goldCount,
+    goldValue,
+    virtualGoldCount,
+    virtualGoldValue,
+    orderLmd,
+    fragments,
+    orundum,
+    goldConsumed,
+    fragmentsConsumed: 0,
+    netGoldCount,
+    netGoldValue: netGoldCount * 500,
+    totalScore82,
+    totalEquivalentLmd,
+  }
+
+  return {
+    ...legacyReport,
+    summary,
+    drones: drones > 0 ? drones : legacyReport.drones,
+    validationMessages: simReport.diagnostics.map(d => d.message),
+  }
+}
+
 /**
  * Pure calculation bridge helper:
- * Supports 'legacy' (default) and 'event-v2' engines.
- * When event-v2 is requested but not fully ready, returns null report and explicit diagnostic.
+ * Supports 'legacy' (default), 'simulation', and 'event-v2' engines.
  */
 export function runCalculationBridge(
   workspace: RosterWorkspace,
@@ -53,8 +122,11 @@ export function runCalculationBridge(
     }
   }
 
+  // Deep clone to strip any Vue reactive proxies before simulation / structuredClone
+  const cleanWorkspace: RosterWorkspace = JSON.parse(JSON.stringify(workspace))
+
   if (engine === 'event-v2') {
-    const compiled = compileRosterSchedule(workspace)
+    const compiled = compileRosterSchedule(cleanWorkspace)
     const diagnostics: CalculationDiagnostic[] = [
       {
         code: 'EVENT_V2_UNAVAILABLE',
@@ -78,6 +150,45 @@ export function runCalculationBridge(
     }
   }
 
+  if (engine === 'simulation') {
+    const simBridge = runScheduleSimulationBridge(
+      cleanWorkspace,
+      options.simulationOptions ?? {
+        warmupHours: 72,
+        sampleHours: 168,
+        warmupModel: 'hourly',
+        production: {
+          outputMode: 'potential',
+          runOrderMode: 'drone',
+          droneTarget: 'gold',
+        },
+      },
+    )
+
+    if (simBridge.report) {
+      const report = simulationReportToCalculationReport(
+        cleanWorkspace,
+        simBridge.report,
+        options.baseConfig ?? createDefaultConfig(),
+      )
+      return {
+        success: true,
+        report,
+        simulationReport: simBridge.report,
+        validation,
+        engine: 'simulation',
+      }
+    }
+
+    return {
+      success: false,
+      report: null,
+      validation,
+      engine: 'simulation',
+      error: simBridge.error ?? '动态模拟执行失败',
+    }
+  }
+
   const compiledConfig = compileMainPlanToAppConfig(
     workspace.mainPlan,
     workspace,
@@ -92,3 +203,5 @@ export function runCalculationBridge(
     engine: 'legacy',
   }
 }
+
+

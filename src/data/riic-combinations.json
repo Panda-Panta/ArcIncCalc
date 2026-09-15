@@ -1,0 +1,3998 @@
+{
+  "schemaVersion": 1,
+  "title": "RIIC 高效率常用组合候选库",
+  "generatedAt": "2026-09-13",
+  "catalogSource": {
+    "path": "src/data/operators.generated.json",
+    "operatorCount": 429,
+    "skillCount": 754,
+    "skillStageCount": 921
+  },
+  "scope": "有限、可执行的常用组合族；不穷尽排列组合。效率公式是供评估器实现的解释，不应直接执行。",
+  "candidates": [
+    {
+      "id": "manu-gold-weedy-purestream",
+      "name": "温蒂-清流自动化赤金",
+      "family": "automation",
+      "facility": "MANUFACTURE",
+      "product": "gold",
+      "operatorNames": [
+        "温蒂",
+        "清流"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [
+          "贵金属配方",
+          "有效发电站数 p"
+        ],
+        "roster": [],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [
+          "贸易站数 t"
+        ],
+        "slotCount": {
+          "exact": 2
+        }
+      },
+      "substitutions": [],
+      "conflicts": [
+        "不得加入第三名依赖普通生产力的干员",
+        "与深海特殊加成不叠加"
+      ],
+      "efficiencyFormula": "进驻基础2% + 温蒂 15%×p + 清流 20%×t + 适用中枢制造项；温蒂清零其它普通技能生产力。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "mower first sheet / links 自动化; no candidate-specific test name recorded"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "温蒂",
+            "buffIds": [
+              "manu_prod_spd&power[020]"
+            ]
+          },
+          {
+            "operatorName": "清流",
+            "buffIds": [
+              "power_rec_spd[011]",
+              "manu_prod_spd&trade[000]"
+            ]
+          }
+        ],
+        "termIds": []
+      },
+      "optimizerTags": [
+        "gold",
+        "automation",
+        "power-count",
+        "trade-count"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "manu-gold-almond-purestream",
+      "name": "杏仁-清流贸易站赤金",
+      "family": "gold",
+      "facility": "MANUFACTURE",
+      "product": "gold",
+      "operatorNames": [
+        "杏仁",
+        "清流"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [],
+        "roster": [],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [
+          "贸易站数 t",
+          "基建内黑钢人数 b（含杏仁，1≤b≤3）"
+        ],
+        "slotCount": {
+          "exact": 2
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "进驻基础2% + 杏仁25% + 2%×b + 清流20%×t。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "杏仁",
+            "buffIds": [
+              "manu_formula_spd&cost[000]",
+              "manu_formula_spd&cost_bd[000]"
+            ]
+          },
+          {
+            "operatorName": "清流",
+            "buffIds": [
+              "power_rec_spd[011]",
+              "manu_prod_spd&trade[000]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.g.bs"
+        ]
+      },
+      "optimizerTags": [
+        "gold",
+        "blacksteel",
+        "trade-count"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "manu-gold-bubble-vulcan",
+      "name": "泡泡-火神容量转生产力",
+      "family": "capacity",
+      "facility": "MANUFACTURE",
+      "product": "gold",
+      "operatorNames": [
+        "泡泡",
+        "火神",
+        "铅踝"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [
+          "贵金属配方"
+        ],
+        "roster": [],
+        "morale": [
+          "铅踝心情落差影响两槽"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 3
+        }
+      },
+      "substitutions": [],
+      "conflicts": [
+        "不可与红云回收利用叠加，泡泡优先"
+      ],
+      "efficiencyFormula": "泡泡读取各干员自身容量；火神β容量19→57%、泡泡自身容量10→10%，泡泡67% − 火神5%，铅踝按心情落差30%−5%×floor(落差/4)，落差>12时第二槽另生效。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "links 容量与中枢; no candidate-specific test name recorded"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "泡泡",
+            "buffIds": [
+              "manu_prod_limit&cost[010]",
+              "manu_prod_spd_variable3[000]"
+            ]
+          },
+          {
+            "operatorName": "火神",
+            "buffIds": [
+              "manu_prod_spd&limit&cost[001]"
+            ]
+          },
+          {
+            "operatorName": "铅踝",
+            "buffIds": [
+              "manu_prod_spd_reduce[000]",
+              "manu_prod_spd_addition&cost[000]"
+            ]
+          }
+        ],
+        "termIds": []
+      },
+      "optimizerTags": [
+        "gold",
+        "warehouse",
+        "negative-efficiency"
+      ],
+      "coverageScope": "complete-team"
+    },
+    {
+      "id": "manu-gold-redcloud-capacity",
+      "name": "红云容量转赤金",
+      "family": "capacity",
+      "facility": "MANUFACTURE",
+      "product": "gold",
+      "operatorNames": [
+        "红云",
+        "稀音",
+        "刻俄柏"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [
+          "贵金属配方"
+        ],
+        "roster": [],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 3
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "红云按同站各干员自身已增加容量每点+2%转换；稀音和刻俄柏的容量/生产力先按原文结算。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "红云",
+            "buffIds": [
+              "manu_prod_limit&cost[0000]",
+              "manu_prod_spd_variable[000]"
+            ]
+          },
+          {
+            "operatorName": "稀音",
+            "buffIds": [
+              "manu_prod_spd_addition[041]",
+              "manu_formula_limit[0000]"
+            ]
+          },
+          {
+            "operatorName": "刻俄柏",
+            "buffIds": [
+              "manu_prod_limit&cost[002]",
+              "manu_prod_spd_addition[031]"
+            ]
+          }
+        ],
+        "termIds": []
+      },
+      "optimizerTags": [
+        "gold",
+        "warehouse",
+        "conditional"
+      ],
+      "coverageScope": "complete-team"
+    },
+    {
+      "id": "manu-gold-waai-fu-copy",
+      "name": "槐琥复制赤金同站收益",
+      "family": "copy",
+      "facility": "MANUFACTURE",
+      "product": "gold",
+      "operatorNames": [
+        "砾",
+        "阿罗玛",
+        "槐琥"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [
+          "贵金属配方"
+        ],
+        "roster": [],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 3
+        }
+      },
+      "substitutions": [],
+      "conflicts": [
+        "深海特殊加成优先，槐琥不可叠加"
+      ],
+      "efficiencyFormula": "进驻基础3% + 砾35% + 阿罗玛25%（暖机至20%另计）+ 槐琥按已结算可复制普通生产力最多40%；实际暖机时间必须进入状态。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "砾",
+            "buffIds": [
+              "workshop_proc_probability[000]",
+              "manu_formula_spd[110]"
+            ]
+          },
+          {
+            "operatorName": "阿罗玛",
+            "buffIds": [
+              "manu_formula_spd&cost[001]",
+              "manu_prod_spd_addition[100]"
+            ]
+          },
+          {
+            "operatorName": "槐琥",
+            "buffIds": [
+              "manu_cost_all[000]",
+              "manu_prod_spd_variable2[000]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.m.var2",
+          "cc.c.abyssal2_3"
+        ]
+      },
+      "optimizerTags": [
+        "gold",
+        "copy",
+        "conditional"
+      ],
+      "coverageScope": "complete-team"
+    },
+    {
+      "id": "manu-gold-rhine-dorothy-silence",
+      "name": "多萝西-淬羽赫默莱茵赤金",
+      "family": "rhine",
+      "facility": "MANUFACTURE",
+      "product": "gold",
+      "operatorNames": [
+        "多萝西",
+        "淬羽赫默"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [],
+        "roster": [],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 2
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "进驻基础2% + 多萝西(莱茵技能数×5% + 25%) + 淬羽赫默30%；第三槽选莱茵技能或独立赤金技能。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "多萝西",
+            "buffIds": [
+              "manu_skill_spd1[010]",
+              "manu_prod_spd[011]"
+            ]
+          },
+          {
+            "operatorName": "淬羽赫默",
+            "buffIds": [
+              "hire_spd[032]",
+              "manu_prod_spd[021]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.sk.manu2"
+        ]
+      },
+      "optimizerTags": [
+        "gold",
+        "rhine",
+        "skill-category"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "manu-gold-blacksteel-control",
+      "name": "涤火杰西卡黑钢中枢赤金",
+      "family": "blacksteel",
+      "facility": "CONTROL",
+      "product": "all",
+      "operatorNames": [
+        "涤火杰西卡"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [],
+        "roster": [
+          "目标制造站须逐站有有效工作的黑钢国际干员"
+        ],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 1
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "涤火杰西卡在控制中枢时，目标制造站内每名有效黑钢国际干员+5%；她不占用制造站槽位。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "涤火杰西卡",
+            "buffIds": [
+              "trade_ord_spd&limit[001]",
+              "control_bd_spd[000]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.g.bs"
+        ]
+      },
+      "optimizerTags": [
+        "gold",
+        "blacksteel",
+        "control"
+      ],
+      "coverageScope": "support-policy"
+    },
+    {
+      "id": "manu-exp-rhine-trio",
+      "name": "多萝西-淬羽赫默-弑君者狗粮",
+      "family": "rhine",
+      "facility": "MANUFACTURE",
+      "product": "exp",
+      "operatorNames": [
+        "多萝西",
+        "淬羽赫默",
+        "弑君者"
+      ],
+      "supportAssignments": [
+        {
+          "facility": "CONTROL",
+          "operatorNames": [
+            "Mon3tr"
+          ],
+          "role": "global manufacture +2%",
+          "roomKey": "control-support-1"
+        }
+      ],
+      "conditions": {
+        "facility": [],
+        "roster": [],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 3
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "进驻基础3% + 多萝西35% + 淬羽赫默30% + 弑君者35% + Mon3tr2% = 105%。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "mower N76 corrected audit; no candidate-specific test name recorded"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "多萝西",
+            "buffIds": [
+              "manu_skill_spd1[010]",
+              "manu_prod_spd[011]"
+            ]
+          },
+          {
+            "operatorName": "淬羽赫默",
+            "buffIds": [
+              "hire_spd[032]",
+              "manu_prod_spd[021]"
+            ]
+          },
+          {
+            "operatorName": "弑君者",
+            "buffIds": [
+              "workshop_formula_probability[031]",
+              "manu_formula_spd[022]"
+            ]
+          },
+          {
+            "operatorName": "Mon3tr",
+            "buffIds": [
+              "control_mp_cost[012]",
+              "control_prod_spd[1000]"
+            ]
+          }
+        ],
+        "termIds": []
+      },
+      "optimizerTags": [
+        "exp",
+        "rhine",
+        "fixture"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "manu-exp-redpine-control",
+      "name": "红松狗粮：断罪者-野鬃-灰毫",
+      "family": "redpine",
+      "facility": "MANUFACTURE",
+      "product": "exp",
+      "operatorNames": [
+        "断罪者",
+        "野鬃",
+        "灰毫"
+      ],
+      "supportAssignments": [
+        {
+          "facility": "CONTROL",
+          "operatorNames": [
+            "薇薇安娜",
+            "焰尾",
+            "Mon3tr"
+          ],
+          "role": "knight/redpine/global support",
+          "roomKey": "control-support-1"
+        }
+      ],
+      "conditions": {
+        "facility": [],
+        "roster": [],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 3
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "基础3%+35%+25%+25%+Mon3tr2%+薇薇安娜(骑士数×7%)+焰尾(红松数×10%)；此三人站内为124%。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "断罪者",
+            "buffIds": [
+              "dorm_rec_single[030]",
+              "manu_formula_spd[020]"
+            ]
+          },
+          {
+            "operatorName": "野鬃",
+            "buffIds": [
+              "manu_prod_spd[012]"
+            ]
+          },
+          {
+            "operatorName": "灰毫",
+            "buffIds": [
+              "manu_prod_spd[012]"
+            ]
+          },
+          {
+            "operatorName": "薇薇安娜",
+            "buffIds": [
+              "control_mp_cost[010]",
+              "control_prod_fraction[000]"
+            ]
+          },
+          {
+            "operatorName": "焰尾",
+            "buffIds": [
+              "control_mp_cost[007]",
+              "control_mp_psk[000]"
+            ]
+          },
+          {
+            "operatorName": "Mon3tr",
+            "buffIds": [
+              "control_mp_cost[012]",
+              "control_prod_spd[1000]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.tag.knight",
+          "cc.g.psk"
+        ]
+      },
+      "optimizerTags": [
+        "exp",
+        "redpine",
+        "knight"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "manu-exp-standard-mizuki",
+      "name": "水月标准化狗粮",
+      "family": "standardization",
+      "facility": "MANUFACTURE",
+      "product": "exp",
+      "operatorNames": [
+        "水月"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [],
+        "roster": [
+          "另两槽选持有标准化·α/β的制造干员"
+        ],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 1
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "水月25% + 同站标准化类技能数×5% + 另两名技能；进驻基础另算。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "水月",
+            "buffIds": [
+              "manu_skill_spd1[000]",
+              "manu_prod_spd[010]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.sk.manu1"
+        ]
+      },
+      "optimizerTags": [
+        "exp",
+        "standardization",
+        "skill-category"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "manu-exp-abyssal",
+      "name": "歌蕾蒂娅深海狗粮",
+      "family": "abyssal",
+      "facility": "MANUFACTURE",
+      "product": "exp",
+      "operatorNames": [
+        "安哲拉",
+        "幽灵鲨"
+      ],
+      "supportAssignments": [
+        {
+          "facility": "CONTROL",
+          "operatorNames": [
+            "歌蕾蒂娅"
+          ],
+          "role": "required",
+          "roomKey": "control-support-1"
+        }
+      ],
+      "conditions": {
+        "facility": [],
+        "roster": [
+          "歌蕾蒂娅在控制中枢；安哲拉、幽灵鲨作为深海特殊加成受益者占制造站槽位",
+          "制造站内深海猎人 h，且全部制造站内深海猎人总数 H"
+        ],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 2
+        }
+      },
+      "substitutions": [],
+      "conflicts": [
+        "温蒂/森蚺自动化清零优先；槐琥不可复制"
+      ],
+      "efficiencyFormula": "安哲拉/幽灵鲨无制造个人技能，但作为歌蕾蒂娅特殊加成明确受益者占本站槽位；每人得H×10%，本站两人合计2×H×10%。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "安哲拉",
+            "buffIds": [
+              "dorm_rec_oneself[011]"
+            ]
+          },
+          {
+            "operatorName": "幽灵鲨",
+            "buffIds": [
+              "dorm_rec_oneself[010]"
+            ]
+          },
+          {
+            "operatorName": "歌蕾蒂娅",
+            "buffIds": [
+              "control_mp_aegir1[000]",
+              "control_mp_aegir2[010]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.g.abyssal",
+          "cc.c.abyssal2_2",
+          "cc.c.abyssal2_3"
+        ]
+      },
+      "optimizerTags": [
+        "exp",
+        "abyssal",
+        "global-count"
+      ],
+      "coverageScope": "partial-template",
+      "operatorRoles": {
+        "安哲拉": "passive-abyssal-recipient",
+        "幽灵鲨": "passive-abyssal-recipient"
+      }
+    },
+    {
+      "id": "manu-exp-p3-makoto",
+      "name": "结城理 S.E.E.S. 通用制造",
+      "family": "p3r",
+      "facility": "MANUFACTURE",
+      "product": "gold",
+      "operatorNames": [
+        "结城理",
+        "砾",
+        "阿罗玛"
+      ],
+      "supportAssignments": [
+        {
+          "facility": "POWER",
+          "roomKey": "power-1",
+          "operatorNames": [
+            "埃癸斯"
+          ],
+          "role": "S.E.E.S. presence"
+        },
+        {
+          "facility": "TRAINING",
+          "roomKey": "training",
+          "operatorNames": [
+            "岳羽由加莉"
+          ],
+          "role": "S.E.E.S. presence"
+        },
+        {
+          "facility": "MEETING",
+          "roomKey": "meeting",
+          "operatorNames": [
+            "虎狼丸"
+          ],
+          "role": "S.E.E.S. presence"
+        }
+      ],
+      "conditions": {
+        "facility": [],
+        "roster": [
+          "S.E.E.S.成员 s 在基建内；此完整布置 s=4"
+        ],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 3
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "结城理20% + 5%×s；四名 S.E.E.S.均在各自设施时为40%，砾35%和阿罗玛25%按贵金属配方另加。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "结城理",
+            "buffIds": [
+              "control_prod_spd[999]",
+              "manu_prod_spd&bd[000]"
+            ]
+          },
+          {
+            "operatorName": "砾",
+            "buffIds": [
+              "workshop_proc_probability[000]",
+              "manu_formula_spd[110]"
+            ]
+          },
+          {
+            "operatorName": "阿罗玛",
+            "buffIds": [
+              "manu_formula_spd&cost[001]",
+              "manu_prod_spd_addition[100]"
+            ]
+          },
+          {
+            "operatorName": "埃癸斯",
+            "buffIds": [
+              "power_rec_spd_P2[999]",
+              "meet_spd&bd[999]"
+            ]
+          },
+          {
+            "operatorName": "岳羽由加莉",
+            "buffIds": [
+              "hire_spd_cost[999]",
+              "train_spd_doubleProf3[999]"
+            ]
+          },
+          {
+            "operatorName": "虎狼丸",
+            "buffIds": [
+              "dorm_rec_all[999]",
+              "meet_spd&exchange[999]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.tag.sees"
+        ]
+      },
+      "optimizerTags": [
+        "p3r",
+        "sees",
+        "manufacture"
+      ],
+      "coverageScope": "complete-team"
+    },
+    {
+      "id": "manu-originium-basic",
+      "name": "炎熔-地灵-薄绿源石",
+      "family": "originium",
+      "facility": "MANUFACTURE",
+      "product": "originium",
+      "operatorNames": [
+        "炎熔",
+        "地灵",
+        "薄绿"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [],
+        "roster": [],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 3
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "进驻基础3% + 35% +35% +30% = 103%。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "mower N146/N168 corrected audit; no candidate-specific test name recorded"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "炎熔",
+            "buffIds": [
+              "power_rec_spd[001]",
+              "manu_formula_spd[210]"
+            ]
+          },
+          {
+            "operatorName": "地灵",
+            "buffIds": [
+              "hire_spd_cost[200]",
+              "manu_formula_spd[211]"
+            ]
+          },
+          {
+            "operatorName": "薄绿",
+            "buffIds": [
+              "train_spd&profession2[250]",
+              "manu_formula_spd[201]"
+            ]
+          }
+        ],
+        "termIds": []
+      },
+      "optimizerTags": [
+        "originium",
+        "fixed"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "manu-originium-weedy-purestream",
+      "name": "温蒂-清流自动化源石",
+      "family": "automation",
+      "facility": "MANUFACTURE",
+      "product": "originium",
+      "operatorNames": [
+        "温蒂"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [
+          "源石配方",
+          "有效发电站数 p"
+        ],
+        "roster": [],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 1
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "进驻基础1% + 温蒂15%×p + 适用中枢制造项；温蒂清零同站其它普通生产力。清流只适用于贵金属，不在此候选。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "温蒂",
+            "buffIds": [
+              "manu_prod_spd&power[020]"
+            ]
+          }
+        ],
+        "termIds": []
+      },
+      "optimizerTags": [
+        "originium",
+        "automation"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "manu-originium-sui",
+      "name": "岁系源石制造",
+      "family": "sui",
+      "facility": "CONTROL",
+      "product": "all",
+      "operatorNames": [
+        "令",
+        "夕"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [
+          "控制中枢"
+        ],
+        "roster": [
+          "令与夕仅在控制中枢提供资源；目标制造站消费者另组"
+        ],
+        "morale": [
+          "令/夕依当前心情12阈值切换资源"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 2
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "令与夕在控制中枢按心情12阈值提供感知信息/人间烟火；不占源石制造槽位。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "links 感知信息与衍生资源"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "令",
+            "buffIds": [
+              "control_facCostReset[000]",
+              "control_costToBD[000]"
+            ]
+          },
+          {
+            "operatorName": "夕",
+            "buffIds": [
+              "control_mp_cost&bd1[000]",
+              "control_mp_cost&bd2[000]"
+            ]
+          }
+        ],
+        "termIds": []
+      },
+      "optimizerTags": [
+        "originium",
+        "sui",
+        "morale-threshold"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "trade-vigil-haruka",
+      "name": "伺夜-八幡海铃叙拉古贸易",
+      "family": "trade",
+      "facility": "TRADING",
+      "product": "gold",
+      "operatorNames": [
+        "伺夜"
+      ],
+      "supportAssignments": [
+        {
+          "facility": "CONTROL",
+          "operatorNames": [
+            "八幡海铃"
+          ],
+          "role": "Siracusa support",
+          "roomKey": "control-support-1"
+        }
+      ],
+      "conditions": {
+        "facility": [
+          "会客室3级"
+        ],
+        "roster": [],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 1
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "进驻基础1% + 伺夜40% + 海铃叙拉古5% + 适用中枢贸易项；海铃本身不提供固定贸易全局值。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "伺夜",
+            "buffIds": [
+              "meet_spd[032]",
+              "trade_ord_spd&meet[000]"
+            ]
+          },
+          {
+            "operatorName": "八幡海铃",
+            "buffIds": [
+              "control_hire_spd&bd[000]",
+              "control_tra_limit&spd2[000]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.g.siracusa"
+        ]
+      },
+      "optimizerTags": [
+        "trade",
+        "siracusa",
+        "p3r"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "trade-glasgow-morgan",
+      "name": "摩根-戴菲恩格拉斯哥贸易",
+      "family": "glasgow",
+      "facility": "TRADING",
+      "product": "gold",
+      "operatorNames": [
+        "摩根"
+      ],
+      "supportAssignments": [
+        {
+          "facility": "CONTROL",
+          "roomKey": "control",
+          "operatorNames": [
+            "戴菲恩"
+          ],
+          "role": "按目标贸易站格拉斯哥人数支援"
+        }
+      ],
+      "conditions": {
+        "facility": [
+          "贸易站"
+        ],
+        "roster": [
+          "摩根在目标贸易站；本变体戴菲恩在控制中枢且技能有效；不要求其他候选也使用戴菲恩"
+        ],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 1
+        }
+      },
+      "substitutions": [],
+      "conflicts": [
+        "戴菲恩消耗一个中枢工位；应与无中枢支持模板比较，不能据局部加成认定全局最优"
+      ],
+      "efficiencyFormula": "仅摩根在贸易站时为1名格拉斯哥：摩根20% + 中枢戴菲恩10% = 30%技能和；另计基础100%与1%进驻基础。75%是摩根与推进之王同贸易站的摩根技能，不能套在单摩根模板。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "摩根 trade_ord_spd_par[000]：进驻贸易站时，同个贸易站中每有1名格拉斯哥帮干员，当前贸易站订单获取效率+20%；当与推进之王在同一个贸易站时，订单获取效率额外+35%；戴菲恩 control_tra_limit&spd[010]：进驻控制中枢时，同一贸易站中，每有1名格拉斯哥帮干员，订单获取效率+10%"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "摩根",
+            "buffIds": [
+              "dorm_rec_toone[000]",
+              "trade_ord_spd_par[000]"
+            ]
+          },
+          {
+            "operatorName": "戴菲恩",
+            "buffIds": [
+              "hire_spd&clue2[260]",
+              "control_tra_limit&spd[010]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.g.glasgow"
+        ]
+      },
+      "optimizerTags": [
+        "trade",
+        "glasgow",
+        "same-room"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "trade-bellone-vigil",
+      "name": "贝洛内-伺夜贸易",
+      "family": "trade",
+      "facility": "TRADING",
+      "product": "gold",
+      "operatorNames": [
+        "贝洛内",
+        "伺夜"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [],
+        "roster": [
+          "伺夜须在基建内；同站时贝洛内订单上限另计"
+        ],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 2
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "贝洛内订单获取30% + 伺夜在基建内额外10%；伺夜另按会客室等级结算。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "贝洛内",
+            "buffIds": [
+              "trade_ord_spd_ext[021]",
+              "trade_ord_limit&cost_P[020]"
+            ]
+          },
+          {
+            "operatorName": "伺夜",
+            "buffIds": [
+              "meet_spd[032]",
+              "trade_ord_spd&meet[000]"
+            ]
+          }
+        ],
+        "termIds": []
+      },
+      "optimizerTags": [
+        "trade",
+        "presence",
+        "order-limit"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "trade-lemuen-exusiai",
+      "name": "蕾缪安-能天使同站贸易",
+      "family": "laterano",
+      "facility": "TRADING",
+      "product": "gold",
+      "operatorNames": [
+        "蕾缪安",
+        "能天使"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [],
+        "roster": [
+          "能天使必须与蕾缪安同贸易站；仅同基建但不同房间不触发",
+          "术语cc.angel明确包括能天使与新约能天使；二者同在也不重复提供相伴25%"
+        ],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 2
+        }
+      },
+      "substitutions": [
+        {
+          "operatorNames": [
+            "蕾缪安",
+            "新约能天使"
+          ],
+          "effect": "整组替换目标贸易二人。cc.angel明确包括新约能天使，因此蕾缪安仍45%；新约能天使自身按同站拉特兰每人15%，此二人组只有蕾缪安计数，合计技能60%（基础与进驻另算）。这是点名例外，不让新约能天使继承拉特兰阵营。"
+        }
+      ],
+      "conflicts": [],
+      "efficiencyFormula": "蕾缪安20%+同站能天使25%=45%；能天使自身35%；双人技能和80%，另计基础100%与进驻2%，无其它加成为182%。相伴额外25%只触发一次。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "蕾缪安 trade_ord_spd&multiPar[100]：进驻贸易站时，订单获取效率+20%；当与能天使在同一个贸易站时，订单获取效率额外+25%；能天使 trade_ord_spd[020]：进驻贸易站时，订单获取效率+35%；新约替代见cc.angel与trade_ord_spd_par[001]，需要重新计算其自身技能。 新约能天使 trade_ord_spd_par[001]原文：进驻贸易站时，同个贸易站中每有1名拉特兰干员，当前贸易站订单获取效率+15%。该证据只属于可选替换组，不增加原能天使模板的持有或解锁要求。"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "蕾缪安",
+            "buffIds": [
+              "trade_ord_spd&multiPar[100]"
+            ]
+          },
+          {
+            "operatorName": "能天使",
+            "buffIds": [
+              "trade_ord_spd[020]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.angel",
+          "cc.g.laterano"
+        ]
+      },
+      "optimizerTags": [
+        "trade",
+        "same-room",
+        "laterano"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "trade-karlan-jaye",
+      "name": "孑-银灰-崖心配灵知容量贸易",
+      "family": "karlan",
+      "facility": "TRADING",
+      "product": "gold",
+      "operatorNames": [
+        "孑",
+        "银灰",
+        "崖心"
+      ],
+      "supportAssignments": [
+        {
+          "facility": "CONTROL",
+          "roomKey": "control",
+          "operatorNames": [
+            "灵知"
+          ],
+          "role": "谢拉格订单上限支持"
+        }
+      ],
+      "conditions": {
+        "facility": [],
+        "roster": [
+          "孑、银灰、崖心同一贸易站；银灰与崖心属于谢拉格，孑按自身订单规则结算",
+          "灵知在控制中枢"
+        ],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [
+          "订单数/容量为当前时间片状态"
+        ],
+        "slotCount": {
+          "exact": 3
+        }
+      },
+      "substitutions": [],
+      "conflicts": [
+        "容量上限、订单数与孑折减存在顺序依赖"
+      ],
+      "efficiencyFormula": "银灰与崖心提供当前贸易站谢拉格条件；孑不属于谢拉格。先按灵知中枢、订单上限与订单数结算，再结算孑每10%扣1容量的折减；不得把静态效率直接相加。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "links 容量与中枢、429 静态效率优先修复"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "孑",
+            "buffIds": [
+              "trade_ord_limit_diff[000]",
+              "trade_ord_limit_count[000]"
+            ]
+          },
+          {
+            "operatorName": "银灰",
+            "buffIds": [
+              "trade_ord_spd&limit[022]"
+            ]
+          },
+          {
+            "operatorName": "崖心",
+            "buffIds": [
+              "dorm_rec_single&oneself[001]",
+              "trade_ord_spd&limit[021]"
+            ]
+          },
+          {
+            "operatorName": "灵知",
+            "buffIds": [
+              "control_mp_cost&faction[030]",
+              "control_tra_limit&spd[000]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.g.karlan"
+        ]
+      },
+      "optimizerTags": [
+        "trade",
+        "karlan",
+        "capacity",
+        "jaye"
+      ],
+      "coverageScope": "complete-team"
+    },
+    {
+      "id": "trade-karlan-silverash",
+      "name": "锏-琳琅诗怀雅-银灰容量贸易",
+      "family": "karlan",
+      "facility": "TRADING",
+      "product": "gold",
+      "operatorNames": [
+        "锏",
+        "琳琅诗怀雅",
+        "银灰"
+      ],
+      "supportAssignments": [
+        {
+          "facility": "CONTROL",
+          "roomKey": "control",
+          "operatorNames": [
+            "灵知"
+          ],
+          "role": "谢拉格订单上限支持"
+        }
+      ],
+      "conditions": {
+        "facility": [],
+        "roster": [
+          "当前贸易站有2名合格谢拉格成员：锏、银灰；琳琅诗怀雅按异格者，不满足凛御银灰的3人条件"
+        ],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [
+          "订单上限和当前订单数"
+        ],
+        "slotCount": {
+          "exact": 3
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "锏、琳琅诗怀雅和银灰均在同一贸易站；先结算灵知提供的订单上限，再按各自容量/订单规则换算效率。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "锏",
+            "buffIds": [
+              "trade_ord_spd&limit[101]",
+              "trade_ord_spd_variable3[000]"
+            ]
+          },
+          {
+            "operatorName": "琳琅诗怀雅",
+            "buffIds": [
+              "trade_ord_spd[000]",
+              "trade_ord_spd_variable[000]"
+            ]
+          },
+          {
+            "operatorName": "银灰",
+            "buffIds": [
+              "trade_ord_spd&limit[022]"
+            ]
+          },
+          {
+            "operatorName": "灵知",
+            "buffIds": [
+              "control_mp_cost&faction[030]",
+              "control_tra_limit&spd[000]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.g.karlan"
+        ]
+      },
+      "optimizerTags": [
+        "trade",
+        "karlan",
+        "same-room"
+      ],
+      "coverageScope": "complete-team"
+    },
+    {
+      "id": "trade-swire-alter-capacity",
+      "name": "琳琅诗怀雅容量贸易",
+      "family": "capacity",
+      "facility": "TRADING",
+      "product": "gold",
+      "operatorNames": [
+        "琳琅诗怀雅"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [],
+        "roster": [
+          "需明确同站订单上限提供者与当前订单数"
+        ],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 1
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "先结算订单上限/容量，再按其技能文本换算订单效率；不以静态固定百分比录入。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "琳琅诗怀雅",
+            "buffIds": [
+              "trade_ord_spd[000]",
+              "trade_ord_spd_variable[000]"
+            ]
+          }
+        ],
+        "termIds": []
+      },
+      "optimizerTags": [
+        "trade",
+        "capacity",
+        "conditional"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "trade-run-kafka-bibeak",
+      "name": "卡夫卡-但书跑单",
+      "family": "shift-run",
+      "facility": "TRADING",
+      "product": "gold",
+      "operatorNames": [
+        "卡夫卡",
+        "但书"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [],
+        "roster": [
+          "订单生成前换入；生成后恢复常驻班"
+        ],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 2
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "跑单收益取订单生成时的有效人员与订单状态，不能与常驻静态效率相加。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "links 状态与结算顺序"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "卡夫卡",
+            "buffIds": [
+              "trade_ord_wt&cost[011]"
+            ]
+          },
+          {
+            "operatorName": "但书",
+            "buffIds": [
+              "trade_ord_law[000]",
+              "trade_ord_against[010]"
+            ]
+          }
+        ],
+        "termIds": []
+      },
+      "optimizerTags": [
+        "trade",
+        "shift-run",
+        "order-timing"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "trade-run-tequila-shamare",
+      "name": "龙舌兰-巫恋-柏喙高品质跑单",
+      "family": "shift-run",
+      "facility": "TRADING",
+      "product": "gold",
+      "operatorNames": [
+        "龙舌兰",
+        "巫恋",
+        "柏喙"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [],
+        "roster": [
+          "订单生成前换入；生成后恢复常驻班"
+        ],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 3
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "柏喙提高高品质贵金属订单概率；巫恋清零同站其它订单获取并按其它两人各+45%为自身结算；龙舌兰在下一单交付数>3且非违约时+500龙门币。订单生成前换入，生成后恢复常驻。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "龙舌兰",
+            "buffIds": [
+              "trade_ord_long[010]"
+            ]
+          },
+          {
+            "operatorName": "巫恋",
+            "buffIds": [
+              "trade_ord_wt&cost[000]",
+              "trade_ord_vodfox[000]"
+            ]
+          },
+          {
+            "operatorName": "柏喙",
+            "buffIds": [
+              "trade_ord_wt&cost[010]"
+            ]
+          }
+        ],
+        "termIds": []
+      },
+      "optimizerTags": [
+        "trade",
+        "shift-run",
+        "order-timing"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "trade-goldline-hongxue-tuye",
+      "name": "鸿雪-图耶赤金生产线贸易",
+      "family": "gold-lines",
+      "facility": "TRADING",
+      "product": "gold",
+      "operatorNames": [
+        "鸿雪",
+        "图耶"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [],
+        "roster": [
+          "鸿雪与图耶在同一贸易站；不预置杜林人数，按当时实际基建在场者统计"
+        ],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [
+          "实体赤金线e：每间生产赤金的制造站+1",
+          "杜林有效名单为至简、桃金娘、褐果、杜林、特克诺；d=min(4,实际在场人数)",
+          "排除副手和活动室；不从原种族/阵营档案推导异格成员，只有术语明确点名才可计入",
+          "当前求值器有效赤金线L=e+d+其他实际生效的虚拟线"
+        ],
+        "slotCount": {
+          "exact": 2
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "鸿雪5%×L；图耶5%+15%×floor(L/2)；二人技能和5L+5+15floor(L/2)，进驻基础2%另算。不能把未摆放的杜林人头预先加入d。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "鸿雪",
+            "buffIds": [
+              "trade_ord_spd&gold[100]",
+              "trade_ord_line_durin[010]"
+            ]
+          },
+          {
+            "operatorName": "图耶",
+            "buffIds": [
+              "trade_ord_spd&gold[010]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.t.flow_gold",
+          "cc.tag.durin"
+        ]
+      },
+      "optimizerTags": [
+        "trade",
+        "gold-lines",
+        "global-resource"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "trade-goldline-kirara",
+      "name": "绮良虚拟赤金线贸易",
+      "family": "gold-lines",
+      "facility": "TRADING",
+      "product": "gold",
+      "operatorNames": [
+        "绮良"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [],
+        "roster": [],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [
+          "实体赤金生产线 e"
+        ],
+        "slotCount": {
+          "exact": 1
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "绮良基础+5%，每2条实体线产生2条虚拟线；虚拟线供全局消费者读取，绮良不递归读取自身新增线。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "绮良",
+            "buffIds": [
+              "trade_ord_line_gold[010]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.t.flow_gold"
+        ]
+      },
+      "optimizerTags": [
+        "trade",
+        "gold-lines",
+        "global-resource"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "trade-horns-dorm",
+      "name": "空弦宿舍等级贸易",
+      "family": "dorm-link",
+      "facility": "TRADING",
+      "product": "gold",
+      "operatorNames": [
+        "空弦"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [],
+        "roster": [],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [
+          "四间宿舍等级总和 l"
+        ],
+        "slotCount": {
+          "exact": 1
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "订单获取效率=2%×l；四间5级为40%。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "空弦",
+            "buffIds": [
+              "trade_ord_spd&dorm&lv[010]"
+            ]
+          }
+        ],
+        "termIds": []
+      },
+      "optimizerTags": [
+        "trade",
+        "dorm-level"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "power-aigis-makoto",
+      "name": "埃癸斯-结城理发电",
+      "family": "p3r",
+      "facility": "POWER",
+      "product": "drone",
+      "operatorNames": [
+        "埃癸斯"
+      ],
+      "supportAssignments": [
+        {
+          "facility": "MANUFACTURE",
+          "roomKey": "manufacture-1",
+          "operatorNames": [
+            "结城理"
+          ],
+          "role": "Aigis +5% condition"
+        }
+      ],
+      "conditions": {
+        "facility": [],
+        "roster": [
+          "结城理须实际进驻任一制造站"
+        ],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 1
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "埃癸斯电站无人机充能15%；结城理在制造站时额外+5%。两人不能占同一房间。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "埃癸斯",
+            "buffIds": [
+              "power_rec_spd_P2[999]",
+              "meet_spd&bd[999]"
+            ]
+          },
+          {
+            "operatorName": "结城理",
+            "buffIds": [
+              "control_prod_spd[999]",
+              "manu_prod_spd&bd[000]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.tag.sees"
+        ]
+      },
+      "optimizerTags": [
+        "power",
+        "p3r",
+        "cross-facility"
+      ],
+      "coverageScope": "complete-team"
+    },
+    {
+      "id": "power-philae-dorm",
+      "name": "菲莱宿舍等级发电",
+      "family": "dorm-link",
+      "facility": "POWER",
+      "product": "drone",
+      "operatorNames": [
+        "菲莱"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [],
+        "roster": [],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [
+          "宿舍等级总和 l"
+        ],
+        "slotCount": {
+          "exact": 1
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "无人机充能=10% + 0.5%×l；四间5级且单人进驻基础5%时合计125%。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "菲莱",
+            "buffIds": [
+              "power_rec_spd[005]",
+              "power_rec_spd&dorm&lv[000]"
+            ]
+          }
+        ],
+        "termIds": []
+      },
+      "optimizerTags": [
+        "power",
+        "dorm-level"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "power-muelsyse-rhine",
+      "name": "缪尔赛思莱茵发电",
+      "family": "rhine",
+      "facility": "POWER",
+      "product": "drone",
+      "operatorNames": [
+        "缪尔赛思"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [],
+        "roster": [
+          "自身以外基建内莱茵生命人数 r，0≤r≤5"
+        ],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 1
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "10% + 3%×r，最多25%；莱茵身份按明确 group/术语处理。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "缪尔赛思",
+            "buffIds": [
+              "dorm_rec_all&oneself[022]",
+              "power_rec_rhine[000]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.g.rh"
+        ]
+      },
+      "optimizerTags": [
+        "power",
+        "rhine",
+        "presence"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "power-lancet-murdock-effective-stations",
+      "name": "Lancet-2-森蚺有效发电站",
+      "family": "automation",
+      "facility": "POWER",
+      "product": "drone",
+      "operatorNames": [
+        "Lancet-2"
+      ],
+      "supportAssignments": [
+        {
+          "facility": "CONTROL",
+          "roomKey": "control",
+          "operatorNames": [
+            "森蚺"
+          ],
+          "role": "有效发电站+2"
+        }
+      ],
+      "conditions": {
+        "facility": [
+          "Lancet-2所在发电站"
+        ],
+        "roster": [
+          "森蚺在控制中枢；Lancet-2可0心情保持存在"
+        ],
+        "morale": [
+          "Lancet-2可0心情保持存在；森蚺须在控制中枢"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 1
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "中枢森蚺且Lancet-2在发电站，使有效发电站数+2；虚拟站不供电。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "Lancet-2",
+            "buffIds": [
+              "power_rec_spd[000]",
+              "dorm_rec_single[000]"
+            ]
+          },
+          {
+            "operatorName": "森蚺",
+            "buffIds": [
+              "manu_prod_spd&power[010]",
+              "control_pow_bot[000]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.tag.op"
+        ]
+      },
+      "optimizerTags": [
+        "power",
+        "automation",
+        "effective-stations"
+      ],
+      "coverageScope": "support-policy"
+    },
+    {
+      "id": "control-manufacture-highest",
+      "name": "制造全局中枢同类最高",
+      "family": "control",
+      "facility": "CONTROL",
+      "product": "all",
+      "operatorNames": [
+        "斩业星熊",
+        "诗怀雅"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [],
+        "roster": [
+          "诗怀雅满足 cc.g.lgd"
+        ],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 2
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "斩业星熊全局制造+3%；与凯尔希/Mon3tr、麒麟R夜刀、布丁等同类只取最高。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "斩业星熊",
+            "buffIds": [
+              "control_train_spd[012]",
+              "control_token_prod_spd3[000]"
+            ]
+          },
+          {
+            "operatorName": "诗怀雅",
+            "buffIds": [
+              "control_tra_spd[010]",
+              "train_spd[000]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.g.lgd"
+        ]
+      },
+      "optimizerTags": [
+        "control",
+        "manufacture",
+        "highest-only"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "control-mon3tr-kaltsit",
+      "name": "Mon3tr/凯尔希全局制造",
+      "family": "control",
+      "facility": "CONTROL",
+      "product": "all",
+      "operatorNames": [
+        "Mon3tr"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [],
+        "roster": [],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 1
+        }
+      },
+      "substitutions": [
+        {
+          "operatorNames": [
+            "凯尔希"
+          ],
+          "effect": "同类+2%，不可与Mon3tr叠加"
+        }
+      ],
+      "conflicts": [],
+      "efficiencyFormula": "全局制造+2%，与同类取最高；凯尔希可作同值替换。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "Mon3tr",
+            "buffIds": [
+              "control_mp_cost[012]",
+              "control_prod_spd[1000]"
+            ]
+          }
+        ],
+        "termIds": []
+      },
+      "optimizerTags": [
+        "control",
+        "manufacture",
+        "highest-only"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "control-mujica-sakiko-haruka",
+      "name": "丰川祥子-八幡海铃热情中枢",
+      "family": "mujica",
+      "facility": "CONTROL",
+      "product": "gold",
+      "operatorNames": [
+        "丰川祥子",
+        "八幡海铃"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [],
+        "roster": [],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [
+          "有效热情 h"
+        ],
+        "slotCount": {
+          "exact": 2
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "祥子贵金属=1%+floor(h/20)%；海铃有效工作提供热情10，并另对贸易站叙拉古每人+5%。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "丰川祥子",
+            "buffIds": [
+              "control_prod_bd_spd[010]",
+              "control_mp_cost&bd3[000]"
+            ]
+          },
+          {
+            "operatorName": "八幡海铃",
+            "buffIds": [
+              "control_hire_spd&bd[000]",
+              "control_tra_limit&spd2[000]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.bd_mujica",
+          "cc.bd_mujica_1"
+        ]
+      },
+      "optimizerTags": [
+        "control",
+        "mujica",
+        "gold"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "control-mujica-full",
+      "name": "MyGO/穆吉卡热情全局贸易",
+      "family": "mujica",
+      "facility": "CONTROL",
+      "product": "gold",
+      "operatorNames": [
+        "若叶睦",
+        "八幡海铃",
+        "祐天寺若麦"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [],
+        "roster": [],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [
+          "有效热情 h"
+        ],
+        "slotCount": {
+          "exact": 3
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "若叶睦全局贸易=floor(h/8)%并与同类取最高；三位提供热情20+10+10，需分别有效工作。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "若叶睦",
+            "buffIds": [
+              "control_mp_bd&trade[000]",
+              "control_mp_cost_reset[000]"
+            ]
+          },
+          {
+            "operatorName": "八幡海铃",
+            "buffIds": [
+              "control_hire_spd&bd[000]",
+              "control_tra_limit&spd2[000]"
+            ]
+          },
+          {
+            "operatorName": "祐天寺若麦",
+            "buffIds": [
+              "control_meeting_spd&bd[000]",
+              "control_mp&meet_spd[000]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.bd_mujica",
+          "cc.bd_mujica_2"
+        ]
+      },
+      "optimizerTags": [
+        "control",
+        "mujica",
+        "trade"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "control-wang-layout",
+      "name": "望布局比较中枢",
+      "family": "layout",
+      "facility": "CONTROL",
+      "product": "all",
+      "operatorNames": [
+        "望"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [],
+        "roster": [],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [
+          "外势=贸易站数+发电站数",
+          "实地=制造站数"
+        ],
+        "slotCount": {
+          "exact": 1
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "外势≥实地时全局贸易+7%，否则全局制造+2%；各与对应同类取最高。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "望",
+            "buffIds": [
+              "control_prod_tra_spd[000]",
+              "train_spd&level[000]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.bd_wang_1",
+          "cc.bd_wang_2"
+        ]
+      },
+      "optimizerTags": [
+        "control",
+        "layout",
+        "highest-only"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "control-monster-hunter",
+      "name": "麒麟R夜刀-火龙S黑角木天蓼",
+      "family": "monster-hunter",
+      "facility": "CONTROL",
+      "product": "all",
+      "operatorNames": [
+        "麒麟R夜刀",
+        "火龙S黑角"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [],
+        "roster": [
+          "中枢有另一怪物猎人小队成员"
+        ],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [
+          "有效木天蓼"
+        ],
+        "slotCount": {
+          "exact": 2
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "夜刀提供木天蓼8；火龙S黑角按中枢怪物猎人小队人数×2；泰拉大陆调查团每点木天蓼制造+1%、贸易+3%。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "麒麟R夜刀",
+            "buffIds": [
+              "control_mp_cost&bd2[010]",
+              "control_token_prod_spd2[000]"
+            ]
+          },
+          {
+            "operatorName": "火龙S黑角",
+            "buffIds": [
+              "control_mp_bd2[000]",
+              "control_token_tra_spd[000]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.tag.mh",
+          "cc.bd_felyne"
+        ]
+      },
+      "optimizerTags": [
+        "control",
+        "monster-hunter",
+        "resource"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "manu-standard-perfumer",
+      "name": "调香师标准化制造模板",
+      "family": "dorm",
+      "facility": "MANUFACTURE",
+      "product": "all",
+      "operatorNames": [
+        "调香师"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [
+          "制造站"
+        ],
+        "roster": [
+          "可与水月等标准化消费者同站"
+        ],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 1
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "调香师标准化·β +25%；作为标准化成员供水月计数。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "调香师",
+            "buffIds": [
+              "workshop_formula_probability[110]",
+              "manu_prod_spd[010]"
+            ]
+          }
+        ],
+        "termIds": []
+      },
+      "optimizerTags": [
+        "manufacture",
+        "standardization",
+        "partial-template"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "dorm-fiammetta-self",
+      "name": "菲亚梅塔自律宿舍",
+      "family": "dorm",
+      "facility": "DORMITORY",
+      "product": "morale",
+      "operatorNames": [
+        "菲亚梅塔"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [],
+        "roster": [],
+        "morale": [
+          "菲亚梅塔自身满心情/恢复规则须独立追踪"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 1
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "自身恢复+2且排除其他来源恢复；不可套入全体恢复队列。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "菲亚梅塔",
+            "buffIds": [
+              "dorm_recExcludeOther[000]",
+              "dorm_exchangeAp[000]"
+            ]
+          }
+        ],
+        "termIds": []
+      },
+      "optimizerTags": [
+        "dorm",
+        "fiammetta",
+        "self-only"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "dorm-fiammetta-exchange",
+      "name": "菲亚梅塔患难之交换心情",
+      "family": "dorm",
+      "facility": "DORMITORY",
+      "product": "morale",
+      "operatorNames": [
+        "菲亚梅塔"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [],
+        "roster": [
+          "菲亚梅塔满心情，且需按进入顺序指定前一位干员"
+        ],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 1
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "与当前宿舍前一位进驻干员互换心情；属于排班状态转移，不是效率百分比。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "菲亚梅塔",
+            "buffIds": [
+              "dorm_recExcludeOther[000]",
+              "dorm_exchangeAp[000]"
+            ]
+          }
+        ],
+        "termIds": []
+      },
+      "optimizerTags": [
+        "dorm",
+        "fiammetta",
+        "state-transition"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "dorm-perception-rosmontis",
+      "name": "迷迭香感知信息制造",
+      "family": "perception",
+      "facility": "MANUFACTURE",
+      "product": "all",
+      "operatorNames": [
+        "迷迭香"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [],
+        "roster": [],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [
+          "宿舍在住人数",
+          "絮雨额外招募位、爱丽丝梦境、车尔尼小节等感知来源"
+        ],
+        "slotCount": {
+          "exact": 1
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "迷迭香按总感知信息获得意识实体生产力；感知来源不等价于意识实体，按当前时间片合计。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "迷迭香",
+            "buffIds": [
+              "manu_prod_spd_bd_n1[000]",
+              "manu_prod_spd_bd[010]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.bd_a1",
+          "cc.bd_A",
+          "cc.bd_A_2"
+        ]
+      },
+      "optimizerTags": [
+        "manufacture",
+        "perception",
+        "dorm"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "trade-perception-blackkey",
+      "name": "黑键感知信息贸易",
+      "family": "perception",
+      "facility": "TRADING",
+      "product": "gold",
+      "operatorNames": [
+        "黑键"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [],
+        "roster": [],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [
+          "感知信息 q"
+        ],
+        "slotCount": {
+          "exact": 1
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "黑键无声共鸣为 floor(q/2)%；不把其消费结果回灌为感知来源。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "黑键",
+            "buffIds": [
+              "trade_ord_spd_bd_n1[000]",
+              "trade_ord_spd_bd[010]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.bd_a1",
+          "cc.bd_B"
+        ]
+      },
+      "optimizerTags": [
+        "trade",
+        "perception",
+        "dorm"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "dorm-perception-support",
+      "name": "絮雨-爱丽丝-车尔尼感知宿舍",
+      "family": "perception",
+      "facility": "MANUFACTURE",
+      "product": "all",
+      "operatorNames": [
+        "迷迭香"
+      ],
+      "supportAssignments": [
+        {
+          "facility": "HIRE",
+          "roomKey": "office",
+          "operatorNames": [
+            "絮雨"
+          ],
+          "role": "额外招募位记忆碎片"
+        },
+        {
+          "facility": "DORMITORY",
+          "roomKey": "dorm-a",
+          "operatorNames": [
+            "爱丽丝"
+          ],
+          "role": "梦境"
+        },
+        {
+          "facility": "DORMITORY",
+          "roomKey": "dorm-b",
+          "operatorNames": [
+            "车尔尼"
+          ],
+          "role": "小节"
+        }
+      ],
+      "conditions": {
+        "facility": [],
+        "roster": [],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [
+          "宿舍实际入住人数、办公室等级与各自宿舍等级"
+        ],
+        "slotCount": {
+          "exact": 1
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "絮雨在办公室，爱丽丝和车尔尼可在不同宿舍；其资源合并后供迷迭香所在制造站结算。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "迷迭香",
+            "buffIds": [
+              "manu_prod_spd_bd_n1[000]",
+              "manu_prod_spd_bd[010]"
+            ]
+          },
+          {
+            "operatorName": "絮雨",
+            "buffIds": [
+              "hire_spd_bd_n1_n1[100]",
+              "hire_spd_bd_n1[000]"
+            ]
+          },
+          {
+            "operatorName": "爱丽丝",
+            "buffIds": [
+              "dorm_rec_bd_n1_n2[000]",
+              "dorm_rec_bd_n1[000]"
+            ]
+          },
+          {
+            "operatorName": "车尔尼",
+            "buffIds": [
+              "dorm_rec_bd_n1_n3[000]",
+              "dorm_rec_bd_n1[100]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.bd_a1_a1",
+          "cc.bd_a1_a2",
+          "cc.bd_a1_a3"
+        ]
+      },
+      "optimizerTags": [
+        "dorm",
+        "perception",
+        "support"
+      ],
+      "coverageScope": "support-policy"
+    },
+    {
+      "id": "trade-wuyou-duoling-fireworks",
+      "name": "乌有-铎铃人间烟火贸易",
+      "family": "fireworks",
+      "facility": "TRADING",
+      "product": "gold",
+      "operatorNames": [
+        "乌有",
+        "铎铃"
+      ],
+      "supportAssignments": [
+        {
+          "facility": "CONTROL",
+          "roomKey": "control",
+          "operatorNames": [
+            "令",
+            "夕"
+          ],
+          "role": "心情阈值资源提供者"
+        },
+        {
+          "facility": "HIRE",
+          "roomKey": "office",
+          "operatorNames": [
+            "桑葚"
+          ],
+          "role": "每额外招募位+10人间烟火"
+        }
+      ],
+      "conditions": {
+        "facility": [
+          "贸易站"
+        ],
+        "roster": [
+          "乌有与铎铃同贸易站；令/夕在控制中枢，桑葚在办公室"
+        ],
+        "morale": [
+          "令/夕按12点边界切换"
+        ],
+        "resources": [
+          "宿舍入住人数、办公室额外招募位、人间烟火"
+        ],
+        "slotCount": {
+          "exact": 2
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "乌有在贸易站每点人间烟火+1%订单获取；铎铃按每10点人间烟火降低同站心情消耗。令/夕与桑葚为跨设施资源支持，不能同室。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "乌有",
+            "buffIds": [
+              "hire_spd&clue[101]",
+              "trade_ord_spd_bd_n2[000]"
+            ]
+          },
+          {
+            "operatorName": "铎铃",
+            "buffIds": [
+              "trade_cost&bd2[001]"
+            ]
+          },
+          {
+            "operatorName": "令",
+            "buffIds": [
+              "control_facCostReset[000]",
+              "control_costToBD[000]"
+            ]
+          },
+          {
+            "operatorName": "夕",
+            "buffIds": [
+              "control_mp_cost&bd1[000]",
+              "control_mp_cost&bd2[000]"
+            ]
+          },
+          {
+            "operatorName": "桑葚",
+            "buffIds": [
+              "hire_spd_cost[110]",
+              "hire_spd_bd_n1_n1[200]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.bd_b1"
+        ]
+      },
+      "optimizerTags": [
+        "trade",
+        "fireworks",
+        "sui",
+        "support-policy"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "dorm-dungeon-marcille-senshi",
+      "name": "玛露西尔-森西魔物料理制造",
+      "family": "dungeon",
+      "facility": "MANUFACTURE",
+      "product": "all",
+      "operatorNames": [
+        "玛露西尔"
+      ],
+      "supportAssignments": [
+        {
+          "facility": "DORMITORY",
+          "operatorNames": [
+            "森西"
+          ],
+          "role": "魔物料理资源提供者",
+          "roomKey": "dormitory-support-1"
+        }
+      ],
+      "conditions": {
+        "facility": [
+          "玛露西尔进驻制造站；森西进驻宿舍"
+        ],
+        "roster": [],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [
+          "森西所在宿舍等级 l，产生 l 层魔物料理"
+        ],
+        "slotCount": {
+          "exact": 1
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "玛露西尔基础30% + 每点魔物料理1%；森西在宿舍每级提供1层。资源不等于固定30%，须按实际宿舍等级结算。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "玛露西尔",
+            "buffIds": [
+              "manu_prod_spd[014]",
+              "manu_prod_spd_bd[400]"
+            ]
+          },
+          {
+            "operatorName": "森西",
+            "buffIds": [
+              "dorm_rec_all&tag[000]",
+              "dorm_rec_bd_dungeon[000]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.tag.dungeon",
+          "cc.bd_dungeon"
+        ]
+      },
+      "optimizerTags": [
+        "dorm",
+        "dungeon",
+        "resource"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "p3r-yukari-training",
+      "name": "岳羽由加莉狙击医疗训练",
+      "family": "p3r",
+      "facility": "TRAINING",
+      "product": "training",
+      "operatorNames": [
+        "岳羽由加莉"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [
+          "训练协助位，训练对象为狙击或医疗"
+        ],
+        "roster": [],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 1
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "训练速度+45%，仅对狙击/医疗；作为单人训练模板。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "岳羽由加莉",
+            "buffIds": [
+              "hire_spd_cost[999]",
+              "train_spd_doubleProf3[999]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.tag.sees"
+        ]
+      },
+      "optimizerTags": [
+        "p3r",
+        "training"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "p3r-koromaru-meeting",
+      "name": "虎狼丸会客室线索",
+      "family": "p3r",
+      "facility": "MEETING",
+      "product": "clue",
+      "operatorNames": [
+        "虎狼丸"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [],
+        "roster": [],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 1
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "线索搜集速度+30%；不把虎狼丸视为作业平台或制造成员。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links mechanics"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "虎狼丸",
+            "buffIds": [
+              "dorm_rec_all[999]",
+              "meet_spd&exchange[999]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.tag.sees"
+        ]
+      },
+      "optimizerTags": [
+        "p3r",
+        "meeting"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "control-silverash-alter-karlan",
+      "name": "凛御银灰三谢拉格贸易支持",
+      "family": "karlan",
+      "facility": "CONTROL",
+      "product": "gold",
+      "operatorNames": [
+        "凛御银灰"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [
+          "控制中枢"
+        ],
+        "roster": [
+          "目标贸易站内有3名合格谢拉格成员"
+        ],
+        "morale": [
+          "凛御银灰须有效工作"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 1
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "凛御银灰仅向满足“当前贸易站3名谢拉格”的目标站提供+10%，不进入该贸易站也不跨站。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links 谢拉格规则"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "凛御银灰",
+            "buffIds": [
+              "control_tra_limit&spd3[000]",
+              "train_spd&profession2[112]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.g.karlan"
+        ]
+      },
+      "optimizerTags": [
+        "control",
+        "karlan",
+        "support-policy"
+      ],
+      "coverageScope": "support-policy"
+    },
+    {
+      "id": "manu-exp-bubble-vulcan-mizuki",
+      "name": "泡泡-火神-水月容量/标准化狗粮",
+      "family": "capacity",
+      "facility": "MANUFACTURE",
+      "product": "exp",
+      "operatorNames": [
+        "泡泡",
+        "火神",
+        "水月"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [
+          "作战记录配方"
+        ],
+        "roster": [
+          "水月标准化计数须由同站实际技能决定"
+        ],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 3
+        }
+      },
+      "substitutions": [],
+      "conflicts": [
+        "不可与红云回收利用叠加，泡泡优先"
+      ],
+      "efficiencyFormula": "泡泡/火神容量项与水月标准化项分别按原文结算；水月只对同站标准化技能每项+5%，不可虚构为容量来源。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "links 容量与中枢; no candidate-specific test name recorded"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "泡泡",
+            "buffIds": [
+              "manu_prod_limit&cost[010]",
+              "manu_prod_spd_variable3[000]"
+            ]
+          },
+          {
+            "operatorName": "火神",
+            "buffIds": [
+              "manu_prod_spd&limit&cost[001]"
+            ]
+          },
+          {
+            "operatorName": "水月",
+            "buffIds": [
+              "manu_skill_spd1[000]",
+              "manu_prod_spd[010]"
+            ]
+          }
+        ],
+        "termIds": []
+      },
+      "optimizerTags": [
+        "gold",
+        "warehouse",
+        "negative-efficiency"
+      ],
+      "coverageScope": "complete-team"
+    },
+    {
+      "id": "dorm-siege-all-recovery",
+      "name": "推进之王宿舍全体恢复模板",
+      "family": "dorm",
+      "facility": "DORMITORY",
+      "product": "morale",
+      "operatorNames": [
+        "推进之王"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [
+          "宿舍"
+        ],
+        "roster": [],
+        "morale": [
+          "推进之王须在宿舍且有效"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 1
+        }
+      },
+      "substitutions": [],
+      "conflicts": [
+        "与同种宿舍全体恢复取最高"
+      ],
+      "efficiencyFormula": "推进之王“狮心王”使同宿舍所有干员（含自身）心情每小时恢复+0.2；同种恢复取最高逐宿舍选择。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "推进之王",
+            "buffIds": [
+              "dorm_rec_all[022]"
+            ]
+          }
+        ],
+        "termIds": []
+      },
+      "optimizerTags": [
+        "dorm",
+        "recovery",
+        "all-room"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "power-grey-effective-station",
+      "name": "承曦格雷伊有效发电站模板",
+      "family": "automation",
+      "facility": "POWER",
+      "product": "drone",
+      "operatorNames": [
+        "承曦格雷伊"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [
+          "承曦格雷伊所在发电站"
+        ],
+        "roster": [
+          "其它发电站没有有效工作的作业平台"
+        ],
+        "morale": [
+          "承曦格雷伊须有效工作"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 1
+        }
+      },
+      "substitutions": [],
+      "conflicts": [
+        "另一发电站存在有效作业平台（含Lancet-2）时，承曦格雷伊的有效发电站+1不生效。"
+      ],
+      "efficiencyFormula": "承曦格雷伊在发电站有效工作，且其它发电站没有有效作业平台时，有效发电站数+1；其无人机充能按容量另行结算。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "catalog + links 自动化；independent probe confirms Lancet-2 makes this condition false"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "承曦格雷伊",
+            "buffIds": [
+              "power_rec_drone[000]",
+              "power_count[000]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.tag.op"
+        ]
+      },
+      "optimizerTags": [
+        "power",
+        "automation",
+        "effective-stations"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "trade-goldline-hongxue-tuye-durin-four",
+      "name": "鸿雪-图耶贸易配四杜林在场支持",
+      "family": "gold-lines",
+      "facility": "TRADING",
+      "product": "gold",
+      "operatorNames": [
+        "鸿雪",
+        "图耶"
+      ],
+      "supportAssignments": [
+        {
+          "facility": "DORMITORY",
+          "roomKey": "durin-presence",
+          "operatorNames": [
+            "杜林",
+            "桃金娘",
+            "褐果",
+            "至简"
+          ],
+          "role": "杜林族在场人数支持；同宿舍只是可复现摆放，不是技能必须同宿舍"
+        }
+      ],
+      "conditions": {
+        "facility": [],
+        "roster": [
+          "鸿雪与图耶在同一贸易站；不预置杜林人数，按当时实际基建在场者统计",
+          "默认四人摆放在同一宿舍仅作为可执行示例；可在其他有效设施分散进驻，但不能是副手或活动室",
+          "杜林和桃金娘宿舍同种全体恢复取最高，不叠成0.4；褐果、至简占宿舍只用于在场计数"
+        ],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [
+          "实体赤金线e：每间生产赤金的制造站+1",
+          "杜林有效名单为至简、桃金娘、褐果、杜林、特克诺；d=min(4,实际在场人数)",
+          "排除副手和活动室；不从原种族/阵营档案推导异格成员，只有术语明确点名才可计入",
+          "当前求值器有效赤金线L=e+d+其他实际生效的虚拟线"
+        ],
+        "slotCount": {
+          "exact": 2
+        }
+      },
+      "substitutions": [
+        {
+          "operatorNames": [
+            "桃金娘",
+            "褐果",
+            "至简",
+            "特克诺"
+          ],
+          "effect": "整组替换durin-presence四人支持位；仅选择此组，仍最多4条杜林虚拟线；不会替换鸿雪或图耶。"
+        },
+        {
+          "operatorNames": [
+            "杜林",
+            "褐果",
+            "至简",
+            "特克诺"
+          ],
+          "effect": "整组替换durin-presence四人支持位；仅选择此组，仍最多4条杜林虚拟线；不会替换鸿雪或图耶。"
+        },
+        {
+          "operatorNames": [
+            "杜林",
+            "桃金娘",
+            "至简",
+            "特克诺"
+          ],
+          "effect": "整组替换durin-presence四人支持位；仅选择此组，仍最多4条杜林虚拟线；不会替换鸿雪或图耶。"
+        },
+        {
+          "operatorNames": [
+            "杜林",
+            "桃金娘",
+            "褐果",
+            "特克诺"
+          ],
+          "effect": "整组替换durin-presence四人支持位；仅选择此组，仍最多4条杜林虚拟线；不会替换鸿雪或图耶。"
+        }
+      ],
+      "conflicts": [
+        "四人常驻宿舍会占用休息/其他生产工位；此摆放并非最优，允许同名单在其它有效设施复用",
+        "替换关系是显式四人组合说明；当前自动摆放默认支持位，使用其他四人组前需明确应用替换，不能将所有替代项同时累加"
+      ],
+      "efficiencyFormula": "鸿雪5%×L；图耶5%+15%×floor(L/2)；二人技能和5L+5+15floor(L/2)，进驻基础2%另算。不能把未摆放的杜林人头预先加入d。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "原始catalog/terms；combinationCatalogAdditions.spec.ts 覆盖摆放、来源buff与静态边界。未证明全局最优。 鸿雪 trade_ord_line_durin[010]：进驻贸易站时，基建内（不包含副手及活动室使用者）每1名杜林族干员（最多4名）为当前贸易站提供1条赤金生产线；cc.tag.durin：至简、桃金娘、褐果、杜林、特克诺。"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "鸿雪",
+            "buffIds": [
+              "trade_ord_spd&gold[100]",
+              "trade_ord_line_durin[010]"
+            ]
+          },
+          {
+            "operatorName": "图耶",
+            "buffIds": [
+              "trade_ord_spd&gold[010]"
+            ]
+          },
+          {
+            "operatorName": "杜林",
+            "buffIds": [
+              "dorm_rec_all&oneself[001]"
+            ]
+          },
+          {
+            "operatorName": "桃金娘",
+            "buffIds": [
+              "trade_ord_limit&cost[000]",
+              "dorm_rec_all[013]"
+            ]
+          },
+          {
+            "operatorName": "褐果",
+            "buffIds": [
+              "manu_prod_spd[000]",
+              "manu_formula_spd[201]"
+            ]
+          },
+          {
+            "operatorName": "至简",
+            "buffIds": [
+              "manu_constrLv[000]",
+              "manu_prod_spd_bd[110]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.t.flow_gold",
+          "cc.tag.durin"
+        ]
+      },
+      "optimizerTags": [
+        "trade",
+        "gold-lines",
+        "global-resource"
+      ],
+      "coverageScope": "partial-template",
+      "operatorRoles": {
+        "褐果": "passive-durin-presence: cc.tag.durin明确成员，宿舍不执行其制造技能",
+        "至简": "passive-durin-presence: cc.tag.durin明确成员，宿舍不执行其制造技能"
+      }
+    },
+    {
+      "id": "trade-glasgow-morgan-solo",
+      "name": "摩根单人贸易（无专用中枢对照）",
+      "family": "glasgow",
+      "facility": "TRADING",
+      "product": "gold",
+      "operatorNames": [
+        "摩根"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [
+          "贸易站"
+        ],
+        "roster": [
+          "仅摩根在本目标贸易站，无专用中枢支持"
+        ],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 1
+        }
+      },
+      "substitutions": [],
+      "conflicts": [],
+      "efficiencyFormula": "1名格拉斯哥×20%=20%摩根技能；不触发推进之王同站35%，不预置戴菲恩10%；基础100%及进驻1%另算。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "原始catalog/terms；combinationCatalogAdditions.spec.ts 覆盖摆放、来源buff与静态边界。未证明全局最优。 摩根 trade_ord_spd_par[000]：进驻贸易站时，同个贸易站中每有1名格拉斯哥帮干员，当前贸易站订单获取效率+20%；当与推进之王在同一个贸易站时，订单获取效率额外+35%"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "摩根",
+            "buffIds": [
+              "dorm_rec_toone[000]",
+              "trade_ord_spd_par[000]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.g.glasgow"
+        ]
+      },
+      "optimizerTags": [
+        "trade",
+        "glasgow",
+        "same-room"
+      ],
+      "coverageScope": "partial-template"
+    },
+    {
+      "id": "trade-glasgow-siege-morgan",
+      "name": "推进之王-摩根同站贸易（无专用中枢对照）",
+      "family": "glasgow",
+      "facility": "TRADING",
+      "product": "gold",
+      "operatorNames": [
+        "推进之王",
+        "摩根"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [
+          "至少2个贸易工位"
+        ],
+        "roster": [
+          "推进之王与摩根必须在同一贸易站；没有专用中枢要求"
+        ],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 2
+        }
+      },
+      "substitutions": [],
+      "conflicts": [
+        "两人贸易期间不能同时进驻宿舍享受头号陪练；不把维娜·维多利亚当作推进之王或格拉斯哥成员"
+      ],
+      "efficiencyFormula": "两名格拉斯哥×20% + 推进之王同站35% = 摩根75%；推进之王自身无贸易技能但明确提供同站触发。两人进驻基础2%另算。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [
+        "休息阶段可切换到推进之王-摩根同宿舍模板，必须按实际时序结算，不能同时享受两个房间的技能。"
+      ],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "原始catalog/terms；combinationCatalogAdditions.spec.ts 覆盖摆放、来源buff与静态边界。未证明全局最优。 摩根 trade_ord_spd_par[000]：进驻贸易站时，同个贸易站中每有1名格拉斯哥帮干员，当前贸易站订单获取效率+20%；当与推进之王在同一个贸易站时，订单获取效率额外+35%"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "推进之王",
+            "buffIds": [
+              "dorm_rec_all[022]"
+            ]
+          },
+          {
+            "operatorName": "摩根",
+            "buffIds": [
+              "dorm_rec_toone[000]",
+              "trade_ord_spd_par[000]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.g.glasgow"
+        ]
+      },
+      "optimizerTags": [
+        "trade",
+        "glasgow",
+        "same-room"
+      ],
+      "coverageScope": "partial-template",
+      "operatorRoles": {
+        "推进之王": "passive-named-partner: 摩根trade_ord_spd_par[000]明确要求推进之王同贸易站"
+      }
+    },
+    {
+      "id": "trade-glasgow-siege-morgan-delphine",
+      "name": "推进之王-摩根同站贸易配中枢戴菲恩",
+      "family": "glasgow",
+      "facility": "TRADING",
+      "product": "gold",
+      "operatorNames": [
+        "推进之王",
+        "摩根"
+      ],
+      "supportAssignments": [
+        {
+          "facility": "CONTROL",
+          "roomKey": "control",
+          "operatorNames": [
+            "戴菲恩"
+          ],
+          "role": "按目标贸易站格拉斯哥人数支援"
+        }
+      ],
+      "conditions": {
+        "facility": [
+          "至少2个贸易工位"
+        ],
+        "roster": [
+          "推进之王与摩根必须在同一贸易站；没有专用中枢要求",
+          "本变体戴菲恩在中枢，按本贸易站两名格拉斯哥额外提供20%"
+        ],
+        "morale": [
+          "干员须在岗且对应技能已按最高阶段解锁"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 2
+        }
+      },
+      "substitutions": [],
+      "conflicts": [
+        "两人贸易期间不能同时进驻宿舍享受头号陪练；不把维娜·维多利亚当作推进之王或格拉斯哥成员",
+        "戴菲恩是此支持变体的条件，不是全局必选；保留无中枢双人模板比较中枢机会成本。"
+      ],
+      "efficiencyFormula": "摩根20%×2+35%=75%；中枢戴菲恩10%×2=20%；技能和95%，加基础100%与两人进驻2%为197%（没有其他加成时）。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [
+        "休息阶段可切换到推进之王-摩根同宿舍模板，必须按实际时序结算，不能同时享受两个房间的技能。"
+      ],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "原始catalog/terms；combinationCatalogAdditions.spec.ts 覆盖摆放、来源buff与静态边界。未证明全局最优。 摩根 trade_ord_spd_par[000]：进驻贸易站时，同个贸易站中每有1名格拉斯哥帮干员，当前贸易站订单获取效率+20%；当与推进之王在同一个贸易站时，订单获取效率额外+35% 戴菲恩 control_tra_limit&spd[010]：进驻控制中枢时，同一贸易站中，每有1名格拉斯哥帮干员，订单获取效率+10%"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "推进之王",
+            "buffIds": [
+              "dorm_rec_all[022]"
+            ]
+          },
+          {
+            "operatorName": "摩根",
+            "buffIds": [
+              "dorm_rec_toone[000]",
+              "trade_ord_spd_par[000]"
+            ]
+          },
+          {
+            "operatorName": "戴菲恩",
+            "buffIds": [
+              "hire_spd&clue2[260]",
+              "control_tra_limit&spd[010]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.g.glasgow"
+        ]
+      },
+      "optimizerTags": [
+        "trade",
+        "glasgow",
+        "same-room"
+      ],
+      "coverageScope": "partial-template",
+      "operatorRoles": {
+        "推进之王": "passive-named-partner: 摩根trade_ord_spd_par[000]明确要求推进之王同贸易站"
+      }
+    },
+    {
+      "id": "dorm-siege-morgan-recovery",
+      "name": "推进之王-摩根同宿舍格拉斯哥恢复",
+      "family": "dorm",
+      "facility": "DORMITORY",
+      "product": "morale",
+      "operatorNames": [
+        "推进之王",
+        "摩根"
+      ],
+      "supportAssignments": [],
+      "conditions": {
+        "facility": [
+          "宿舍"
+        ],
+        "roster": [
+          "推进之王与摩根在同一宿舍；摩根不同时位于贸易站",
+          "额外恢复对象仅cc.g.glasgow明确名单：推进之王、摩根、达格达、因陀罗；异格维娜·维多利亚不继承"
+        ],
+        "morale": [
+          "推进之王须在宿舍且有效"
+        ],
+        "resources": [],
+        "slotCount": {
+          "exact": 2
+        }
+      },
+      "substitutions": [],
+      "conflicts": [
+        "与同种宿舍全体恢复取最高"
+      ],
+      "efficiencyFormula": "推进之王提供全体0.2/h；摩根使该提供者对同宿舍格拉斯哥成员额外0.3/h，即该人选的提供值为0.5/h；非格拉斯哥仍0.2/h。先按目标合并再和同种全体恢复取最高；摩根单独进宿舍不会独立提供0.3/h。",
+      "warmup": {
+        "state": "none"
+      },
+      "moraleCaveats": [
+        "与贸易阶段互斥；必须实际同宿舍，不可把工作与休息加成同时计入",
+        "戴菲恩中枢贸易加成不改变此宿舍恢复；不是休息组合必需支持"
+      ],
+      "verification": {
+        "status": "source-derived",
+        "evidence": "原始catalog/terms；combinationCatalogAdditions.spec.ts 覆盖摆放、来源buff与静态边界。未证明全局最优。 摩根 dorm_rec_toone[000]：进驻宿舍时，推进之王对该宿舍中格拉斯哥帮干员恢复效果额外+0.3；推进之王 dorm_rec_all[022]：进驻宿舍时，该宿舍内所有干员的心情每小时恢复+0.2（同种效果取最高）"
+      },
+      "sourceReferences": {
+        "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
+        "links": ".codex/skills/arknights-riic-mechanics/references/links.md",
+        "operatorSkillBuffIds": [
+          {
+            "operatorName": "推进之王",
+            "buffIds": [
+              "dorm_rec_all[022]"
+            ]
+          },
+          {
+            "operatorName": "摩根",
+            "buffIds": [
+              "dorm_rec_toone[000]",
+              "trade_ord_spd_par[000]"
+            ]
+          }
+        ],
+        "termIds": [
+          "cc.g.glasgow"
+        ]
+      },
+      "optimizerTags": [
+        "dorm",
+        "recovery",
+        "all-room"
+      ],
+      "coverageScope": "partial-template"
+    }
+  ],
+  "coverageGaps": [
+    "候选库不覆盖所有容量、跑单与资源状态排列；这些机制通过结构化 conditions 交给求值器。",
+    "跑单候选仅确定入驻、生成与恢复时序；不同订单结算和交付影响仍须在订单层实测。"
+  ]
+}
