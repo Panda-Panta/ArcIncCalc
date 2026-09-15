@@ -21,6 +21,13 @@ $zipPath = "../ArcIncCalc-Windows-x64-Portable.zip"
 if (Test-Path $zipPath) { Remove-Item -Force $zipPath }
 tar.exe -a -cf $zipPath -C release ArcIncCalc
 
+$targetSyncDir = "D:\Tools\ArcIncCalc"
+if (Test-Path $targetSyncDir) {
+    Write-Host ">>> [6/6] Syncing release to $targetSyncDir..."
+    robocopy release/ArcIncCalc "$targetSyncDir" /E /NFL /NDL /NJH /NJS /nc /ns /np | Out-Null
+    Write-Host "Synced to $targetSyncDir successfully."
+}
+
 $exeItem = Get-Item "release/ArcIncCalc/ArcIncCalc.exe"
 $zipItem = Get-Item $zipPath
 
