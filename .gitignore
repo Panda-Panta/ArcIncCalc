@@ -12,3 +12,4 @@ desktop/bin/
 desktop/obj/
 *.exe
 src_backup_*.zip
+training_data/*.bin

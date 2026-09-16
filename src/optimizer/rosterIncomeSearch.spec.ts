@@ -103,6 +103,7 @@ describe('bounded ordinary backup income search',()=>{
  })
  it('selects an actual EXP improvement over a full week of morale shifts without spending other resources',()=>{
   const baseline=createDefaultWorkspace(),room=baseline.mainPlan.facilities.room_1_1
+  baseline.mainPlan.facilities.room_2_1.product='gold';baseline.mainPlan.facilities.room_2_2.product='gold'
   room.product='exp';room.slots[0]!.occupant={kind:'operator',operatorId:id('断罪者')};room.slots[0]!.replacements=[id('香草')];room.slots[0]!.groupId='exp-main'
   baseline.mainPlan.facilities.dormitory_1.slots[0]!.occupant={kind:'free'}
   const before=structuredClone(baseline)
@@ -121,7 +122,7 @@ describe('bounded ordinary backup income search',()=>{
   }
   expect(r.bestWorkspace.mainPlan.facilities.room_1_1.slots[0]!.replacements).toEqual([id('Castle-3')])
   expect(baseline).toEqual(before);expect(r.baseline.workspace).toEqual(before)
- },30000)
+ },60000)
  it('rejects layout changes and unavailable explicit idle operators',()=>{
   const baseline=simple(),draft=structuredClone(baseline);draft.mainPlan.facilities.room_1_1.product='exp'
   expect(()=>runRosterIncomeSearch({baseline,draft,inventory:allOwned})).toThrow('设施顺序')

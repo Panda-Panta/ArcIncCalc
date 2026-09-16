@@ -8,7 +8,7 @@ import * as backup from './backupNeighborhood'
 import * as bridge from '../workbench/scheduleSimulationBridge'
 import * as comparison from './incomeComparison'
 const owned=(names:string[])=>names.map(operator=>{const o=OPERATORS.find(o=>o.name===operator)!;return {operator,elitePhase:o.rarity<3?0:o.rarity===3?1:2,level:o.rarity<3?30:o.rarity===3?55:o.rarity===4?70:o.rarity===5?80:90}})
-function workspace(){const w=createDefaultWorkspace();w.mainPlan.facilities.central.slots=[{occupant:{kind:'operator',operatorId:id('杜宾')},groupId:null,replacements:[id('阿米娅')]}];w.mainPlan.facilities.dormitory_1.slots[0]!.occupant={kind:'free'};return w}
+function workspace(){const w=createDefaultWorkspace();w.mainPlan.facilities.room_2_1.product='gold';w.mainPlan.facilities.room_2_2.product='gold';w.mainPlan.facilities.central.slots=[{occupant:{kind:'operator',operatorId:id('杜宾')},groupId:null,replacements:[id('阿米娅')]}];w.mainPlan.facilities.dormitory_1.slots[0]!.occupant={kind:'free'};return w}
 const request=()=>({baseline:workspace(),inventory:owned(['杜宾','阿米娅','凯尔希']),mode:'multi-start' as const,restarts:2,maxDepth:2,searchSeed:42,includeControlMains:true,includeProductionMains:true,objective:'composite' as const,maxCandidates:3,options:{sampleHours:2,warmupHours:0,production:{seed:7,droneTarget:'none' as const}}})
 afterEach(()=>vi.restoreAllMocks())
 it('validates independent random search parameters before simulating',()=>{

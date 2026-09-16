@@ -380,7 +380,7 @@ function controlGlobalBonus(
           .filter(id => { const operator = OPERATOR_MAP.get(id); return operator !== undefined && matchesRiicIdentity(operator, 'groupId', 'abyssal') }),
       ).size
       const abyssalInRoom = roomOperators.filter(operator => matchesRiicIdentity(operator, 'groupId', 'abyssal'))
-      const value = Math.min(90, manufacturingAbyssalCount * abyssalInRoom.length * 10)
+      const value = Math.min(80, manufacturingAbyssalCount * abyssalInRoom.length * 10)
       if (value > 0) {
         bonus += value
         const perBeneficiaryValue = value / abyssalInRoom.length
@@ -392,7 +392,7 @@ function controlGlobalBonus(
         for (const op of abyssalInRoom) {
           const list = operatorBonuses.get(op.charId) ?? []
           list.push({ name: '歌蕾蒂娅·集群狩猎', value: perBeneficiaryValue,
-            detail: `制造站内共 ${manufacturingAbyssalCount} 名深海猎人，单站最高90%` })
+            detail: `制造站内共 ${manufacturingAbyssalCount} 名深海猎人，单站最高80%` })
           operatorBonuses.set(op.charId, list)
         }
       }

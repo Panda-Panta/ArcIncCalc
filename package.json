@@ -11,12 +11,17 @@
     "sync:tools": "powershell -ExecutionPolicy Bypass -File scripts/sync-tools.ps1",
     "audit:data": "node scripts/audit-riic-data.mjs \"C:/Users/Panda-Panta/Downloads/Compressed/ArknightsGameData-master/zh_CN/gamedata/excel\"",
     "test": "vitest run",
-    "typecheck": "vue-tsc -b"
+    "typecheck": "vue-tsc -b",
+    "surrogate:generate": "tsx scripts/surrogate/generate_dataset.ts",
+    "surrogate:train": "python scripts/surrogate/train.py",
+    "surrogate:export": "python scripts/surrogate/export.py",
+    "surrogate:pipeline": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/surrogate/run_pipeline.ps1"
   },
   "dependencies": {
     "html-to-image": "^1.11.13",
     "jsqr": "^1.4.0",
     "naive-ui": "^2.45.3",
+    "onnxruntime-web": "^1.30.0",
     "pako": "^3.0.1",
     "pinia": "4.0.3",
     "pinyin-pro": "^3.29.3",

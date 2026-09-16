@@ -33,4 +33,18 @@ describe('createDefaultWorkspace', () => {
     expect(conf.refresh_drained).toEqual([])
     expect(conf.ope_resting_priority).toEqual([])
   })
+
+  it('creates 243 layout with 2 trading, 4 manufacturing (2 gold, 2 exp), 3 power', () => {
+    const ws = createDefaultWorkspace()
+    const facs = ws.mainPlan.facilities
+    expect(facs.room_1_1).toMatchObject({ type: 'manufacture', product: 'gold', level: 3 })
+    expect(facs.room_1_2).toMatchObject({ type: 'manufacture', product: 'gold', level: 3 })
+    expect(facs.room_1_3).toMatchObject({ type: 'power', level: 3 })
+    expect(facs.room_2_1).toMatchObject({ type: 'manufacture', product: 'exp', level: 3 })
+    expect(facs.room_2_2).toMatchObject({ type: 'manufacture', product: 'exp', level: 3 })
+    expect(facs.room_2_3).toMatchObject({ type: 'power', level: 3 })
+    expect(facs.room_3_1).toMatchObject({ type: 'trading', product: 'money', level: 3 })
+    expect(facs.room_3_2).toMatchObject({ type: 'trading', product: 'money', level: 3 })
+    expect(facs.room_3_3).toMatchObject({ type: 'power', level: 3 })
+  })
 })

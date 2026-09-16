@@ -3,6 +3,8 @@ import { createDefaultWorkspace } from '../workbench/defaults'
 import { applySmartDormitoryPolicy, isAoeDormKeeper, isSingleDormKeeper } from './smartDormitoryPolicy'
 import { OPERATOR_MAP, OPERATORS } from '../domain/operators'
 
+import { validateRosterWorkspace } from '../workbench/validate'
+
 const id = (n: string) => OPERATORS.find((o) => o.name === n)!.charId
 
 describe('smartDormitoryPolicy', () => {
@@ -60,5 +62,64 @@ describe('smartDormitoryPolicy', () => {
 
     const report = applySmartDormitoryPolicy(ws)
     expect(report.applied).toBe(false)
+  })
+
+  it('supports Chinese operator names in candidateOperatorIds and fills remaining beds with free', () => {
+    const ws = createDefaultWorkspace()
+    const report = applySmartDormitoryPolicy(ws, {
+      candidateOperatorIds: ['杜林', '闪灵', '波卜', 'Lancet-2'],
+    })
+
+    expect(report.applied).toBe(true)
+    const dorm1 = ws.mainPlan.facilities.dormitory_1
+    // Dorm 1 should have 1 AOE keeper and 1 single keeper
+    expect(dorm1.slots[0]?.occupant.kind).toBe('operator')
+    expect(dorm1.slots[1]?.occupant.kind).toBe('operator')
+    // Slots 2, 3, 4 should be free beds
+    expect(dorm1.slots[2]?.occupant.kind).toBe('free')
+    expect(dorm1.slots[3]?.occupant.kind).toBe('free')
+    expect(dorm1.slots[4]?.occupant.kind).toBe('free')
+  })
+
+  it('respects skill unlock stages when owned entries are provided', () => {
+    const ws = createDefaultWorkspace()
+    // Provide 杜林 at E0 Lv1 (unlocked bskill_dorm_all1) and 闪灵 at E0 Lv1 (unlocked bskill_dorm_single)
+    const entries = [
+      { operator: '杜林', elitePhase: 0, level: 1 },
+      { operator: '闪灵', elitePhase: 0, level: 1 },
+    ]
+    const report = applySmartDormitoryPolicy(ws, { entries })
+    expect(report.applied).toBe(true)
+    expect(report.dormitoryKeepers.dormitory_1?.aoe).toBe(id('杜林'))
+    expect(report.dormitoryKeepers.dormitory_1?.single).toBe(id('闪灵'))
+  })
+
+  it('prevents duplicate operators when Fiammetta and Pianst already exist in dorms', () => {
+    const ws = createDefaultWorkspace()
+    // Simulate pre-existing state:
+    // Fiammetta in dormitory_1 slot 4
+    const slot4 = ws.mainPlan.facilities.dormitory_1.slots[4]
+    if (slot4) {
+      slot4.occupant = {
+        kind: 'operator',
+        operatorId: 'char_300_phenxi',
+      }
+    }
+    // 至简 (Pianst) in dormitory_1 slot 3
+    const slot3 = ws.mainPlan.facilities.dormitory_1.slots[3]
+    if (slot3) {
+      slot3.occupant = {
+        kind: 'operator',
+        operatorId: id('至简'),
+      }
+    }
+
+    applySmartDormitoryPolicy(ws, {
+      candidateOperatorIds: ['菲亚梅塔', '至简', '杜林', '闪灵'],
+    })
+
+    const validation = validateRosterWorkspace(ws)
+    const duplicateErrors = validation.criticalErrors.filter((e) => e.code === 'DUPLICATE_OPERATOR')
+    expect(duplicateErrors).toEqual([])
   })
 })

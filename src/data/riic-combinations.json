@@ -3350,24 +3350,22 @@
       "coverageScope": "support-policy"
     },
     {
-      "id": "manu-exp-bubble-vulcan-mizuki",
-      "name": "泡泡-火神-水月容量/标准化狗粮",
+      "id": "manu-exp-bubble-vulcan-bena",
+      "name": "泡泡-火神-贝娜容量转作战记录",
       "family": "capacity",
       "facility": "MANUFACTURE",
       "product": "exp",
       "operatorNames": [
         "泡泡",
         "火神",
-        "水月"
+        "贝娜"
       ],
       "supportAssignments": [],
       "conditions": {
         "facility": [
           "作战记录配方"
         ],
-        "roster": [
-          "水月标准化计数须由同站实际技能决定"
-        ],
+        "roster": [],
         "morale": [
           "干员须在岗且对应技能已按最高阶段解锁"
         ],
@@ -3376,18 +3374,31 @@
           "exact": 3
         }
       },
-      "substitutions": [],
+      "substitutions": [
+        {
+          "operatorNames": [
+            "圣约送葬人"
+          ],
+          "effect": "作战记录配方生产力+30%，仓库容量上限+4"
+        },
+        {
+          "operatorNames": [
+            "铅踝"
+          ],
+          "effect": "提供容量转生产力收益"
+        }
+      ],
       "conflicts": [
         "不可与红云回收利用叠加，泡泡优先"
       ],
-      "efficiencyFormula": "泡泡/火神容量项与水月标准化项分别按原文结算；水月只对同站标准化技能每项+5%，不可虚构为容量来源。",
+      "efficiencyFormula": "泡泡读取各干员自身容量；火神β容量19、贝娜容量17、泡泡自身容量14，超额容量由泡泡转化为制造效率，贝娜与泡泡降低心情消耗。",
       "warmup": {
         "state": "none"
       },
       "moraleCaveats": [],
       "verification": {
         "status": "source-derived",
-        "evidence": "links 容量与中枢; no candidate-specific test name recorded"
+        "evidence": "links 容量与中枢; 常用组合泡泡组"
       },
       "sourceReferences": {
         "catalog": ".codex/skills/arknights-riic-mechanics/references/catalog.json",
@@ -3407,19 +3418,18 @@
             ]
           },
           {
-            "operatorName": "水月",
+            "operatorName": "贝娜",
             "buffIds": [
-              "manu_skill_spd1[000]",
-              "manu_prod_spd[010]"
+              "manu_prod_spd&limit&cost[020]"
             ]
           }
         ],
         "termIds": []
       },
       "optimizerTags": [
-        "gold",
+        "exp",
         "warehouse",
-        "negative-efficiency"
+        "capacity"
       ],
       "coverageScope": "complete-team"
     },

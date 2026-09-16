@@ -482,4 +482,27 @@ describe('PlanToolbar.vue', () => {
       expect(wrapper.find('[data-test="status-message"]').exists()).toBe(false)
     })
   })
+
+  describe('Abort Auto Generation', () => {
+    it('shows abort button when isGeneratingRoster is true and emits abort-generation on click', async () => {
+      const wrapper = mount(PlanToolbar, {
+        props: { isGeneratingRoster: true },
+      })
+
+      const abortBtn = wrapper.find('[data-test="abort-roster-btn"]')
+      expect(abortBtn.exists()).toBe(true)
+      expect(abortBtn.text()).toContain('中止排班')
+
+      await abortBtn.trigger('click')
+      expect(wrapper.emitted('abort-generation')).toHaveLength(1)
+    })
+
+    it('does not show abort button when isGeneratingRoster is false', () => {
+      const wrapper = mount(PlanToolbar, {
+        props: { isGeneratingRoster: false },
+      })
+
+      expect(wrapper.find('[data-test="abort-roster-btn"]').exists()).toBe(false)
+    })
+  })
 })
