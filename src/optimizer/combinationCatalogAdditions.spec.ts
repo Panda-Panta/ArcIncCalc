@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest'
-import {readFileSync} from 'node:fs'
+import {existsSync, readFileSync} from 'node:fs'
 import {resolve} from 'node:path'
 import raw from '../data/riic-combinations.json'
 import {OPERATORS} from '../domain/operators'
@@ -13,8 +13,10 @@ import {compileCandidateLayout} from './rosterDraft'
 const byId=new Map(raw.candidates.map(c=>[c.id,c]))
 const op=(name:string)=>OPERATORS.find(o=>o.name===name)!
 const id=(name:string)=>op(name).charId
-const source=JSON.parse(readFileSync(resolve('.codex/skills/arknights-riic-mechanics/references/catalog.json'),'utf8')) as {operators:{name:string;slots:{buffId:string;description:string}[][]}[]}
-const terms=JSON.parse(readFileSync(resolve('.codex/skills/arknights-riic-mechanics/references/terms.json'),'utf8')) as {terms:Record<string,{description:string}>}
+const codexCatalog=resolve('.codex/skills/arknights-riic-mechanics/references/catalog.json')
+const codexTerms=resolve('.codex/skills/arknights-riic-mechanics/references/terms.json')
+const source=JSON.parse(readFileSync(existsSync(codexCatalog)?codexCatalog:resolve('src/data/riic-catalog.baseline-v076.json'),'utf8')) as {operators:{name:string;slots:{buffId:string;description:string}[][]}[]}
+const terms=JSON.parse(readFileSync(existsSync(codexTerms)?codexTerms:resolve('src/data/riic-term-evidence.json'),'utf8')) as {terms:Record<string,{description:string}>}
 function setup(names:string[],control:string[]=[]){
  const c=createDefaultConfig();c.controlOperatorIds=control.map(id);c.rooms.forEach(r=>r.operatorIds=[])
  c.facilityOperatorIds={dormitories:[[],[],[],[]],reception:[],office:[],training:[],workshop:[]}

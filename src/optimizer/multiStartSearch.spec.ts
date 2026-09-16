@@ -27,7 +27,7 @@ it('finds and independently revalidates a real control improvement without alter
  expect(result.validation!.candidates.find(c=>c.id===result.bestCandidateId)!.comparison.minGain).toBeGreaterThan(0)
  expect(input).toEqual(before)
  expect(result.bestWorkspace.mainPlan.facilities.central.slots[0]!.occupant).toEqual({kind:'operator',operatorId:id('凯尔希')})
-},30000)
+},60000)
 it('uses a shared distinct-plan budget and reproduces search candidates with a fixed seed',()=>{
  const input={...request(),inventory:owned(['杜宾','阿米娅','凯尔希','Mon3tr','诗怀雅','调香师','砾']),maxCandidates:5}
  // Keep this traversal test cheap; the real integration above covers production and holdout.

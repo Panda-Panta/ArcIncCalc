@@ -11,3 +11,4 @@ release/
 desktop/bin/
 desktop/obj/
 *.exe
+src_backup_*.zip

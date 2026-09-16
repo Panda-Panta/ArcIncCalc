@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -178,8 +178,7 @@ describe('Mower JSON Compatibility Layer', () => {
     })
 
     it('imports real 252 2-gold fixture (mower-252-2gold.json / 252二赤金Test.json) and verifies all validation features', () => {
-      const filePath = 'E:/OneDrive/Mower/252二赤金Test.json'
-      const raw = existsSync(filePath) ? readFileSync(filePath, 'utf-8') : loadFixture('mower-252-2gold.json')
+      const raw = loadFixture('mower-252-2gold.json')
       const ws = importMowerJson(raw)
 
       expect(ws.schemaVersion).toBe(8)

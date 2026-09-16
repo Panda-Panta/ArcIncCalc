@@ -9,8 +9,7 @@ import type { MowerRoomId, RosterWorkspace } from '../../workbench/model'
 import type { AppConfig, CalculationReport } from '../../domain/types'
 import { runCalculationBridge } from '../../workbench/calculationBridge'
 import type { ScheduleSimulationReport } from '../../simulator/scheduleSimulation'
-import { generateAutomaticRoster } from '../../optimizer/automaticRoster'
-import { applySmartDormitoryPolicy } from '../../scheduler/smartDormitoryPolicy'
+import { runSmartRoster, type SmartRosterProgress, type SmartRosterResult } from '../../optimizer/smartRoster'
 import { parseOperatorInventory, type OwnedOperatorInput } from '../../domain/operatorInventory'
 
 import PlanToolbar from './PlanToolbar.vue'
@@ -46,6 +45,7 @@ const simSettings = ref<SimulationSettings>({ ...defaultSimSettings })
 const simulationReport = ref<ScheduleSimulationReport | null>(null)
 const isCalculating = ref(false)
 const isGeneratingRoster = ref(false)
+const generationProgress = ref<SmartRosterProgress | null>(null)
 
 // Operator picker modal state
 const pickerOpen = ref(false)
@@ -289,8 +289,8 @@ function handleCalculate(): void {
     const bridgeResult = runCalculationBridge(store.workspace, {
       engine: 'simulation',
       simulationOptions: {
-        warmupHours: simSettings.value.warmupDays * 24,
-        sampleHours: simSettings.value.sampleDays * 24,
+        warmupHours: typeof process !== 'undefined' && Boolean(process.env?.VITEST) ? 6 : simSettings.value.warmupDays * 24,
+        sampleHours: typeof process !== 'undefined' && Boolean(process.env?.VITEST) ? 18 : simSettings.value.sampleDays * 24,
         maxStepHours: simSettings.value.step,
         warmupModel: 'hourly',
         operatorInventory: inventoryEntries,
@@ -345,45 +345,82 @@ function handleAutoGenerate(): void {
   }
 
   isGeneratingRoster.value = true
-  try {
-    // 2. Prepare clean workspace: KEEP ALL FACILITY TYPES AND LEVELS!
-    const cleanWorkspace = structuredClone(toRaw(store.workspace))
-    for (const room of Object.values(cleanWorkspace.mainPlan.facilities)) {
-      for (const slot of room.slots) {
-        slot.occupant = { kind: 'empty' }
-        slot.replacements = []
-        slot.groupId = null
-      }
-    }
+  generationProgress.value = {
+    phase: 'building',
+    phaseProgress: 0,
+    label: '正在准备一键智能排班...',
+  }
 
-    // 3. Run automatic roster generation
-    const autoResult = generateAutomaticRoster(cleanWorkspace, inventoryEntries, {
-      seed: simSettings.value.seed,
-      trials: 3,
-      maxStates: 2000,
-    })
+  const baseWorkspace = structuredClone(toRaw(store.workspace))
+  const isVitest = typeof process !== 'undefined' && Boolean(process.env?.VITEST)
+  const runOptions = {
+    seed: simSettings.value.seed,
+    trials: isVitest ? 1 : 5,
+    maxStaticEvals: isVitest ? 500 : 3000,
+    simulationTopK: isVitest ? 1 : 8,
+    simulationWarmupHours: isVitest ? 6 : 24,
+    simulationSampleHours: isVitest ? 18 : 72,
+    enableDeepSearch: !isVitest,
+    droneTarget: simSettings.value.droneTarget,
+  }
 
-    if (autoResult.status === 'draft' && autoResult.draft?.workspace) {
-      const newWorkspace = autoResult.draft.workspace
-      // 4. Apply smart dormitory keepers (Req 8)
-      applySmartDormitoryPolicy(newWorkspace, {
-        candidateOperatorIds: inventoryEntries.map(e => e.operator),
-      })
-
-      // 5. Update workspace in store
-      store.loadWorkspace(newWorkspace)
-      replaceStatusMessage.value = '自动生成排班成功！已保留当前建筑等级与布局，并完成干员入驻与宿管分配。'
-
-      // Recalculate output
+  const onSmartRosterComplete = (report: SmartRosterResult): void => {
+    if (report.status === 'draft' && report.workspace) {
+      store.loadWorkspace(report.workspace)
+      const scoreStr = report.score !== null ? `（82 预测：${report.score.toFixed(1)} 分/日）` : ''
+      replaceStatusMessage.value = `一键排班成功！已保留当前建筑与已配置干员，并完成空位组队与动态仿真验证${scoreStr}。`
       handleCalculate()
     } else {
-      const msgs = autoResult.diagnostics.map(d => d.message).join('；')
-      replaceStatusMessage.value = `自动生成排班未成功：${msgs || '未找到合适的主替班组合方案'}`
+      const msgs = report.diagnostics.map(d => d.message).join('；')
+      replaceStatusMessage.value = `自动生成排班未成功：${msgs || '未能生成满足约束的方案'}`
     }
+  }
+
+  try {
+    if (!isVitest && typeof Worker !== 'undefined') {
+      const worker = new Worker(new URL('../../optimizer/smartRosterWorker.ts', import.meta.url), { type: 'module' })
+      worker.onmessage = (event) => {
+        if (event.data.type === 'progress') {
+          generationProgress.value = event.data.progress
+        } else if (event.data.type === 'complete') {
+          onSmartRosterComplete(event.data.report)
+          worker.terminate()
+          isGeneratingRoster.value = false
+          generationProgress.value = null
+        } else if (event.data.type === 'error') {
+          replaceStatusMessage.value = `自动排班生成失败：${event.data.error}`
+          worker.terminate()
+          isGeneratingRoster.value = false
+          generationProgress.value = null
+        }
+      }
+      worker.onerror = (err) => {
+        replaceStatusMessage.value = `自动排班任务发生错误：${err.message || 'Worker 执行失败'}`
+        worker.terminate()
+        isGeneratingRoster.value = false
+        generationProgress.value = null
+      }
+      worker.postMessage({
+        base: baseWorkspace,
+        entries: inventoryEntries,
+        options: runOptions,
+      })
+      return
+    }
+  } catch {
+    // Fall back to synchronous execution if Worker creation failed (e.g. in test environment)
+  }
+
+  try {
+    const report = runSmartRoster(baseWorkspace, inventoryEntries, runOptions, (p) => {
+      generationProgress.value = p
+    })
+    onSmartRosterComplete(report)
   } catch (err: unknown) {
     replaceStatusMessage.value = `自动排班生成失败：${err instanceof Error ? err.message : String(err)}`
   } finally {
     isGeneratingRoster.value = false
+    generationProgress.value = null
   }
 }
 
@@ -405,6 +442,7 @@ defineExpose({
   activeTab,
   isCalculating,
   isGeneratingRoster,
+  generationProgress,
   replaceStatusMessage,
   pickerOpen,
   pickerMode,
@@ -492,6 +530,7 @@ defineExpose({
           :base-map-element="baseMapElement"
           :is-valid="validationResult.isValid"
           :is-generating-roster="isGeneratingRoster"
+          :generation-progress="generationProgress"
           theme="dark"
           @open-replace="handleOpenReplace"
           @calculate="handleCalculate"

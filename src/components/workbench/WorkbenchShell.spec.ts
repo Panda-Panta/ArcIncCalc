@@ -511,4 +511,49 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
     expect(wrapper.find('.toolbar-scroll-container').exists()).toBe(true)
     expect(wrapper.find('.board-scroll-container').exists()).toBe(true)
   })
+
+  // 15. One-click smart roster generation with preserved user-locked operators
+  it('triggers smart roster generation, keeps user placed operators, and updates store', async () => {
+    // Seed localStorage with sufficient inventory (format: name,elitePhase,level)
+    const testOps = [
+      '能天使,2,90', '德克萨斯,2,80', '拉普兰德,2,80', '巫恋,2,80', '龙舌兰,2,80', '柏喙,2,80',
+      '砾,2,70', '芬,1,55', '克洛丝,1,55', '伊芙利特,2,90', '白面鸮,2,80', '红豆,1,55',
+      '斑点,1,55', '卡达,2,70', '远山,1,60', '梅,2,70', '流星,1,60', '杰克,1,60',
+      '夜烟,1,60', '深海色,1,60', '古米,1,60', '蛇屠箱,1,60', '调香师,1,60', '清流,2,70',
+      '温蒂,2,90', '森蚺,2,90', '迷迭香,2,90', '琴柳,2,90', '令,2,90', '夕,2,90',
+      '槐琥,2,80', '陈,2,90', '阿米娅,2,80', '凯尔希,2,90', '银灰,2,90', '崖心,2,80',
+      '暗索,1,60', '雪雉,2,80', '空爆,1,55', '月见夜,1,55', '泡普卡,1,55', '香草,1,55',
+      '米格鲁,1,55', '安赛尔,1,55', '芙蓉,1,55', '炎熔,1,55', '史都华德,1,55', '梓兰,1,55',
+      '地灵,1,60', '桃金娘,2,70', '极境,2,80', '红,2,80', '食铁兽,2,80', '雷蛇,2,80',
+    ]
+    localStorage.setItem(
+      'arcinc-operator-inventory-v1',
+      JSON.stringify({
+        enabled: true,
+        text: testOps.join('\n'),
+      })
+    )
+
+    const wrapper = mountWithPinia(WorkbenchShell)
+    const vm = wrapper.vm as any
+
+    // Pre-place Texas in room_1_1 slot 0
+    vm.store.workspace.mainPlan.facilities.room_1_1.slots[0].occupant = {
+      kind: 'operator',
+      operatorId: 'char_102_texas',
+    }
+
+    // Trigger auto generate
+    vm.handleAutoGenerate()
+    await flushPromises()
+
+    // Verify Texas is preserved in room_1_1 slot 0
+    expect(vm.store.workspace.mainPlan.facilities.room_1_1.slots[0].occupant).toEqual({
+      kind: 'operator',
+      operatorId: 'char_102_texas',
+    })
+
+    // Verify success status message
+    expect(vm.replaceStatusMessage).toContain('排班成功')
+  }, 60000)
 })

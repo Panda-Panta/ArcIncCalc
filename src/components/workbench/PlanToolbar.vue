@@ -133,6 +133,24 @@
       </div>
     </div>
 
+    <!-- Roster Generation Progress Row (below auto-roster button) -->
+    <div
+      v-if="isGeneratingRoster || generationProgress"
+      class="generation-progress-row"
+      data-test="generation-progress-row"
+    >
+      <div class="progress-info">
+        <span class="mower-spinner" aria-hidden="true"></span>
+        <span class="progress-label">{{ generationProgress?.label || '正在一键生成排班...' }}</span>
+      </div>
+      <div v-if="generationProgress" class="progress-bar-track">
+        <div
+          class="progress-bar-fill"
+          :style="{ width: `${Math.round((generationProgress.phaseProgress || 0) * 100)}%` }"
+        ></div>
+      </div>
+    </div>
+
     <!-- Visible Success / Error / Info Status Message Banner -->
     <div
       v-if="statusMessage"
@@ -184,6 +202,7 @@
 import { computed, inject, ref } from 'vue'
 import OperatorImportModal from './OperatorImportModal.vue'
 import type { OwnedOperatorInput } from '../../domain/operatorInventory'
+import type { SmartRosterProgress } from '../../optimizer/smartRoster'
 import {
   exportPlanToImage,
   exportPlanToJson,
@@ -202,6 +221,7 @@ export interface PlanToolbarProps {
   adapters?: PlanFileAdapters
   disabled?: boolean
   isGeneratingRoster?: boolean
+  generationProgress?: SmartRosterProgress | null
 }
 
 const props = withDefaults(defineProps<PlanToolbarProps>(), {
@@ -211,6 +231,7 @@ const props = withDefaults(defineProps<PlanToolbarProps>(), {
   adapters: undefined,
   disabled: false,
   isGeneratingRoster: false,
+  generationProgress: null,
 })
 
 const emit = defineEmits<{
@@ -614,5 +635,42 @@ defineExpose({
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-3px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+.generation-progress-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(66, 214, 199, 0.1);
+  border: 1px solid rgba(66, 214, 199, 0.35);
+  border-radius: 4px;
+  color: #42d6c7;
+  font-size: 13px;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.progress-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progress-label {
+  font-weight: 500;
+}
+
+.progress-bar-track {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: #42d6c7;
+  transition: width 0.3s ease;
 }
 </style>
