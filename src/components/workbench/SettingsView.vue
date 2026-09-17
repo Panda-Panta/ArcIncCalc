@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import PolicyEditor from './PolicyEditor.vue'
 import OperatorInventoryPanel from './OperatorInventoryPanel.vue'
 import { useRosterWorkbenchStore } from '../../workbench/store'
 import { getRoomDisplayName } from '../../workbench/operatorHelpers'
@@ -101,13 +100,15 @@ function updateField<K extends keyof SimulationSettings>(key: K, val: Simulation
           <span class="control-label">随机种子 (Seed)</span>
           <input
             type="number"
-            min="0"
+            min="-1"
             max="4294967295"
             step="1"
             class="control-input"
             :value="settings.seed"
+            placeholder="-1 (随机)"
             @input="updateField('seed', Number(($event.target as HTMLInputElement).value))"
           />
+          <span class="control-hint">-1 代表随机种子</span>
         </label>
 
         <!-- 余量无人机加速目标 -->
@@ -153,11 +154,6 @@ function updateField<K extends keyof SimulationSettings>(key: K, val: Simulation
     <!-- Section 2: 干员库 -->
     <section class="settings-card" data-test="inventory-settings-card">
       <OperatorInventoryPanel @change="emit('inventory-change', $event)" />
-    </section>
-
-    <!-- Section 3: 策略配置 (PolicyEditor) -->
-    <section class="settings-card" data-test="policy-settings-card">
-      <PolicyEditor />
     </section>
   </div>
 </template>
@@ -214,6 +210,11 @@ function updateField<K extends keyof SimulationSettings>(key: K, val: Simulation
 .control-label {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.75);
+}
+
+.control-hint {
+  font-size: 11px;
+  color: #8da5ac;
 }
 
 .control-input,

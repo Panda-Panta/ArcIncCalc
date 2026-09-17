@@ -513,24 +513,24 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
   })
 
   // 15. One-click smart roster generation with preserved user-locked operators
+  const FULL_TEST_OPS = [
+    '能天使,2,90', '德克萨斯,2,80', '拉普兰德,2,80', '巫恋,2,80', '龙舌兰,2,80', '柏喙,2,80',
+    '砾,2,70', '芬,1,55', '克洛丝,1,55', '伊芙利特,2,90', '白面鸮,2,80', '红豆,1,55',
+    '斑点,1,55', '卡达,2,70', '远山,1,60', '梅,2,70', '流星,1,60', '杰克,1,60',
+    '夜烟,1,60', '深海色,1,60', '古米,1,60', '蛇屠箱,1,60', '调香师,1,60', '清流,2,70',
+    '温蒂,2,90', '森蚺,2,90', '迷迭香,2,90', '琴柳,2,90', '令,2,90', '夕,2,90',
+    '槐琥,2,80', '陈,2,90', '阿米娅,2,80', '凯尔希,2,90', '银灰,2,90', '崖心,2,80',
+    '暗索,1,60', '雪雉,2,80', '空爆,1,55', '月见夜,1,55', '泡普卡,1,55', '香草,1,55',
+    '米格鲁,1,55', '安赛尔,1,55', '芙蓉,1,55', '炎熔,1,55', '史都华德,1,55', '梓兰,1,55',
+    '地灵,1,60', '桃金娘,2,70', '极境,2,80', '红,2,80', '食铁兽,2,80', '雷蛇,2,80',
+  ]
+
   it('triggers smart roster generation, keeps user placed operators, and updates store', async () => {
-    // Seed localStorage with sufficient inventory (format: name,elitePhase,level)
-    const testOps = [
-      '能天使,2,90', '德克萨斯,2,80', '拉普兰德,2,80', '巫恋,2,80', '龙舌兰,2,80', '柏喙,2,80',
-      '砾,2,70', '芬,1,55', '克洛丝,1,55', '伊芙利特,2,90', '白面鸮,2,80', '红豆,1,55',
-      '斑点,1,55', '卡达,2,70', '远山,1,60', '梅,2,70', '流星,1,60', '杰克,1,60',
-      '夜烟,1,60', '深海色,1,60', '古米,1,60', '蛇屠箱,1,60', '调香师,1,60', '清流,2,70',
-      '温蒂,2,90', '森蚺,2,90', '迷迭香,2,90', '琴柳,2,90', '令,2,90', '夕,2,90',
-      '槐琥,2,80', '陈,2,90', '阿米娅,2,80', '凯尔希,2,90', '银灰,2,90', '崖心,2,80',
-      '暗索,1,60', '雪雉,2,80', '空爆,1,55', '月见夜,1,55', '泡普卡,1,55', '香草,1,55',
-      '米格鲁,1,55', '安赛尔,1,55', '芙蓉,1,55', '炎熔,1,55', '史都华德,1,55', '梓兰,1,55',
-      '地灵,1,60', '桃金娘,2,70', '极境,2,80', '红,2,80', '食铁兽,2,80', '雷蛇,2,80',
-    ]
     localStorage.setItem(
       'arcinc-operator-inventory-v1',
       JSON.stringify({
         enabled: true,
-        text: testOps.join('\n'),
+        text: FULL_TEST_OPS.join('\n'),
       })
     )
 
@@ -554,6 +554,65 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
     })
 
     // Verify success status message
+    expect(vm.replaceStatusMessage).toContain('排班成功')
+  }, 60000)
+
+  // 18. Abort roster generation
+  it('aborts active roster generation worker and updates status message', async () => {
+    const wrapper = mountWithPinia(WorkbenchShell)
+    wrapper.vm.isGeneratingRoster = true
+    wrapper.vm.generationProgress = { phase: 'building', phaseProgress: 0.5, label: '计算中...' }
+
+    wrapper.vm.handleAbortAutoGenerate()
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.vm.isGeneratingRoster).toBe(false)
+    expect(wrapper.vm.generationProgress).toBeNull()
+    expect(wrapper.vm.replaceStatusMessage).toContain('已中止自动排班计算')
+  })
+
+  // 19. Switch to skills tab and render RIIC skills browser
+  it('switches between workbench and skills tab, displaying riic skills browser', async () => {
+    const wrapper = mountWithPinia(WorkbenchShell)
+    expect(wrapper.vm.activeTab).toBe('workbench')
+
+    const skillsTabBtn = wrapper.find('[data-test="tab-skills"]')
+    expect(skillsTabBtn.exists()).toBe(true)
+
+    await skillsTabBtn.trigger('click')
+    expect(wrapper.vm.activeTab).toBe('skills')
+
+    const skillsPanel = wrapper.find('[data-test="skills-tab-panel"]')
+    expect(skillsPanel.exists()).toBe(true)
+    expect(skillsPanel.find('[data-test="riic-skills-browser"]').exists()).toBe(true)
+  })
+
+  // 20. Smart roster config modal interaction and execution
+  it('opens smart roster config modal and executes auto generate with custom config', async () => {
+    localStorage.setItem(
+      'arcinc-operator-inventory-v1',
+      JSON.stringify({ enabled: true, text: FULL_TEST_OPS.join('\n') })
+    )
+
+    const wrapper = mountWithPinia(WorkbenchShell)
+    const vm = wrapper.vm as any
+
+    vm.smartRosterConfigModalOpen = true
+    expect(vm.smartRosterConfigModalOpen).toBe(true)
+
+    vm.handleConfirmSmartRosterConfig({
+      trials: 1,
+      maxStaticEvals: 500,
+      simulationTopK: 1,
+      simulationSampleHours: 24,
+      simulationWarmupHours: 6,
+      enableDeepSearch: false,
+      droneTarget: 'gold',
+      seed: 42,
+    })
+    await flushPromises()
+
+    expect(vm.smartRosterConfigModalOpen).toBe(false)
     expect(vm.replaceStatusMessage).toContain('排班成功')
   }, 60000)
 })

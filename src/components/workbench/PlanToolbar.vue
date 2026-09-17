@@ -88,6 +88,20 @@
 
       <!-- Right actions: Auto Roster, Replace & Yield Calculation -->
       <div class="action-cluster right-cluster">
+        <!-- Abort Auto Generate (Req 5) -->
+        <button
+          v-if="isGeneratingRoster"
+          type="button"
+          class="mower-btn btn-abort-roster"
+          data-test="abort-roster-btn"
+          @click="onAbortGenerateClick"
+        >
+          <svg class="mower-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11H7v-2h10v2z"/>
+          </svg>
+          中止排班
+        </button>
+
         <!-- Auto Generate Roster (Req 10) -->
         <button
           type="button"
@@ -243,6 +257,7 @@ const emit = defineEmits<{
   (e: 'exported-image'): void
   (e: 'error', message: string): void
   (e: 'auto-generate'): void
+  (e: 'abort-generation'): void
   (e: 'inventory-imported', entries: OwnedOperatorInput[], text: string): void
 }>()
 
@@ -418,7 +433,14 @@ function onInventoryImported(entries: OwnedOperatorInput[], text: string): void 
 }
 
 /**
- * 6. 自动生成排班
+ * 6. 中止排班生成
+ */
+function onAbortGenerateClick(): void {
+  emit('abort-generation')
+}
+
+/**
+ * 7. 自动生成排班
  */
 function onAutoGenerateClick(): void {
   emit('auto-generate')
@@ -534,6 +556,19 @@ defineExpose({
   background-color: rgba(208, 48, 80, 0.2);
   border-color: #f5222d;
   color: #ff4d4f;
+}
+
+.mower-btn.btn-abort-roster {
+  background-color: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+  color: #fca5a5;
+  font-weight: 600;
+}
+
+.mower-btn.btn-abort-roster:hover {
+  background-color: rgba(239, 68, 68, 0.38);
+  border-color: #f87171;
+  color: #ffffff;
 }
 
 .mower-btn.btn-calc {

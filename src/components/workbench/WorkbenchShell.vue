@@ -15,11 +15,14 @@ import { parseOperatorInventory, type OwnedOperatorInput } from '../../domain/op
 import PlanToolbar from './PlanToolbar.vue'
 import BaseMap from './BaseMap.vue'
 import FacilityEditor from './FacilityEditor.vue'
+import PolicyEditor from './PolicyEditor.vue'
 import SettingsView, { type SimulationSettings } from './SettingsView.vue'
 import SimulationLogView from './SimulationLogView.vue'
 import ValidationPanel, { type ValidationFocusPayload } from './ValidationPanel.vue'
 import OperatorSelectModal, { type OperatorSelectionPayload } from './OperatorSelectModal.vue'
 import GlobalReplaceModal, { type GlobalReplacePayload } from './GlobalReplaceModal.vue'
+import SmartRosterConfigModal, { type SmartRosterConfig } from './SmartRosterConfigModal.vue'
+import RiicSkillsBrowser from './RiicSkillsBrowser.vue'
 import '../../workbench/styles.css'
 
 const store = useRosterWorkbenchStore()
@@ -29,15 +32,15 @@ const baseMapRef = ref<InstanceType<typeof BaseMap> | null>(null)
 const facilityEditorSectionRef = ref<HTMLElement | null>(null)
 const policyEditorSectionRef = ref<HTMLElement | null>(null)
 
-// Sub-page navigation: workbench | settings | logs
-const activeTab = ref<'workbench' | 'settings' | 'logs'>('workbench')
+// Sub-page navigation: workbench | skills | settings | logs
+const activeTab = ref<'workbench' | 'skills' | 'settings' | 'logs'>('workbench')
 
 // Simulation settings state
 const defaultSimSettings: SimulationSettings = {
   sampleDays: 7,
   warmupDays: 3,
   step: 0.25,
-  seed: 1,
+  seed: -1,
   droneTarget: 'gold',
   droneTradingRoomId: '',
 }
@@ -46,6 +49,7 @@ const simulationReport = ref<ScheduleSimulationReport | null>(null)
 const isCalculating = ref(false)
 const isGeneratingRoster = ref(false)
 const generationProgress = ref<SmartRosterProgress | null>(null)
+const activeRosterWorker = ref<Worker | null>(null)
 
 // Operator picker modal state
 const pickerOpen = ref(false)
@@ -56,6 +60,18 @@ const pickerSlotIndex = ref(0)
 // Global replace modal state
 const replaceModalOpen = ref(false)
 const replaceStatusMessage = ref<string | null>(null)
+const smartRosterConfigModalOpen = ref(false)
+
+// Operator inventory state
+const operatorInventory = ref<{
+  enabled: boolean
+  valid: boolean
+  entries: OwnedOperatorInput[]
+}>({
+  enabled: true,
+  valid: false,
+  entries: [],
+})
 
 // Calculation report and error state
 const calculationReport = ref<CalculationReport | null>(null)
@@ -118,6 +134,21 @@ function initPersistence(): void {
       const parsedSim = JSON.parse(rawSim)
       if (parsedSim?.sampleDays) {
         simSettings.value = { ...defaultSimSettings, ...parsedSim }
+      }
+    }
+
+    const rawInv = localStorage.getItem('arcinc-operator-inventory-v1')
+    if (rawInv) {
+      const parsedInv = JSON.parse(rawInv)
+      if (parsedInv?.text) {
+        const compiled = parseOperatorInventory(parsedInv.text)
+        if (compiled.valid) {
+          operatorInventory.value = {
+            enabled: parsedInv.enabled ?? true,
+            valid: true,
+            entries: compiled.entries,
+          }
+        }
       }
     }
   } catch (e) {
@@ -255,8 +286,25 @@ function handleImported(_workspace: RosterWorkspace): void {
   replaceStatusMessage.value = null
 }
 
-function handleInventoryChange(_payload: { enabled: boolean; valid: boolean; entries: OwnedOperatorInput[] }): void {
-  // Inventory updated in settings
+function handleInventoryChange(payload: { enabled: boolean; valid: boolean; entries: OwnedOperatorInput[] }): void {
+  operatorInventory.value = payload
+}
+
+function handleInventoryImported(entries: OwnedOperatorInput[], csvText: string): void {
+  operatorInventory.value = {
+    enabled: true,
+    valid: true,
+    entries,
+  }
+  replaceStatusMessage.value = `成功导入干员库：共 ${entries.length} 名干员`
+  try {
+    localStorage.setItem('arcinc-operator-inventory-v1', JSON.stringify({ schemaVersion: 1, text: csvText, enabled: true }))
+  } catch {
+    // ignore
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('arcinc-inventory-synced', { detail: { text: csvText, enabled: true } }))
+  }
 }
 
 function handleCalculate(): void {
@@ -297,7 +345,9 @@ function handleCalculate(): void {
         production: {
           outputMode: 'potential',
           runOrderMode: 'drone',
-          seed: simSettings.value.seed,
+          seed: simSettings.value.seed < 0
+            ? (typeof process !== 'undefined' && Boolean(process.env?.VITEST) ? 42 : Math.floor(Math.random() * 0xffffffff))
+            : simSettings.value.seed,
           droneTarget: simSettings.value.droneTarget,
           droneTradingRoomId: simSettings.value.droneTradingRoomId || undefined,
         },
@@ -317,12 +367,14 @@ function handleCalculate(): void {
   }
 }
 
-function handleAutoGenerate(): void {
+function handleAutoGenerate(explicitConfig?: SmartRosterConfig): void {
   replaceStatusMessage.value = null
   calculationError.value = null
 
   let inventoryEntries: OwnedOperatorInput[] = []
-  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+  if (operatorInventory.value.enabled && operatorInventory.value.valid && operatorInventory.value.entries.length > 0) {
+    inventoryEntries = operatorInventory.value.entries
+  } else if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
     const rawInv = localStorage.getItem('arcinc-operator-inventory-v1')
     if (rawInv) {
       try {
@@ -344,6 +396,45 @@ function handleAutoGenerate(): void {
     return
   }
 
+  const isVitest = typeof process !== 'undefined' && Boolean(process.env?.VITEST)
+  if (explicitConfig || (isVitest && explicitConfig === undefined && !smartRosterConfigModalOpen.value)) {
+    executeAutoGenerate(inventoryEntries, explicitConfig)
+    return
+  }
+
+  smartRosterConfigModalOpen.value = true
+}
+
+function handleConfirmSmartRosterConfig(config: SmartRosterConfig): void {
+  smartRosterConfigModalOpen.value = false
+
+  let inventoryEntries: OwnedOperatorInput[] = []
+  if (operatorInventory.value.enabled && operatorInventory.value.valid && operatorInventory.value.entries.length > 0) {
+    inventoryEntries = operatorInventory.value.entries
+  } else if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+    const rawInv = localStorage.getItem('arcinc-operator-inventory-v1')
+    if (rawInv) {
+      try {
+        const parsedInv = JSON.parse(rawInv)
+        if (parsedInv.text) {
+          const compiled = parseOperatorInventory(parsedInv.text)
+          if (compiled.valid) {
+            inventoryEntries = compiled.entries
+          }
+        }
+      } catch {}
+    }
+  }
+
+  if (inventoryEntries.length === 0) {
+    replaceStatusMessage.value = '无法自动生成排班：请先在「设置」子页面或点击「导入干员库」录入您持有的干员与练度。'
+    return
+  }
+
+  executeAutoGenerate(inventoryEntries, config)
+}
+
+function executeAutoGenerate(inventoryEntries: OwnedOperatorInput[], config?: SmartRosterConfig): void {
   isGeneratingRoster.value = true
   generationProgress.value = {
     phase: 'building',
@@ -354,14 +445,16 @@ function handleAutoGenerate(): void {
   const baseWorkspace = structuredClone(toRaw(store.workspace))
   const isVitest = typeof process !== 'undefined' && Boolean(process.env?.VITEST)
   const runOptions = {
-    seed: simSettings.value.seed,
-    trials: isVitest ? 1 : 5,
-    maxStaticEvals: isVitest ? 500 : 3000,
-    simulationTopK: isVitest ? 1 : 8,
-    simulationWarmupHours: isVitest ? 6 : 24,
-    simulationSampleHours: isVitest ? 18 : 72,
-    enableDeepSearch: !isVitest,
-    droneTarget: simSettings.value.droneTarget,
+    seed: (config?.seed !== undefined && config.seed >= 0)
+      ? config.seed
+      : (simSettings.value.seed < 0 ? (isVitest ? 42 : Math.floor(Math.random() * 0xffffffff)) : simSettings.value.seed),
+    trials: config?.trials ?? (isVitest ? 1 : 5),
+    maxStaticEvals: config?.maxStaticEvals ?? (isVitest ? 500 : 3000),
+    simulationTopK: config?.simulationTopK ?? (isVitest ? 1 : 8),
+    simulationWarmupHours: config?.simulationWarmupHours ?? (isVitest ? 6 : 24),
+    simulationSampleHours: config?.simulationSampleHours ?? (isVitest ? 18 : 72),
+    enableDeepSearch: config?.enableDeepSearch ?? !isVitest,
+    droneTarget: config?.droneTarget ?? simSettings.value.droneTarget,
   }
 
   const onSmartRosterComplete = (report: SmartRosterResult): void => {
@@ -379,17 +472,20 @@ function handleAutoGenerate(): void {
   try {
     if (!isVitest && typeof Worker !== 'undefined') {
       const worker = new Worker(new URL('../../optimizer/smartRosterWorker.ts', import.meta.url), { type: 'module' })
+      activeRosterWorker.value = worker
       worker.onmessage = (event) => {
         if (event.data.type === 'progress') {
           generationProgress.value = event.data.progress
         } else if (event.data.type === 'complete') {
           onSmartRosterComplete(event.data.report)
           worker.terminate()
+          activeRosterWorker.value = null
           isGeneratingRoster.value = false
           generationProgress.value = null
         } else if (event.data.type === 'error') {
           replaceStatusMessage.value = `自动排班生成失败：${event.data.error}`
           worker.terminate()
+          activeRosterWorker.value = null
           isGeneratingRoster.value = false
           generationProgress.value = null
         }
@@ -397,6 +493,7 @@ function handleAutoGenerate(): void {
       worker.onerror = (err) => {
         replaceStatusMessage.value = `自动排班任务发生错误：${err.message || 'Worker 执行失败'}`
         worker.terminate()
+        activeRosterWorker.value = null
         isGeneratingRoster.value = false
         generationProgress.value = null
       }
@@ -424,6 +521,16 @@ function handleAutoGenerate(): void {
   }
 }
 
+function handleAbortAutoGenerate(): void {
+  if (activeRosterWorker.value) {
+    activeRosterWorker.value.terminate()
+    activeRosterWorker.value = null
+  }
+  isGeneratingRoster.value = false
+  generationProgress.value = null
+  replaceStatusMessage.value = '已中止自动排班计算。'
+}
+
 function formatNumber(value: number | undefined | null, digits = 0): string {
   if (value === undefined || value === null || !Number.isFinite(value)) return '0'
   return new Intl.NumberFormat('zh-CN', {
@@ -449,9 +556,13 @@ defineExpose({
   pickerRoomId,
   pickerSlotIndex,
   replaceModalOpen,
+  smartRosterConfigModalOpen,
   handleCalculate,
   handleAutoGenerate,
+  handleAbortAutoGenerate,
+  handleConfirmSmartRosterConfig,
   handleInventoryChange,
+  handleInventoryImported,
   handleReset,
   handleImported,
   handleRequestPicker,
@@ -487,6 +598,15 @@ defineExpose({
           @click="activeTab = 'workbench'"
         >
           基建排班
+        </button>
+        <button
+          type="button"
+          class="nav-tab"
+          :class="{ active: activeTab === 'skills' }"
+          data-test="tab-skills"
+          @click="activeTab = 'skills'"
+        >
+          基建技能
         </button>
         <button
           type="button"
@@ -537,6 +657,8 @@ defineExpose({
           @reset="handleReset"
           @imported="handleImported"
           @auto-generate="handleAutoGenerate"
+          @abort-generation="handleAbortAutoGenerate"
+          @inventory-imported="handleInventoryImported"
         />
       </div>
     </div>
@@ -713,6 +835,20 @@ defineExpose({
         >
           <FacilityEditor @request-picker="handleRequestPicker" />
         </section>
+
+        <!-- Strategy Policy Editor (moved from Settings) -->
+        <section
+          ref="policyEditorSectionRef"
+          class="policy-editor-section"
+          data-test="policy-editor-section"
+        >
+          <PolicyEditor />
+        </section>
+      </div>
+
+      <!-- Tab: 基建技能 (Riic Skills Browser) -->
+      <div v-show="activeTab === 'skills'" class="tab-panel skills-tab-panel" data-test="skills-tab-panel">
+        <RiicSkillsBrowser />
       </div>
 
       <!-- Tab 2: 设置 (Settings) (Req 3, 4, 5, 6, 7, 9, 12) -->
@@ -762,6 +898,14 @@ defineExpose({
       @update:open="replaceModalOpen = $event"
       @close="replaceModalOpen = false"
       @replaced="handleGlobalReplaced"
+    />
+
+    <SmartRosterConfigModal
+      :open="smartRosterConfigModalOpen"
+      :initial-drone-target="simSettings.droneTarget"
+      :initial-seed="simSettings.seed"
+      @close="smartRosterConfigModalOpen = false"
+      @confirm="handleConfirmSmartRosterConfig"
     />
   </div>
 </template>
