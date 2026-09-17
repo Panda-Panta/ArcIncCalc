@@ -10,7 +10,7 @@ npm run build
 $targetSyncDir = "D:\Tools\ArcIncCalc"
 if (Test-Path $targetSyncDir) {
     Write-Host ">>> Syncing dist assets into $targetSyncDir\dist..."
-    robocopy dist "$targetSyncDir\dist" /E /NFL /NDL /NJH /NJS /nc /ns /np | Out-Null
+    robocopy dist "$targetSyncDir\dist" /MIR /NFL /NDL /NJH /NJS /nc /ns /np | Out-Null
 
     Write-Host ">>> Publishing .NET Desktop Runner (win-x64 single file)..."
     dotnet publish desktop/ArcIncCalc.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o "$targetSyncDir"
