@@ -8,6 +8,7 @@ import { runRosterIncomeSearch, type IncomeSearchResult } from './rosterIncomeSe
 import { validatePhysicalRoster } from './rosterDraft'
 import { applySmartDormitoryPolicy } from '../scheduler/smartDormitoryPolicy'
 import { generateMolecularCandidates } from './molecularSynthesis'
+import { runGlobalPerCapitaReplacement } from './globalPerCapitaReplacement'
 
 export interface SmartRosterOptions {
   seed?: number
@@ -69,6 +70,10 @@ export interface SmartRosterResult {
       gain: number
       result?: IncomeSearchResult
     } | null
+    replacement?: {
+      swappedCount: number
+      logs: string[]
+    }
   }
 }
 
@@ -305,12 +310,68 @@ export function runSmartRoster(
   result.specialOperators = bestSimCandidate.specialOperators ?? []
 
   // ==========================================
-  // Phase 3: Neighborhood Deep Search
+  // Phase 3: Global Per-Capita Replacement & Balance (Rule 6)
   // ==========================================
+  onProgress?.({
+    phase: 'searching',
+    phaseProgress: 0.1,
+    label: '阶段 3/3: 全局人均产出检测与优化置换...',
+  })
+
+  const currentPowerCount = Object.values(finalWorkspace.mainPlan.facilities).filter((r) => r.type === 'power').length
+  const repResult = runGlobalPerCapitaReplacement(finalWorkspace, inventory, {
+    powerCount: currentPowerCount,
+    lockedPositions,
+    lockedOperators,
+  })
+  result.phases.replacement = {
+    swappedCount: repResult.swappedCount,
+    logs: repResult.logs,
+  }
+
+  if (repResult.swappedCount > 0) {
+    finalWorkspace = repResult.workspace
+    try {
+      const resim = runScheduleSimulationBridge(finalWorkspace, {
+        warmupHours: options.simulationWarmupHours ?? 24,
+        sampleHours: options.simulationSampleHours ?? 72,
+        maxStepHours: 0.25,
+        production: {
+          outputMode: 'potential',
+          runOrderMode: 'natural',
+          droneTarget,
+          seed,
+        },
+        operatorInventory: [...entries],
+      })
+      if (resim.report?.production?.sample.completed && resim.report.observedHours > 0) {
+        finalScore = scoreProduction(resim.report.production.sample.completed, resim.report.observedHours).total
+        const specials: SpecialOperatorSimData[] = []
+        for (const op of resim.report.operators) {
+          if (hasConsumptionSkill(op.operatorId)) {
+            specials.push({
+              operatorId: op.operatorId,
+              operatorName: op.operatorName,
+              workFraction: op.workFraction,
+              workRestRatio: op.workRestRatio,
+              workHours: op.workHours,
+              restHours: op.restHours,
+              exhaustedHours: op.exhaustedHours,
+              finalMorale: op.finalMorale,
+            })
+          }
+        }
+        result.specialOperators = specials
+      }
+    } catch {
+      // Retain previous score on simulation failure
+    }
+  }
+
   if (enableDeepSearch) {
     onProgress?.({
       phase: 'searching',
-      phaseProgress: 0,
+      phaseProgress: 0.5,
       label: '阶段 3/3: 邻域深度微调 (Hill-Climb)...',
     })
 

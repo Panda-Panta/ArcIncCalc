@@ -102,7 +102,9 @@ describe('bounded ordinary backup income search',()=>{
   expect(ordinaryBackupNeighbors(w,allOwned,2)).toEqual([])
  })
  it('selects an actual EXP improvement over a full week of morale shifts without spending other resources',()=>{
-  const baseline=createDefaultWorkspace(),room=baseline.mainPlan.facilities.room_1_1
+  const baseline=createDefaultWorkspace()
+  for(const f of Object.values(baseline.mainPlan.facilities)){if(f.type==='manufacture')f.product='gold'}
+  const room=baseline.mainPlan.facilities.room_1_1
   room.product='exp';room.slots[0]!.occupant={kind:'operator',operatorId:id('断罪者')};room.slots[0]!.replacements=[id('香草')];room.slots[0]!.groupId='exp-main'
   baseline.mainPlan.facilities.dormitory_1.slots[0]!.occupant={kind:'free'}
   const before=structuredClone(baseline)

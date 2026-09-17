@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { createDefaultWorkspace } from '../workbench/defaults'
-import { applySmartDormitoryPolicy, isAoeDormKeeper, isSingleDormKeeper } from './smartDormitoryPolicy'
+import {
+  applySmartDormitoryPolicy,
+  calculateSlotRecoveryRate,
+  findLowestRecoveryDormitorySlot,
+  isAoeDormKeeper,
+  isSingleDormKeeper,
+} from './smartDormitoryPolicy'
 import { OPERATOR_MAP, OPERATORS } from '../domain/operators'
 
 import { validateRosterWorkspace } from '../workbench/validate'
@@ -131,5 +137,23 @@ describe('smartDormitoryPolicy', () => {
     const validation = validateRosterWorkspace(ws)
     const duplicateErrors = validation.criticalErrors.filter((e) => e.code === 'DUPLICATE_OPERATOR')
     expect(duplicateErrors).toEqual([])
+  })
+
+  it('calculates slot recovery rate accurately and identifies lowest recovery rate slot', () => {
+    const ws = createDefaultWorkspace()
+    // Dormitory 1 is level 5, Dormitory 4 is level 1
+    ws.mainPlan.facilities.dormitory_1.level = 5
+    ws.mainPlan.facilities.dormitory_4.level = 1
+
+    const rateDorm1Slot0 = calculateSlotRecoveryRate(ws, 'dormitory_1', 0)
+    const rateDorm4Slot0 = calculateSlotRecoveryRate(ws, 'dormitory_4', 0)
+
+    // Level 5 base (4.0) > Level 1 base (2.0)
+    expect(rateDorm1Slot0).toBeGreaterThan(rateDorm4Slot0)
+    expect(rateDorm4Slot0).toBeCloseTo(2.0)
+
+    const lowest = findLowestRecoveryDormitorySlot(ws, false)
+    expect(lowest).not.toBeNull()
+    expect(lowest?.roomId).toBe('dormitory_4')
   })
 })

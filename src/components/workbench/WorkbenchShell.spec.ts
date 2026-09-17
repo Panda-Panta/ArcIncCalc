@@ -381,8 +381,8 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
     })
     expect(directReport.layoutValid).toBe(true)
     expect(directReport.drones).toBe(240)
-    expect(directReport.summary?.goldValue).toBe(40000)
-    expect(directReport.summary?.goldCount).toBe(80)
+    expect(directReport.summary?.goldValue).toBe(20000)
+    expect(directReport.summary?.goldCount).toBe(40)
   })
 
   // 10. Results panel displays actual report fields and repeat calculation refreshes

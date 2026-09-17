@@ -30,6 +30,7 @@ export interface AtomicUnit {
   coreMembers: AtomicMember[]
   nonCoreMembers?: AtomicMember[]
   thirdMemberWhitelist?: string[]
+  perCapitaOutput?: number
   externalRequirements?: ExternalCountRequirement[]
   confPolicy?: AtomicUnitConfPolicy
   adaptToPowerCount?: (powerCount: number, product?: 'gold' | 'exp') => {
@@ -39,6 +40,27 @@ export interface AtomicUnit {
   }
 }
 
+export interface AuxiliaryFacilityCandidate {
+  primary: string
+  backup: string
+  fallbackPrimary?: string
+  fallbackBackup?: string
+}
+
+export const AUXILIARY_FACILITY_CANDIDATES = {
+  meeting: [
+    { primary: '伊内丝', backup: '提丰', fallbackPrimary: '星极', fallbackBackup: '陈' },
+    { primary: '晓歌', backup: '远山', fallbackPrimary: '暗索', fallbackBackup: '白雪' },
+  ],
+  factory: [
+    { primary: '特克诺', backup: '锡兰', fallbackPrimary: '年', fallbackBackup: '九色鹿' },
+  ],
+  train: [
+    { primary: '玛恩纳', backup: '左乐', fallbackPrimary: '达利尔', fallbackBackup: '截云' },
+    { primary: '艾丽妮', backup: '达利尔', fallbackPrimary: '火龙S黑角', fallbackBackup: '鞭刃' },
+  ],
+} as const
+
 export const ATOMIC_UNITS: readonly AtomicUnit[] = [
   // 1. 深海猎人 (5人全核心)
   {
@@ -47,6 +69,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     description: '歌蕾蒂娅中枢，斯卡蒂、乌尔比安、安哲拉、幽灵鲨进驻制造站。全员核心，宿舍低优先级保障歌蕾蒂娅快速回满。',
     preferredFacilityType: 'manufacture',
     preferredProduct: 'any',
+    perCapitaOutput: 26,
     coreMembers: [
       { name: '歌蕾蒂娅', roomType: 'central' },
       { name: '斯卡蒂', roomType: 'manufacture' },
@@ -67,6 +90,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     description: '温蒂+森蚺+承曦格雷伊。3电森蚺进制造，2电森蚺进中枢且Lancet-2进发电站。同站第3人严禁普通散件。',
     preferredFacilityType: 'manufacture',
     preferredProduct: 'gold',
+    perCapitaOutput: 47.5,
     coreMembers: [
       { name: '温蒂', roomType: 'manufacture' },
       { name: '森蚺', roomType: 'manufacture' },
@@ -110,6 +134,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     description: '薇薇安娜与焰尾中枢，野鬃、灰毫、远牙制造站经验。全员核心，不包含酒神。',
     preferredFacilityType: 'manufacture',
     preferredProduct: 'exp',
+    perCapitaOutput: 28,
     coreMembers: [
       { name: '薇薇安娜', roomType: 'central' },
       { name: '焰尾', roomType: 'central' },
@@ -130,6 +155,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     description: '涤火杰西卡进中枢，水月、香草、杰西卡进制造站。4人全核心。',
     preferredFacilityType: 'manufacture',
     preferredProduct: 'any',
+    perCapitaOutput: 25,
     coreMembers: [
       { name: '涤火杰西卡', roomType: 'central' },
       { name: '水月', roomType: 'manufacture' },
@@ -145,6 +171,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     description: '红云+酒神+Miss.Christine进作战记录制造站。3人强行绑定，不可拆换。',
     preferredFacilityType: 'manufacture',
     preferredProduct: 'exp',
+    perCapitaOutput: 48,
     coreMembers: [
       { name: '红云', roomType: 'manufacture', product: 'exp' },
       { name: '酒神', roomType: 'manufacture', product: 'exp' },
@@ -159,6 +186,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     description: '红云+稀音进作战记录制造站，第3人为容量加成散件。',
     preferredFacilityType: 'manufacture',
     preferredProduct: 'exp',
+    perCapitaOutput: 38,
     coreMembers: [
       { name: '红云', roomType: 'manufacture', product: 'exp' },
       { name: '稀音', roomType: 'manufacture', product: 'exp' },
@@ -178,6 +206,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     description: '多萝西+淬羽赫默制造站。赤金站娜斯提为第3核心，需基建内存在3名莱茵干员。',
     preferredFacilityType: 'manufacture',
     preferredProduct: 'any',
+    perCapitaOutput: 35,
     coreMembers: [
       { name: '多萝西', roomType: 'manufacture' },
       { name: '淬羽赫默', roomType: 'manufacture' },
@@ -205,6 +234,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     description: '苍苔进驻赤金制造站，从6人金属工艺池中匹配2人进驻。',
     preferredFacilityType: 'manufacture',
     preferredProduct: 'gold',
+    perCapitaOutput: 35,
     coreMembers: [
       { name: '苍苔', roomType: 'manufacture', product: 'gold' },
     ],
@@ -224,6 +254,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     description: '阿罗玛+槐琥进驻赤金制造站。配置exhaust_require与rest_in_full进行暖机轮转。',
     preferredFacilityType: 'manufacture',
     preferredProduct: 'gold',
+    perCapitaOutput: 65,
     coreMembers: [
       { name: '阿罗玛', roomType: 'manufacture', product: 'gold' },
       { name: '槐琥', roomType: 'manufacture', product: 'gold' },
@@ -241,6 +272,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     description: '泡泡+火神进驻制造站，推荐贝娜提升大容量生产力。',
     preferredFacilityType: 'manufacture',
     preferredProduct: 'any',
+    perCapitaOutput: 38,
     coreMembers: [
       { name: '泡泡', roomType: 'manufacture' },
       { name: '火神', roomType: 'manufacture' },
@@ -257,6 +289,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     name: '纯感知信息体系',
     description: '迷迭香制造站、絮雨办公室、黑键贸易站。独立于人间烟火。',
     preferredFacilityType: 'trading',
+    perCapitaOutput: 35,
     coreMembers: [
       { name: '迷迭香', roomType: 'manufacture' },
       { name: '絮雨', roomType: 'office' },
@@ -274,6 +307,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     name: '感知+人间烟火双核体系',
     description: '迷迭香制造、絮雨办公室、黑键贸易1、乌有贸易2、夕与令中枢。双贸易站双核同驻。',
     preferredFacilityType: 'trading',
+    perCapitaOutput: 36,
     coreMembers: [
       { name: '迷迭香', roomType: 'manufacture' },
       { name: '絮雨', roomType: 'office' },
@@ -294,6 +328,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     name: '鸿雪4杜林体系',
     description: '鸿雪+图耶进驻贸易站，4杜林（杜林/桃金娘/至简/褐果）进驻基建制造/宿舍。',
     preferredFacilityType: 'trading',
+    perCapitaOutput: 46,
     coreMembers: [
       { name: '鸿雪', roomType: 'trading' },
       { name: '图耶', roomType: 'trading' },
@@ -317,6 +352,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     name: '企鹅物流',
     description: '德克萨斯+拉普兰德进驻贸易站。第3人匹配高效率散件，排除空。',
     preferredFacilityType: 'trading',
+    perCapitaOutput: 33,
     coreMembers: [
       { name: '德克萨斯', roomType: 'trading' },
       { name: '拉普兰德', roomType: 'trading' },
@@ -334,6 +370,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     name: '拉特兰商道',
     description: '蕾缪安+能天使进驻贸易站。空弦为非核心辅助。',
     preferredFacilityType: 'trading',
+    perCapitaOutput: 43,
     coreMembers: [
       { name: '蕾缪安', roomType: 'trading' },
       { name: '能天使', roomType: 'trading' },
@@ -349,6 +386,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     name: '叙拉古组',
     description: '伺夜+贝洛内进驻贸易站，八幡海铃进驻中枢加成。',
     preferredFacilityType: 'trading',
+    perCapitaOutput: 35,
     coreMembers: [
       { name: '伺夜', roomType: 'trading' },
       { name: '贝洛内', roomType: 'trading' },
@@ -364,6 +402,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     name: '格拉斯哥帮',
     description: '推进之王+摩根进驻贸易站，戴菲恩进驻中枢。',
     preferredFacilityType: 'trading',
+    perCapitaOutput: 28,
     coreMembers: [
       { name: '推进之王', roomType: 'trading' },
       { name: '摩根', roomType: 'trading' },
@@ -379,6 +418,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     name: '喀兰贸易',
     description: '银灰+孑进驻贸易站，灵知进驻中枢。',
     preferredFacilityType: 'trading',
+    perCapitaOutput: 30,
     coreMembers: [
       { name: '银灰', roomType: 'trading' },
       { name: '孑', roomType: 'trading' },

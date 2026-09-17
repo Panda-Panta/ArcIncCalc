@@ -5,7 +5,7 @@ import {createDefaultWorkspace} from '../workbench/defaults'
 import {compileRosterSchedule} from '../scheduler/compileRosterSchedule'
 import {simulateSchedule} from './scheduleSimulation'
 
-function emptyBase(){return compileRosterSchedule(createDefaultWorkspace())}
+function emptyBase(){const w=createDefaultWorkspace();for(const r of Object.values(w.mainPlan.facilities))if(r.type==='manufacture')r.product='gold';return compileRosterSchedule(w)}
 describe('joint production event clock',()=>{
  it('settles drone-produced gold into waiting trades at the same instant',()=>{
   const s=emptyBase();s.rooms=s.rooms.filter(r=>['room_1_1','room_3_1','room_3_2'].includes(r.roomId))

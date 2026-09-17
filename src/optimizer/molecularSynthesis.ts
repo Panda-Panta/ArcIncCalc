@@ -5,13 +5,17 @@ import { isShiftRunOperator } from '../scheduler/scheduleAdapter'
 import {
   ALL_ATOMIC_CORE_NAMES,
   ATOMIC_UNITS,
+  AUXILIARY_FACILITY_CANDIDATES,
   HIGH_EFFICIENCY_SINGLETONS,
   type AtomicMember,
   type AtomicUnit,
   type AtomicUnitConfPolicy,
 } from './riicAtomicUnits'
 import { assignBackups, validatePhysicalRoster } from './rosterDraft'
-import { applySmartDormitoryPolicy } from '../scheduler/smartDormitoryPolicy'
+import {
+  applySmartDormitoryPolicy,
+  findLowestRecoveryDormitorySlot,
+} from '../scheduler/smartDormitoryPolicy'
 import { runScheduleSimulationBridge } from '../workbench/scheduleSimulationBridge'
 import { scoreProduction } from './productionObjective'
 
@@ -227,6 +231,63 @@ export function generateMolecularCandidates(
       return true
     }
 
+    const placePendantOperatorHelper = (opName: string, grpId: string): boolean => {
+      const charId = resolveId(opName)
+      if (occupied.has(charId)) return false
+
+      // 1. Try factory (Workshop)
+      const factory = ws.mainPlan.facilities.factory
+      if (factory && factory.slots.length > 0 && factory.slots[0]!.occupant.kind !== 'operator') {
+        const slot = factory.slots[0]!
+        slot.occupant = { kind: 'operator', operatorId: charId }
+        slot.groupId = grpId
+        occupied.add(charId)
+        const backupOp = ['特克诺', '年', '锡兰'].find(isAvailableSingleton)
+        if (backupOp) {
+          const bId = resolveId(backupOp)
+          slot.replacements = [bId]
+          occupied.add(bId)
+        }
+        addedPositions.push({ roomId: 'factory', slotIndex: 0, operatorId: charId })
+        return true
+      }
+
+      // 2. Try train (Training Room)
+      const train = ws.mainPlan.facilities.train
+      if (train && train.slots.length > 0) {
+        const emptySlotIdx = train.slots.findIndex((s) => s.occupant.kind !== 'operator')
+        if (emptySlotIdx !== -1) {
+          const slot = train.slots[emptySlotIdx]!
+          slot.occupant = { kind: 'operator', operatorId: charId }
+          slot.groupId = grpId
+          occupied.add(charId)
+          const backupOp = ['玛恩纳', '艾丽妮', '左乐'].find(isAvailableSingleton)
+          if (backupOp) {
+            const bId = resolveId(backupOp)
+            slot.replacements = [bId]
+            occupied.add(bId)
+          }
+          addedPositions.push({ roomId: 'train', slotIndex: emptySlotIdx, operatorId: charId })
+          return true
+        }
+      }
+
+      // 3. Dormitory slot with LOWEST recovery rate
+      const lowest = findLowestRecoveryDormitorySlot(ws, true)
+      if (lowest) {
+        const targetRoom = ws.mainPlan.facilities[lowest.roomId]!
+        const targetSlot = targetRoom.slots[lowest.slotIndex]!
+        targetSlot.occupant = { kind: 'operator', operatorId: charId }
+        targetSlot.groupId = grpId
+        targetSlot.replacements = []
+        occupied.add(charId)
+        addedPositions.push({ roomId: lowest.roomId, slotIndex: lowest.slotIndex, operatorId: charId })
+        return true
+      }
+
+      return false
+    }
+
     // ----------------------------------------------------
     // Step 1: Synthesis of Molecules across Trading & Central/Office
     // ----------------------------------------------------
@@ -280,30 +341,22 @@ export function generateMolecularCandidates(
             placeOperator('contact', 0, '絮雨', groupId)
           }
 
-          // 4. Minimalist: place in manufacture if available
-          if (manufactureRooms.length > 1 && manufactureRooms[1]!.slots.length > 0) {
-            placeOperator(manufactureRooms[1]!.roomId, 0, '至简', groupId)
+          // 4. Minimalist (至简):
+          // Requirement 3: Strictly check powerCount. If 2 power stations (e.g. 252 layout),
+          // Minimalist is prohibited from manufacture and placed as a pendant.
+          if (powerCount >= 3) {
+            if (manufactureRooms.length > 1 && manufactureRooms[1]!.slots.length > 0) {
+              placeOperator(manufactureRooms[1]!.roomId, 0, '至简', groupId)
+            }
+          } else {
+            // 2-power constraint: Minimalist is a pendant operator
+            placePendantOperatorHelper('至简', groupId)
           }
 
-          // 5. Place remaining 3 Durins in dormitories: Myrtle, Durin, Chestnut
-          const dormRooms = Object.values(ws.mainPlan.facilities).filter((r) => r.type === 'dormitory')
-          const durinDormOps = ['杜林', '桃金娘', '褐果']
-          let durinPlaced = 0
-          for (const dorm of dormRooms) {
-            const startIdx = dorm.slots.length > 2 ? 2 : 0
-            for (let sIdx = startIdx; sIdx < dorm.slots.length; sIdx++) {
-              if (durinPlaced < durinDormOps.length) {
-                const op = durinDormOps[durinPlaced]!
-                const opId = resolveId(op)
-                if (!occupied.has(opId) && dorm.slots[sIdx]!.occupant.kind !== 'operator') {
-                  dorm.slots[sIdx]!.occupant = { kind: 'operator', operatorId: opId }
-                  dorm.slots[sIdx]!.groupId = groupId
-                  occupied.add(opId)
-                  durinPlaced++
-                }
-              }
-            }
-          }
+          // 5. Durin race:
+          // Requirement 4: Myrtle and Durin serve as dorm managers / keepers (handled by applySmartDormitoryPolicy)
+          // Requirement 5: Chestnut as pendant operator (Workshop -> Training -> lowest recovery dorm slot)
+          placePendantOperatorHelper('褐果', groupId)
 
           // If Fireworks dual-core:
           if (isFireworks && tradingRooms.length >= 2) {
@@ -442,98 +495,48 @@ export function generateMolecularCandidates(
     // Step 2: Synthesis of Manufacture & Central Molecules
     // ----------------------------------------------------
 
-    // Molecule A: Abyssal Hunters + Pinus Sylvestris Mirror Replacement
-    const abyssalAtom = ATOMIC_UNITS.find((a) => a.id === 'abyssal_hunters')!
-    const abyssalCheck = checkAtomicAvailability(abyssalAtom, inventory, powerCount)
-    const knightAtom = ATOMIC_UNITS.find((a) => a.id === 'pinus_sylvestris')!
-    const knightCheck = checkAtomicAvailability(knightAtom, inventory, powerCount)
+    // ----------------------------------------------------
+    // Step 2: Synthesis of Manufacture & Central Molecules
+    // Prioritized by per-capita output contribution
+    // ----------------------------------------------------
 
-    if (abyssalCheck.available && knightCheck.available && manufactureRooms.length >= 2) {
-      const mirrorGroupId = '深海骑士替班组'
-      // Place Gladiia in Central, with Vivianna as mirror backup
-      if (centralRoom) {
-        const cSlot = centralRoom.slots.findIndex((s) => s.occupant.kind !== 'operator')
-        if (cSlot !== -1) {
-          placeOperator('central', cSlot, '歌蕾蒂娅', mirrorGroupId, '薇薇安娜')
-          confRestingPriorityHigh.add('歌蕾蒂娅')
-        }
-      }
+    // Priority 1: High-Yield Gold Manufacture (Aroma+WaaiFu: 65%, Automation: 47.5%)
+    for (const mRoom of manufactureRooms.filter((r) => r.product === 'gold')) {
+      const freeSlots = mRoom.slots.filter((s) => s.occupant.kind !== 'operator').length
+      if (freeSlots < 2) continue
 
-      // Distribute 4 Abyssal Hunters into manufacture rooms, with Knights as mirrored backups!
-      const hunterPairs: [string, string][] = [
-        ['斯卡蒂', '野鬃'],
-        ['乌尔比安', '灰毫'],
-        ['安哲拉', '远牙'],
-        ['幽灵鲨', '砾'],
-      ]
-
-      let pairIdx = 0
-      for (const mRoom of manufactureRooms) {
-        const cap = capacity(mRoom.type, mRoom.level)
-        for (let sIdx = 0; sIdx < cap; sIdx++) {
-          if (mRoom.slots[sIdx]!.occupant.kind !== 'operator' && pairIdx < hunterPairs.length) {
-            const [hunter, knight] = hunterPairs[pairIdx]!
-            const placed = placeOperator(mRoom.roomId, sIdx, hunter, mirrorGroupId, knight)
-            if (placed) {
-              pairIdx++
+      // 1.1 Aroma + Waai Fu (Per-capita 65%)
+      const aromaAtom = ATOMIC_UNITS.find((a) => a.id === 'aroma_waaifu')!
+      const aromaCheck = checkAtomicAvailability(aromaAtom, inventory, powerCount)
+      if (aromaCheck.available && !occupied.has(resolveId('阿罗玛')) && !occupied.has(resolveId('槐琥'))) {
+        const aromaGroupId = '阿罗玛槐琥组'
+        let placed = 0
+        for (let sIdx = 0; sIdx < mRoom.slots.length; sIdx++) {
+          if (mRoom.slots[sIdx]!.occupant.kind !== 'operator') {
+            if (placed === 0) {
+              placeOperator(mRoom.roomId, sIdx, '阿罗玛', aromaGroupId)
+              placed++
+            } else if (placed === 1) {
+              placeOperator(mRoom.roomId, sIdx, '槐琥', aromaGroupId)
+              placed++
+            } else {
+              // 3rd slot: metal singleton
+              const metalOps = HIGH_EFFICIENCY_SINGLETONS.goldManufacture.filter(isAvailableSingleton)
+              if (metalOps.length > 0) placeOperator(mRoom.roomId, sIdx, metalOps[0]!, aromaGroupId)
+              break
             }
           }
         }
+        confExhaustRequire.add('阿罗玛')
+        confExhaustRequire.add('槐琥')
+        confRestInFull.add('阿罗玛')
+        confRestInFull.add('槐琥')
+        appliedAtoms.push('aroma_waaifu')
+        continue
       }
-
-      confRestingPriorityLow.add('乌尔比安')
-      confRestingPriorityLow.add('斯卡蒂')
-      confRestingPriorityLow.add('幽灵鲨')
-      confRestingPriorityLow.add('安哲拉')
-      appliedAtoms.push('abyssal_hunters', 'pinus_sylvestris')
-    } else if (abyssalCheck.available) {
-      // Abyssal Hunters standalone
-      const abyssalGroupId = '深海猎人组'
-      if (centralRoom) {
-        const cSlot = centralRoom.slots.findIndex((s) => s.occupant.kind !== 'operator')
-        if (cSlot !== -1) {
-          placeOperator('central', cSlot, '歌蕾蒂娅', abyssalGroupId)
-          confRestingPriorityHigh.add('歌蕾蒂娅')
-        }
-      }
-      const hunters = ['斯卡蒂', '乌尔比安', '安哲拉', '幽灵鲨']
-      let hIdx = 0
-      for (const mRoom of manufactureRooms) {
-        const cap = capacity(mRoom.type, mRoom.level)
-        for (let sIdx = 0; sIdx < cap; sIdx++) {
-          if (mRoom.slots[sIdx]!.occupant.kind !== 'operator' && hIdx < hunters.length) {
-            const placed = placeOperator(mRoom.roomId, sIdx, hunters[hIdx]!, abyssalGroupId)
-            if (placed) {
-              hIdx++
-            }
-          }
-        }
-      }
-      confRestingPriorityLow.add('乌尔比安')
-      confRestingPriorityLow.add('斯卡蒂')
-      confRestingPriorityLow.add('幽灵鲨')
-      confRestingPriorityLow.add('安哲拉')
-      appliedAtoms.push('abyssal_hunters')
-    } else if (knightCheck.available) {
-      // Pinus Sylvestris standalone in exp room
-      const knightGroupId = '红松林骑士组'
-      if (centralRoom) {
-        placeOperator('central', 2, '薇薇安娜', knightGroupId)
-        placeOperator('central', 3, '焰尾', knightGroupId)
-      }
-      const expRoom = manufactureRooms.find((r) => r.product === 'exp') ?? manufactureRooms[0]
-      if (expRoom) {
-        const knights = ['野鬃', '灰毫', '远牙']
-        for (let sIdx = 0; sIdx < expRoom.slots.length; sIdx++) {
-          if (expRoom.slots[sIdx]!.occupant.kind !== 'operator' && knights.length > 0) {
-            placeOperator(expRoom.roomId, sIdx, knights.shift()!, knightGroupId)
-          }
-        }
-      }
-      appliedAtoms.push('pinus_sylvestris')
     }
 
-    // Molecule B: Automation Molecule (Wendy + Eunectes + Greyy + Lancet-2 + Purestream)
+    // 1.2 Automation Molecule (Wendy + Eunectes + Greyy + Lancet-2 + Purestream: 47.5%)
     const autoAtom = ATOMIC_UNITS.find((a) => a.id === 'automation')!
     const autoCheck = checkAtomicAvailability(autoAtom, inventory, powerCount, 'gold')
     if (autoCheck.available && !occupied.has(resolveId('温蒂')) && !occupied.has(resolveId('清流'))) {
@@ -603,40 +606,10 @@ export function generateMolecularCandidates(
       }
     }
 
-    // Molecule C: Gold Manufacture (Aroma+WaaiFu / Cantabile / Rhine Lab)
+    // 1.3 Other Gold Combinations (Cantabile: 35%, Rhine Lab: 35%)
     for (const mRoom of manufactureRooms.filter((r) => r.product === 'gold')) {
       const freeSlots = mRoom.slots.filter((s) => s.occupant.kind !== 'operator').length
       if (freeSlots < 2) continue
-
-      // Try Aroma + Waai Fu
-      const aromaAtom = ATOMIC_UNITS.find((a) => a.id === 'aroma_waaifu')!
-      const aromaCheck = checkAtomicAvailability(aromaAtom, inventory, powerCount)
-      if (aromaCheck.available && !occupied.has(resolveId('阿罗玛')) && !occupied.has(resolveId('槐琥'))) {
-        const aromaGroupId = '阿罗玛槐琥组'
-        let placed = 0
-        for (let sIdx = 0; sIdx < mRoom.slots.length; sIdx++) {
-          if (mRoom.slots[sIdx]!.occupant.kind !== 'operator') {
-            if (placed === 0) {
-              placeOperator(mRoom.roomId, sIdx, '阿罗玛', aromaGroupId)
-              placed++
-            } else if (placed === 1) {
-              placeOperator(mRoom.roomId, sIdx, '槐琥', aromaGroupId)
-              placed++
-            } else {
-              // 3rd slot: metal singleton
-              const metalOps = HIGH_EFFICIENCY_SINGLETONS.goldManufacture.filter(isAvailableSingleton)
-              if (metalOps.length > 0) placeOperator(mRoom.roomId, sIdx, metalOps[0]!, aromaGroupId)
-              break
-            }
-          }
-        }
-        confExhaustRequire.add('阿罗玛')
-        confExhaustRequire.add('槐琥')
-        confRestInFull.add('阿罗玛')
-        confRestInFull.add('槐琥')
-        appliedAtoms.push('aroma_waaifu')
-        continue
-      }
 
       // Try Cantabile Metalcraft (苍苔 + 2 metalcraft singletons)
       const cantabileAtom = ATOMIC_UNITS.find((a) => a.id === 'cantabile_metalcraft')!
@@ -673,12 +646,12 @@ export function generateMolecularCandidates(
       }
     }
 
-    // Molecule D: Exp Manufacture (Vermeil+Dionysus+Miss.Christine / Vermeil+Scene / Bubble)
+    // Priority 2: High-Yield Exp Manufacture (Vermeil+Dionysus: 48%, Vermeil+Scene: 38%, Bubble: 38%)
     for (const mRoom of manufactureRooms.filter((r) => r.product === 'exp')) {
       const freeSlots = mRoom.slots.filter((s) => s.occupant.kind !== 'operator').length
       if (freeSlots < 2) continue
 
-      // Try Vermeil + Dionysus + Miss.Christine (Mandatory 3-person bind!)
+      // Try Vermeil + Dionysus + Miss.Christine (Mandatory 3-person bind, 48% per capita!)
       const vermeilDioAtom = ATOMIC_UNITS.find((a) => a.id === 'vermeil_dionysus')!
       const vermeilDioCheck = checkAtomicAvailability(vermeilDioAtom, inventory, powerCount)
       if (
@@ -697,7 +670,7 @@ export function generateMolecularCandidates(
         continue
       }
 
-      // Try Vermeil + Scene (红云容量组)
+      // Try Vermeil + Scene (红云容量组, 38% per capita)
       const vermeilCapAtom = ATOMIC_UNITS.find((a) => a.id === 'vermeil_capacity')!
       const vermeilCapCheck = checkAtomicAvailability(vermeilCapAtom, inventory, powerCount)
       if (
@@ -718,7 +691,7 @@ export function generateMolecularCandidates(
         continue
       }
 
-      // Try Bubble + Vulcan (泡泡容量组)
+      // Try Bubble + Vulcan (泡泡容量组, 38% per capita)
       const bubbleAtom = ATOMIC_UNITS.find((a) => a.id === 'bubble_capacity')!
       const bubbleCheck = checkAtomicAvailability(bubbleAtom, inventory, powerCount)
       if (bubbleCheck.available && !occupied.has(resolveId('泡泡')) && !occupied.has(resolveId('火神'))) {
@@ -736,7 +709,69 @@ export function generateMolecularCandidates(
       }
     }
 
-    // Molecule E: Blacksteel (涤火杰西卡 + 水月 + 香草 + 杰西卡)
+    // Priority 3: Fallback Multipurpose / Large Combinations (Pinus Sylvestris: 28%, Abyssal: 26%, Blacksteel: 25%)
+    const abyssalAtom = ATOMIC_UNITS.find((a) => a.id === 'abyssal_hunters')!
+    const abyssalCheck = checkAtomicAvailability(abyssalAtom, inventory, powerCount)
+    const knightAtom = ATOMIC_UNITS.find((a) => a.id === 'pinus_sylvestris')!
+    const knightCheck = checkAtomicAvailability(knightAtom, inventory, powerCount)
+
+    if (abyssalCheck.available && knightCheck.available && manufactureRooms.some(r => r.slots.some(s => s.occupant.kind !== 'operator'))) {
+      const mirrorGroupId = '深海骑士替班组'
+      if (centralRoom) {
+        const cSlot = centralRoom.slots.findIndex((s) => s.occupant.kind !== 'operator')
+        if (cSlot !== -1) {
+          placeOperator('central', cSlot, '歌蕾蒂娅', mirrorGroupId, '薇薇安娜')
+          confRestingPriorityHigh.add('歌蕾蒂娅')
+        }
+      }
+
+      const hunterPairs: [string, string][] = [
+        ['斯卡蒂', '野鬃'],
+        ['乌尔比安', '灰毫'],
+        ['安哲拉', '远牙'],
+        ['幽灵鲨', '砾'],
+      ]
+
+      let pairIdx = 0
+      for (const mRoom of manufactureRooms) {
+        const cap = capacity(mRoom.type, mRoom.level)
+        for (let sIdx = 0; sIdx < cap; sIdx++) {
+          if (mRoom.slots[sIdx]!.occupant.kind !== 'operator' && pairIdx < hunterPairs.length) {
+            const [hunter, knight] = hunterPairs[pairIdx]!
+            const placed = placeOperator(mRoom.roomId, sIdx, hunter, mirrorGroupId, knight)
+            if (placed) {
+              pairIdx++
+            }
+          }
+        }
+      }
+
+      if (pairIdx > 0) {
+        confRestingPriorityLow.add('乌尔比安')
+        confRestingPriorityLow.add('斯卡蒂')
+        confRestingPriorityLow.add('幽灵鲨')
+        confRestingPriorityLow.add('安哲拉')
+        appliedAtoms.push('abyssal_hunters', 'pinus_sylvestris')
+      }
+    } else if (knightCheck.available && !occupied.has(resolveId('薇薇安娜')) && !occupied.has(resolveId('焰尾'))) {
+      const knightGroupId = '红松林骑士组'
+      if (centralRoom) {
+        placeOperator('central', 2, '薇薇安娜', knightGroupId)
+        placeOperator('central', 3, '焰尾', knightGroupId)
+      }
+      const expRoom = manufactureRooms.find((r) => r.product === 'exp') ?? manufactureRooms[0]
+      if (expRoom) {
+        const knights = ['野鬃', '灰毫', '远牙']
+        for (let sIdx = 0; sIdx < expRoom.slots.length; sIdx++) {
+          if (expRoom.slots[sIdx]!.occupant.kind !== 'operator' && knights.length > 0) {
+            placeOperator(expRoom.roomId, sIdx, knights.shift()!, knightGroupId)
+          }
+        }
+      }
+      appliedAtoms.push('pinus_sylvestris')
+    }
+
+    // Blacksteel (涤火杰西卡 + 水月 + 香草 + 杰西卡: 25%)
     const blacksteelAtom = ATOMIC_UNITS.find((a) => a.id === 'blacksteel')!
     const blacksteelCheck = checkAtomicAvailability(blacksteelAtom, inventory, powerCount)
     if (
@@ -833,6 +868,66 @@ export function generateMolecularCandidates(
     }
 
     // ----------------------------------------------------
+    // Step 3.5: Open Auxiliary Facilities (meeting, factory, train)
+    // ----------------------------------------------------
+    // Meeting room (2 slots)
+    const meetingRoom = ws.mainPlan.facilities.meeting
+    if (meetingRoom) {
+      const cap = capacity(meetingRoom.type, meetingRoom.level)
+      const candConfigs = AUXILIARY_FACILITY_CANDIDATES.meeting
+      for (let sIdx = 0; sIdx < cap && sIdx < candConfigs.length; sIdx++) {
+        if (meetingRoom.slots[sIdx]!.occupant.kind !== 'operator') {
+          const cfg = candConfigs[sIdx]!
+          const primaryName = isAvailableSingleton(cfg.primary)
+            ? cfg.primary
+            : (cfg.fallbackPrimary && isAvailableSingleton(cfg.fallbackPrimary) ? cfg.fallbackPrimary : undefined)
+          if (primaryName) {
+            const backupName = isAvailableSingleton(cfg.backup)
+              ? cfg.backup
+              : (cfg.fallbackBackup && isAvailableSingleton(cfg.fallbackBackup) ? cfg.fallbackBackup : undefined)
+            placeOperator('meeting', sIdx, primaryName, '会客室主力', backupName)
+          }
+        }
+      }
+    }
+
+    // Factory room (1 slot, if not already occupied by pendant)
+    const factoryRoom = ws.mainPlan.facilities.factory
+    if (factoryRoom && factoryRoom.slots.length > 0 && factoryRoom.slots[0]!.occupant.kind !== 'operator') {
+      const cfg = AUXILIARY_FACILITY_CANDIDATES.factory[0]!
+      const primaryName = isAvailableSingleton(cfg.primary)
+        ? cfg.primary
+        : (cfg.fallbackPrimary && isAvailableSingleton(cfg.fallbackPrimary) ? cfg.fallbackPrimary : undefined)
+      if (primaryName) {
+        const backupName = isAvailableSingleton(cfg.backup)
+          ? cfg.backup
+          : (cfg.fallbackBackup && isAvailableSingleton(cfg.fallbackBackup) ? cfg.fallbackBackup : undefined)
+        placeOperator('factory', 0, primaryName, '加工站主力', backupName)
+      }
+    }
+
+    // Train room (up to 2 slots)
+    const trainRoom = ws.mainPlan.facilities.train
+    if (trainRoom) {
+      const cap = capacity(trainRoom.type, trainRoom.level)
+      const candConfigs = AUXILIARY_FACILITY_CANDIDATES.train
+      for (let sIdx = 0; sIdx < cap && sIdx < candConfigs.length; sIdx++) {
+        if (trainRoom.slots[sIdx]!.occupant.kind !== 'operator') {
+          const cfg = candConfigs[sIdx]!
+          const primaryName = isAvailableSingleton(cfg.primary)
+            ? cfg.primary
+            : (cfg.fallbackPrimary && isAvailableSingleton(cfg.fallbackPrimary) ? cfg.fallbackPrimary : undefined)
+          if (primaryName) {
+            const backupName = isAvailableSingleton(cfg.backup)
+              ? cfg.backup
+              : (cfg.fallbackBackup && isAvailableSingleton(cfg.fallbackBackup) ? cfg.fallbackBackup : undefined)
+            placeOperator('train', sIdx, primaryName, '训练室主力', backupName)
+          }
+        }
+      }
+    }
+
+    // ----------------------------------------------------
     // Step 4: Complete Backups & Assemble Conf Policies
     // ----------------------------------------------------
     // Assign backups for any added position that still lacks replacement
@@ -855,7 +950,7 @@ export function generateMolecularCandidates(
     )
 
     for (const room of Object.values(ws.mainPlan.facilities)) {
-      if (['manufacture', 'trading', 'power', 'central'].includes(room.type)) {
+      if (['manufacture', 'trading', 'power', 'central', 'meeting', 'factory', 'train'].includes(room.type)) {
         const cap = capacity(room.type, room.level)
         for (let sIdx = 0; sIdx < cap; sIdx++) {
           const slot = room.slots[sIdx]
