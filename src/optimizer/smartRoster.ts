@@ -102,7 +102,7 @@ export function runSmartRoster(
 
   const seed = options.seed ?? 42
   const trials = options.trials ?? 5
-  const simulationTopK = options.simulationTopK ?? 8
+  const simulationTopK = options.simulationTopK
   const enableDeepSearch = options.enableDeepSearch ?? true
   const droneTarget = options.droneTarget ?? 'gold'
 
@@ -195,7 +195,7 @@ export function runSmartRoster(
   // ==========================================
   // Phase 2: Dynamic Simulation Verification (1+3 Days, 82 Formula)
   // ==========================================
-  const candidateBudget = Math.min(uniqueCandidates.length, Math.max(simulationTopK, 1))
+  const candidateBudget = Math.min(uniqueCandidates.length, Math.max(simulationTopK ?? uniqueCandidates.length, 1))
   const simCandidates = uniqueCandidates.slice(0, candidateBudget)
   onProgress?.({
     phase: 'simulating',
@@ -226,9 +226,9 @@ export function runSmartRoster(
       }
     )
 
-    if (simResponse.report && simResponse.report.success) {
+    if (simResponse.report && (simResponse.report.success || (simResponse.report.observedHours > 0 && simResponse.report.production?.sample.completed))) {
       const rep = simResponse.report
-      if (rep.production?.sample.completed) {
+      if (rep.production?.sample.completed && rep.observedHours > 0) {
         const prodScore = scoreProduction(rep.production.sample.completed, rep.observedHours)
         candidate.simScore = prodScore.total
         candidate.staticScore = prodScore.total
@@ -260,6 +260,11 @@ export function runSmartRoster(
       if (simResponse.error) {
         candidate.diagnostics.push(simResponse.error)
       }
+      if (simResponse.report?.diagnostics) {
+        for (const d of simResponse.report.diagnostics) {
+          candidate.diagnostics.push(`[${d.code}] ${d.message}`)
+        }
+      }
     }
 
     onProgress?.({
@@ -281,6 +286,18 @@ export function runSmartRoster(
   result.phases.simulation = {
     candidates: simCandidates,
     bestScore: bestSimCandidate.simScore ?? 0,
+  }
+
+  if (bestSimCandidate.simScore === null || bestSimCandidate.simScore <= 0) {
+    result.status = 'blocked'
+    result.workspace = bestSimCandidate.workspace
+    result.score = 0
+    const allCandidateDiags = Array.from(new Set(simCandidates.flatMap(c => c.diagnostics)))
+    result.diagnostics.push({
+      code: 'SIMULATION_EVALUATION_FAILED',
+      message: `动态拟真计算未完成或产出为0。原因：${allCandidateDiags.length ? allCandidateDiags.join('；') : '候选方案未能通过动态拟真准入校验'}`,
+    })
+    return result
   }
 
   let finalWorkspace = structuredClone(bestSimCandidate.workspace)

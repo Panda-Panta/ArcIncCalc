@@ -6,6 +6,7 @@ import { resolveOperatorCharId as id } from '../workbench/compat/mowerJson'
 import { runSmartRoster, type SmartRosterProgress } from './smartRoster'
 import { validatePhysicalRoster } from './rosterDraft'
 import { MOWER_OUTPUT_ROOM_IDS } from '../workbench/model'
+import { runCalculationBridge } from '../workbench/calculationBridge'
 
 const allOwned: OwnedOperatorInput[] = OPERATORS.map((o) => ({
   operator: o.name,
@@ -146,5 +147,57 @@ describe('smartRoster generation with 3-phase optimization', () => {
     const workspace = result.workspace!
     expect(workspace.mainPlan.facilities.room_3_1.slots.slice(0, 2).every((s) => s.occupant.kind === 'operator')).toBe(true)
     expect(workspace.mainPlan.facilities.room_3_3.slots.slice(0, 3).every((s) => s.occupant.kind === 'operator')).toBe(true)
+  }, 60000)
+
+  it('handles user inventory with unmaxed/low-level operators without simulation abort or unsupported diagnostics', () => {
+    const base = createDefaultWorkspace()
+    // Clone allOwned but degrade the 8 operators from user report to E0 Lv1 / unmaxed
+    const degradedNames = new Set(['贝娜', '雪雉', '缪尔赛思', '虎狼丸', '响石', '小满', '隐德来希', '寒檀'])
+    const mixedInventory = allOwned.map((entry) => {
+      if (degradedNames.has(entry.operator)) {
+        return { operator: entry.operator, elitePhase: 0, level: 1 }
+      }
+      return entry
+    })
+
+    const result = runSmartRoster(base, mixedInventory, {
+      trials: 1,
+      simulationTopK: 1,
+      simulationWarmupHours: 6,
+      simulationSampleHours: 18,
+      enableDeepSearch: false,
+      seed: 42,
+    })
+
+    expect(result.status).toBe('draft')
+    expect(result.score).toBeGreaterThan(0)
+
+    // Verify none of the degraded operators were placed into any facility, backup, or dormitory
+    const ws = result.workspace!
+    const placedOps = new Set<string>()
+    for (const fac of Object.values(ws.mainPlan.facilities)) {
+      for (const s of fac.slots) {
+        if (s.occupant.kind === 'operator') placedOps.add(s.occupant.operatorId)
+        for (const rep of s.replacements) placedOps.add(rep)
+      }
+    }
+    for (const name of degradedNames) {
+      expect(placedOps.has(id(name))).toBe(false)
+    }
+
+    // Verify calculation bridge with mixedInventory does not produce INVENTORY_SKILL_STAGE_UNSUPPORTED
+    const calc = runCalculationBridge(ws, {
+      engine: 'simulation',
+      simulationOptions: {
+        warmupHours: 6,
+        sampleHours: 18,
+        operatorInventory: mixedInventory,
+      },
+    })
+    expect(calc.success).toBe(true)
+    const unsupportedDiags = (calc.simulationReport?.diagnostics ?? []).filter(
+      (d) => d.code === 'INVENTORY_SKILL_STAGE_UNSUPPORTED',
+    )
+    expect(unsupportedDiags).toEqual([])
   }, 60000)
 })

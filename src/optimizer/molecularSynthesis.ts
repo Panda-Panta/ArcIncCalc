@@ -156,6 +156,30 @@ export function generateMolecularCandidates(
 
     const addedPositions: { roomId: MowerRoomId; slotIndex: number; operatorId: string }[] = []
 
+    const isAvailableSingleton = (name: string): boolean => {
+      const charId = resolveId(name)
+      if (occupied.has(charId)) return false
+      if (inventory.operators.length > 0) {
+        const op = inventory.operators.find((o) => o.charId === charId || o.name === name)
+        return Boolean(op && op.matchesMaximumSkills)
+      }
+      return true
+    }
+
+    const findFallbackMaxSkillOp = (roomType: 'MANUFACTURE' | 'TRADING' | 'CONTROL' | 'POWER'): string | undefined => {
+      if (inventory.operators.length === 0) return undefined
+      const found = inventory.operators.find(
+        (o) =>
+          o.matchesMaximumSkills &&
+          !occupied.has(o.charId) &&
+          !isShiftRunOperator(o.charId) &&
+          o.name !== '菲亚梅塔' &&
+          !ALL_ATOMIC_CORE_NAMES.has(o.name) &&
+          o.skills.some((s) => s.roomType === roomType),
+      )
+      return found?.name
+    }
+
     const placeOperator = (
       roomId: MowerRoomId,
       slotIdx: number,
@@ -164,6 +188,12 @@ export function generateMolecularCandidates(
       backupName?: string,
     ) => {
       const charId = resolveId(opName)
+      if (inventory.operators.length > 0) {
+        const op = inventory.operators.find((o) => o.charId === charId || o.name === opName)
+        if (!op || !op.matchesMaximumSkills) {
+          return false
+        }
+      }
       const room = ws.mainPlan.facilities[roomId]
       if (!room) return false
       const cap = capacity(room.type, room.level)
@@ -171,14 +201,26 @@ export function generateMolecularCandidates(
       const slot = room.slots[slotIdx]!
       if (lockedPositions.has(`${roomId}:${slotIdx}`) || slot.occupant.kind === 'operator') return false
 
+      let validBackupId: string | undefined = undefined
+      if (backupName) {
+        const backupCharId = resolveId(backupName)
+        if (inventory.operators.length > 0) {
+          const bOp = inventory.operators.find((o) => o.charId === backupCharId || o.name === backupName)
+          if (bOp && bOp.matchesMaximumSkills) {
+            validBackupId = backupCharId
+          }
+        } else {
+          validBackupId = backupCharId
+        }
+      }
+
       slot.occupant = { kind: 'operator', operatorId: charId }
       slot.groupId = groupId
       occupied.add(charId)
 
-      if (backupName) {
-        const backupCharId = resolveId(backupName)
-        slot.replacements = [backupCharId]
-        occupied.add(backupCharId)
+      if (validBackupId) {
+        slot.replacements = [validBackupId]
+        occupied.add(validBackupId)
       }
 
       addedPositions.push({ roomId, slotIndex: slotIdx, operatorId: charId })
@@ -298,8 +340,11 @@ export function generateMolecularCandidates(
         placeOperator(tRoom.roomId, 0, '蕾缪安', groupId)
         placeOperator(tRoom.roomId, 1, '能天使', groupId)
         if (tRoom.slots.length >= 3) {
-          const third = inventory.operators.some((o) => o.name === '空弦') ? '空弦' : '雪雉'
-          placeOperator(tRoom.roomId, 2, third, groupId)
+          const validThirds = ['空弦', '雪雉', '古米', '月见夜', '空爆', '缠丸', '夜烟']
+          const third = validThirds.find(isAvailableSingleton)
+          if (third) {
+            placeOperator(tRoom.roomId, 2, third, groupId)
+          }
         }
         appliedAtoms.push('laterano')
         continue
@@ -319,7 +364,7 @@ export function generateMolecularCandidates(
         placeOperator(tRoom.roomId, 1, '拉普兰德', groupId)
         if (tRoom.slots.length >= 3) {
           // High-efficiency singleton: exclude Sora, exclude shift-run operators
-          const singletons = HIGH_EFFICIENCY_SINGLETONS.trading.filter((n) => !occupied.has(resolveId(n)))
+          const singletons = HIGH_EFFICIENCY_SINGLETONS.trading.filter(isAvailableSingleton)
           if (singletons.length > 0) {
             placeOperator(tRoom.roomId, 2, singletons[0]!, groupId)
           }
@@ -340,8 +385,9 @@ export function generateMolecularCandidates(
         const groupId = '叙拉古组'
         placeOperator(tRoom.roomId, 0, '伺夜', groupId)
         placeOperator(tRoom.roomId, 1, '贝洛内', groupId)
-        if (centralRoom && !occupied.has(resolveId('八幡海铃'))) {
-          placeOperator('central', centralRoom.slots.findIndex((s) => s.occupant.kind !== 'operator'), '八幡海铃', groupId)
+        if (centralRoom && isAvailableSingleton('八幡海铃')) {
+          const cSlot = centralRoom.slots.findIndex((s) => s.occupant.kind !== 'operator')
+          if (cSlot !== -1) placeOperator('central', cSlot, '八幡海铃', groupId)
         }
         appliedAtoms.push('siracusa')
         continue
@@ -365,8 +411,11 @@ export function generateMolecularCandidates(
         }
         const tCap = capacity(tRoom.type, tRoom.level)
         if (tCap >= 3) {
-          const third = !occupied.has(resolveId('崖心')) ? '崖心' : '琳琅诗怀雅'
-          placeOperator(tRoom.roomId, 2, third, groupId)
+          const validThirds = ['崖心', '琳琅诗怀雅', '雪雉', '古米', '月见夜']
+          const third = validThirds.find(isAvailableSingleton)
+          if (third) {
+            placeOperator(tRoom.roomId, 2, third, groupId)
+          }
         }
         appliedAtoms.push('karlan')
         continue
@@ -376,9 +425,14 @@ export function generateMolecularCandidates(
       const tCap = capacity(tRoom.type, tRoom.level)
       for (let sIdx = 0; sIdx < tCap; sIdx++) {
         if (tRoom.slots[sIdx]!.occupant.kind !== 'operator') {
-          const pool = HIGH_EFFICIENCY_SINGLETONS.trading.filter((n) => !occupied.has(resolveId(n)))
+          const pool = HIGH_EFFICIENCY_SINGLETONS.trading.filter(isAvailableSingleton)
           if (pool.length > 0) {
             placeOperator(tRoom.roomId, sIdx, pool[0]!, `贸易散件_${tRoom.roomId}`)
+          } else {
+            const fallback = findFallbackMaxSkillOp('TRADING')
+            if (fallback) {
+              placeOperator(tRoom.roomId, sIdx, fallback, `贸易散件_${tRoom.roomId}`)
+            }
           }
         }
       }
@@ -537,7 +591,7 @@ export function generateMolecularCandidates(
           // If 3rd slot available in Wendy's gold room, fill from whitelist
           if (emptySlots.length >= 3) {
             const whitelistOp = autoCheck.thirdMemberWhitelist?.find(
-              (n) => !occupied.has(resolveId(n)) && n !== '清流',
+              (n) => isAvailableSingleton(n) && n !== '清流',
             )
             if (whitelistOp) {
               placeOperator(goldRoom.roomId, emptySlots[2]!, whitelistOp, autoGroupId)
@@ -570,7 +624,7 @@ export function generateMolecularCandidates(
               placed++
             } else {
               // 3rd slot: metal singleton
-              const metalOps = HIGH_EFFICIENCY_SINGLETONS.goldManufacture.filter((n) => !occupied.has(resolveId(n)))
+              const metalOps = HIGH_EFFICIENCY_SINGLETONS.goldManufacture.filter(isAvailableSingleton)
               if (metalOps.length > 0) placeOperator(mRoom.roomId, sIdx, metalOps[0]!, aromaGroupId)
               break
             }
@@ -592,7 +646,7 @@ export function generateMolecularCandidates(
         const emptyIndices = mRoom.slots.flatMap((s, idx) => (s.occupant.kind !== 'operator' ? [idx] : []))
         if (emptyIndices.length >= 2) {
           placeOperator(mRoom.roomId, emptyIndices[0]!, '苍苔', cantabileGroupId)
-          const metals = HIGH_EFFICIENCY_SINGLETONS.goldManufacture.filter((n) => !occupied.has(resolveId(n)))
+          const metals = HIGH_EFFICIENCY_SINGLETONS.goldManufacture.filter(isAvailableSingleton)
           for (let i = 1; i < emptyIndices.length && metals.length > 0; i++) {
             placeOperator(mRoom.roomId, emptyIndices[i]!, metals.shift()!, cantabileGroupId)
           }
@@ -656,8 +710,9 @@ export function generateMolecularCandidates(
         placeOperator(mRoom.roomId, emptyIndices[0]!, '红云', groupId)
         placeOperator(mRoom.roomId, emptyIndices[1]!, '稀音', groupId)
         if (emptyIndices.length >= 3) {
-          const third = vermeilCapAtom.nonCoreMembers?.find((m) => !occupied.has(resolveId(m.name)))
-          if (third) placeOperator(mRoom.roomId, emptyIndices[2]!, third.name, groupId)
+          const candidates = ['刻俄柏', '结城理', '火神', '黑', '白雪']
+          const third = candidates.find(isAvailableSingleton)
+          if (third) placeOperator(mRoom.roomId, emptyIndices[2]!, third, groupId)
         }
         appliedAtoms.push('vermeil_capacity')
         continue
@@ -671,8 +726,10 @@ export function generateMolecularCandidates(
         const emptyIndices = mRoom.slots.flatMap((s, idx) => (s.occupant.kind !== 'operator' ? [idx] : []))
         placeOperator(mRoom.roomId, emptyIndices[0]!, '泡泡', groupId)
         placeOperator(mRoom.roomId, emptyIndices[1]!, '火神', groupId)
-        if (emptyIndices.length >= 3 && !occupied.has(resolveId('贝娜'))) {
-          placeOperator(mRoom.roomId, emptyIndices[2]!, '贝娜', groupId)
+        if (emptyIndices.length >= 3) {
+          const candidates = ['贝娜', '刻俄柏', '断罪者', '霜叶']
+          const third = candidates.find(isAvailableSingleton)
+          if (third) placeOperator(mRoom.roomId, emptyIndices[2]!, third, groupId)
         }
         appliedAtoms.push('bubble_capacity')
         continue
@@ -717,13 +774,18 @@ export function generateMolecularCandidates(
             room.product === 'exp'
               ? HIGH_EFFICIENCY_SINGLETONS.expManufacture
               : HIGH_EFFICIENCY_SINGLETONS.goldManufacture
-          const available = pool.filter((n) => !occupied.has(resolveId(n)))
+          const available = pool.filter(isAvailableSingleton)
           if (available.length > 0) {
             placeOperator(room.roomId, sIdx, available[0]!, `制造散件_${room.roomId}`)
           } else {
-            const general = HIGH_EFFICIENCY_SINGLETONS.generalManufacture.filter((n) => !occupied.has(resolveId(n)))
+            const general = HIGH_EFFICIENCY_SINGLETONS.generalManufacture.filter(isAvailableSingleton)
             if (general.length > 0) {
               placeOperator(room.roomId, sIdx, general[0]!, `制造散件_${room.roomId}`)
+            } else {
+              const fallback = findFallbackMaxSkillOp('MANUFACTURE')
+              if (fallback) {
+                placeOperator(room.roomId, sIdx, fallback, `制造散件_${room.roomId}`)
+              }
             }
           }
         }
@@ -735,9 +797,14 @@ export function generateMolecularCandidates(
       const cap = capacity(centralRoom.type, centralRoom.level)
       for (let sIdx = 0; sIdx < cap; sIdx++) {
         if (centralRoom.slots[sIdx]!.occupant.kind !== 'operator') {
-          const available = HIGH_EFFICIENCY_SINGLETONS.control.filter((n) => !occupied.has(resolveId(n)))
+          const available = HIGH_EFFICIENCY_SINGLETONS.control.filter(isAvailableSingleton)
           if (available.length > 0) {
             placeOperator('central', sIdx, available[0]!, '中枢散件')
+          } else {
+            const fallback = findFallbackMaxSkillOp('CONTROL')
+            if (fallback) {
+              placeOperator('central', sIdx, fallback, '中枢散件')
+            }
           }
         }
       }
@@ -747,7 +814,7 @@ export function generateMolecularCandidates(
     for (const pRoom of powerRooms) {
       if (pRoom.slots.length > 0 && pRoom.slots[0]!.occupant.kind !== 'operator') {
         const eligibleDroneOps = inventory.operators.filter(
-          (o) => !occupied.has(o.charId) && !isShiftRunOperator(o.charId) && o.skills.some((s) => s.roomType === 'POWER'),
+          (o) => o.matchesMaximumSkills && !occupied.has(o.charId) && !isShiftRunOperator(o.charId) && o.skills.some((s) => s.roomType === 'POWER'),
         )
         if (eligibleDroneOps.length > 0) {
           placeOperator(pRoom.roomId, 0, eligibleDroneOps[0]!.name, `电站_${pRoom.roomId}`)
@@ -907,6 +974,11 @@ export function evaluateMolecularCandidates(
       candidate.simScore = 0
       if (simResponse.error) {
         candidate.diagnostics.push(simResponse.error)
+      }
+      if (simResponse.report?.diagnostics) {
+        for (const d of simResponse.report.diagnostics) {
+          candidate.diagnostics.push(`[${d.code}] ${d.message}`)
+        }
       }
     }
 

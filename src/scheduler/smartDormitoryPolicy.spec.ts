@@ -81,14 +81,24 @@ describe('smartDormitoryPolicy', () => {
     expect(dorm1.slots[4]?.occupant.kind).toBe('free')
   })
 
-  it('respects skill unlock stages when owned entries are provided', () => {
+  it('respects skill unlock stages and maximum skills when owned entries are provided', () => {
     const ws = createDefaultWorkspace()
-    // Provide 杜林 at E0 Lv1 (unlocked bskill_dorm_all1) and 闪灵 at E0 Lv1 (unlocked bskill_dorm_single)
-    const entries = [
+    // Operators not matching maximum skills (e.g. E0 Lv1) should NOT be assigned as dorm keepers
+    const unmaxedEntries = [
       { operator: '杜林', elitePhase: 0, level: 1 },
       { operator: '闪灵', elitePhase: 0, level: 1 },
     ]
-    const report = applySmartDormitoryPolicy(ws, { entries })
+    const unmaxedReport = applySmartDormitoryPolicy(ws, { entries: unmaxedEntries })
+    expect(unmaxedReport.dormitoryKeepers.dormitory_1?.aoe).toBeUndefined()
+    expect(unmaxedReport.dormitoryKeepers.dormitory_1?.single).toBeUndefined()
+
+    // Operators matching maximum skills (杜林 E0 Lv30, 闪灵 E2 Lv1) should be assigned
+    const ws2 = createDefaultWorkspace()
+    const maxEntries = [
+      { operator: '杜林', elitePhase: 0, level: 30 },
+      { operator: '闪灵', elitePhase: 2, level: 1 },
+    ]
+    const report = applySmartDormitoryPolicy(ws2, { entries: maxEntries })
     expect(report.applied).toBe(true)
     expect(report.dormitoryKeepers.dormitory_1?.aoe).toBe(id('杜林'))
     expect(report.dormitoryKeepers.dormitory_1?.single).toBe(id('闪灵'))

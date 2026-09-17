@@ -9,7 +9,11 @@ export function runScheduleSimulationBridge(
   options: ScheduleSimulationOptions = {},
   assumptions: Partial<SimulationAssumptions> = {},
 ): { report: ScheduleSimulationReport | null; error?: string } {
-  const validation = validateRosterWorkspace(workspace)
+  const cleanWorkspace: RosterWorkspace = JSON.parse(JSON.stringify(workspace))
+  const cleanOptions: ScheduleSimulationOptions = JSON.parse(JSON.stringify(options))
+  const cleanAssumptions: Partial<SimulationAssumptions> = JSON.parse(JSON.stringify(assumptions))
+
+  const validation = validateRosterWorkspace(cleanWorkspace)
   if (!validation.isValid) {
     return {
       report: null,
@@ -18,8 +22,8 @@ export function runScheduleSimulationBridge(
   }
 
   try {
-    const report = simulateSchedule(compileRosterSchedule(workspace, assumptions), options)
-    if (workspace.compatibility.backupPlans.length) {
+    const report = simulateSchedule(compileRosterSchedule(cleanWorkspace, cleanAssumptions), cleanOptions)
+    if (cleanWorkspace.compatibility.backupPlans.length) {
       report.diagnostics.push({
         code: 'BACKUP_PLANS_NOT_EXECUTED',
         message: '本报告仅执行主排班；备用计划及条件触发保留但不执行',

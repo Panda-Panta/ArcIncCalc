@@ -451,7 +451,8 @@ function executeAutoGenerate(inventoryEntries: OwnedOperatorInput[], config?: Sm
     label: '正在准备一键智能排班...',
   }
 
-  const baseWorkspace = structuredClone(toRaw(store.workspace))
+  const baseWorkspace = JSON.parse(JSON.stringify(toRaw(store.workspace)))
+  const cleanEntries: OwnedOperatorInput[] = JSON.parse(JSON.stringify(inventoryEntries))
   const isVitest = typeof process !== 'undefined' && Boolean(process.env?.VITEST)
   const runOptions = {
     seed: (config?.seed !== undefined && config.seed >= 0)
@@ -508,7 +509,7 @@ function executeAutoGenerate(inventoryEntries: OwnedOperatorInput[], config?: Sm
       }
       worker.postMessage({
         base: baseWorkspace,
-        entries: inventoryEntries,
+        entries: cleanEntries,
         options: runOptions,
       })
       return
@@ -518,7 +519,7 @@ function executeAutoGenerate(inventoryEntries: OwnedOperatorInput[], config?: Sm
   }
 
   try {
-    const report = runSmartRoster(baseWorkspace, inventoryEntries, runOptions, (p) => {
+    const report = runSmartRoster(baseWorkspace, cleanEntries, runOptions, (p) => {
       generationProgress.value = p
     })
     onSmartRosterComplete(report)
