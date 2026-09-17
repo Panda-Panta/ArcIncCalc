@@ -1,7 +1,6 @@
 import type { RosterWorkspace } from '../workbench/model'
 import { resolveOperatorCharId as resolveId } from '../workbench/compat/mowerJson'
 import { compileOperatorInventory, type OwnedOperatorInput } from '../domain/operatorInventory'
-import { projectRosterOutput } from './rosterProjection'
 import { runScheduleSimulationBridge } from '../workbench/scheduleSimulationBridge'
 import { scoreProduction } from './productionObjective'
 import { hasConsumptionSkill } from './fixedDuty'
@@ -103,8 +102,7 @@ export function runSmartRoster(
 
   const seed = options.seed ?? 42
   const trials = options.trials ?? 5
-  const maxStaticEvals = options.maxStaticEvals ?? 3000
-  const simulationTopK = options.simulationTopK ?? 8
+  const simulationTopK = options.simulationTopK
   const enableDeepSearch = options.enableDeepSearch ?? true
   const droneTarget = options.droneTarget ?? 'gold'
 
@@ -143,6 +141,7 @@ export function runSmartRoster(
   }
 
   // ==========================================
+  // ==========================================
   // Phase 1: Indivisible Atomic-to-Molecular Synthesis
   // ==========================================
   onProgress?.({
@@ -150,17 +149,9 @@ export function runSmartRoster(
     phaseProgress: 0,
     currentTrial: 0,
     totalTrials: trials,
-    label: '阶段 1/3: 不可分割原子组合与多分支分子合成...',
+    label: '阶段 1/2: 不可分割原子组合与多分支分子合成...',
   })
 
-  let totalEvaluations = 0
-  const evaluateStatic = (w: RosterWorkspace) => {
-    if (totalEvaluations >= maxStaticEvals) return null
-    totalEvaluations++
-    return projectRosterOutput(w)
-  }
-
-  const staticCandidates: SmartRosterCandidate[] = []
   const branchCount = Math.max(trials * 2, 8)
   const molecularBranches = generateMolecularCandidates(base, entries, inventory, {
     seed,
@@ -170,13 +161,19 @@ export function runSmartRoster(
     droneTarget,
   })
 
+  // Deduplicate candidates by layout fingerprint
+  const seenFingerprints = new Set<string>()
+  const uniqueCandidates: SmartRosterCandidate[] = []
   for (let bIdx = 0; bIdx < molecularBranches.length; bIdx++) {
     const branch = molecularBranches[bIdx]!
-    const evalScore = evaluateStatic(branch.workspace)
-    staticCandidates.push({
+    const fp = workspaceFingerprint(branch.workspace)
+    if (seenFingerprints.has(fp)) continue
+    seenFingerprints.add(fp)
+
+    uniqueCandidates.push({
       id: branch.id,
       workspace: branch.workspace,
-      staticScore: evalScore?.daily.score ?? 0,
+      staticScore: 0,
       simScore: null,
       diagnostics: [],
     })
@@ -186,40 +183,25 @@ export function runSmartRoster(
       phaseProgress: (bIdx + 1) / molecularBranches.length,
       currentTrial: bIdx + 1,
       totalTrials: molecularBranches.length,
-      bestScore: staticCandidates.length > 0 ? Math.max(...staticCandidates.map(c => c.staticScore)) : undefined,
-      label: `阶段 1/3: 分子合成候选生成 ${bIdx + 1}/${molecularBranches.length} 完成`,
+      label: `阶段 1/2: 分子合成候选生成 ${bIdx + 1}/${molecularBranches.length} 完成`,
     })
   }
 
-  // Deduplicate static candidates
-  const seenFingerprints = new Set<string>()
-  const uniqueCandidates = staticCandidates.filter(c => {
-    const fp = workspaceFingerprint(c.workspace)
-    if (seenFingerprints.has(fp)) return false
-    seenFingerprints.add(fp)
-    return true
-  })
-
-  uniqueCandidates.sort((a, b) => b.staticScore - a.staticScore)
-  result.phases.static = {
-    candidates: uniqueCandidates,
-    bestScore: uniqueCandidates[0]?.staticScore ?? null,
-  }
-
   if (uniqueCandidates.length === 0) {
-    result.diagnostics.push({ code: 'NO_CANDIDATE_FOUND', message: '静态构建阶段未能生成满足约束的完整排班。' })
+    result.diagnostics.push({ code: 'NO_CANDIDATE_FOUND', message: '分子构建阶段未能生成满足约束的完整排班。' })
     return result
   }
 
   // ==========================================
-  // Phase 2: Dynamic Simulation Verification
+  // Phase 2: Dynamic Simulation Verification (1+3 Days, 82 Formula)
   // ==========================================
-  const simCandidates = uniqueCandidates.slice(0, simulationTopK)
+  const candidateBudget = Math.min(uniqueCandidates.length, Math.max(simulationTopK ?? uniqueCandidates.length, 1))
+  const simCandidates = uniqueCandidates.slice(0, candidateBudget)
   onProgress?.({
     phase: 'simulating',
     phaseProgress: 0,
     totalTrials: simCandidates.length,
-    label: `阶段 2/3: 仿真验证（Top-${simCandidates.length} 方案进行 1+3 天动态仿真）...`,
+    label: `阶段 2/2: 全量动态拟真评估（预热 1 天 + 采样 3 天，82 综合评分）...`,
   })
 
   for (let idx = 0; idx < simCandidates.length; idx++) {
@@ -244,13 +226,15 @@ export function runSmartRoster(
       }
     )
 
-    if (simResponse.report && simResponse.report.success) {
+    if (simResponse.report && (simResponse.report.success || (simResponse.report.observedHours > 0 && simResponse.report.production?.sample.completed))) {
       const rep = simResponse.report
-      if (rep.production?.sample.completed) {
+      if (rep.production?.sample.completed && rep.observedHours > 0) {
         const prodScore = scoreProduction(rep.production.sample.completed, rep.observedHours)
         candidate.simScore = prodScore.total
+        candidate.staticScore = prodScore.total
       } else {
-        candidate.simScore = candidate.staticScore
+        candidate.simScore = 0
+        candidate.staticScore = 0
       }
 
       // Collect simulated data for operators with special mood skills
@@ -271,9 +255,15 @@ export function runSmartRoster(
       }
       candidate.specialOperators = specials
     } else {
-      candidate.simScore = candidate.staticScore
+      candidate.simScore = 0
+      candidate.staticScore = 0
       if (simResponse.error) {
         candidate.diagnostics.push(simResponse.error)
+      }
+      if (simResponse.report?.diagnostics) {
+        for (const d of simResponse.report.diagnostics) {
+          candidate.diagnostics.push(`[${d.code}] ${d.message}`)
+        }
       }
     }
 
@@ -282,20 +272,36 @@ export function runSmartRoster(
       phaseProgress: (idx + 1) / simCandidates.length,
       currentTrial: idx + 1,
       totalTrials: simCandidates.length,
-      bestScore: Math.max(...simCandidates.map(c => c.simScore ?? c.staticScore)),
-      label: `阶段 2/3: 仿真进度 ${idx + 1}/${simCandidates.length}（82分: ${candidate.simScore?.toFixed(1) ?? 'N/A'}）`,
+      bestScore: Math.max(...simCandidates.map(c => c.simScore ?? 0)),
+      label: `阶段 2/2: 动态拟真进度 ${idx + 1}/${simCandidates.length}（82分: ${candidate.simScore?.toFixed(1) ?? '0.0'}）`,
     })
   }
 
-  simCandidates.sort((a, b) => (b.simScore ?? b.staticScore) - (a.simScore ?? a.staticScore))
+  simCandidates.sort((a, b) => (b.simScore ?? 0) - (a.simScore ?? 0))
   const bestSimCandidate = simCandidates[0]!
+  result.phases.static = {
+    candidates: simCandidates,
+    bestScore: bestSimCandidate.simScore ?? 0,
+  }
   result.phases.simulation = {
     candidates: simCandidates,
-    bestScore: bestSimCandidate.simScore ?? bestSimCandidate.staticScore,
+    bestScore: bestSimCandidate.simScore ?? 0,
+  }
+
+  if (bestSimCandidate.simScore === null || bestSimCandidate.simScore <= 0) {
+    result.status = 'blocked'
+    result.workspace = bestSimCandidate.workspace
+    result.score = 0
+    const allCandidateDiags = Array.from(new Set(simCandidates.flatMap(c => c.diagnostics)))
+    result.diagnostics.push({
+      code: 'SIMULATION_EVALUATION_FAILED',
+      message: `动态拟真计算未完成或产出为0。原因：${allCandidateDiags.length ? allCandidateDiags.join('；') : '候选方案未能通过动态拟真准入校验'}`,
+    })
+    return result
   }
 
   let finalWorkspace = structuredClone(bestSimCandidate.workspace)
-  let finalScore = bestSimCandidate.simScore ?? bestSimCandidate.staticScore
+  let finalScore = bestSimCandidate.simScore ?? 0
   result.specialOperators = bestSimCandidate.specialOperators ?? []
 
   // ==========================================
@@ -371,7 +377,9 @@ export function runSmartRoster(
 
   // Post-processing: apply smart dormitory keepers
   applySmartDormitoryPolicy(finalWorkspace, {
+    entries: [...entries],
     candidateOperatorIds: entries.map(e => e.operator),
+    force: true,
   })
 
   result.status = 'draft'

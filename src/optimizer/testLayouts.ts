@@ -4,6 +4,7 @@ import { createDefaultWorkspace } from '../workbench/defaults'
 import { restoreOperatorMowerName } from '../workbench/compat/mowerJson'
 import { runSmartRoster } from './smartRoster'
 import { validatePhysicalRoster } from './rosterDraft'
+import { validateRosterWorkspace } from '../workbench/validate'
 import type { RosterWorkspace } from '../workbench/model'
 
 const allOwned: OwnedOperatorInput[] = OPERATORS.map((o) => ({
@@ -107,7 +108,46 @@ function printRosterDetails(label: string, ws: RosterWorkspace, score: number | 
     }
   }
 
-  // 6. 物理完整性检查
+  // 6. 完整排班校验与诊断 (validateRosterWorkspace)
+  const validation = validateRosterWorkspace(ws)
+  console.log(`  [排班校验诊断] 严重错误: ${validation.criticalErrors.length === 0 ? '✅ 0' : `❌ ${validation.criticalErrors.map((e) => e.message).join('；')}`}`)
+  console.log(`  [排班校验诊断] 警告数量: ${validation.warnings.length === 0 ? '✅ 0 (完美无警告)' : `❌ ${validation.warnings.length} 个警告: ${validation.warnings.map((w) => w.message).join('；')}`}`)
+
+  // 7. 菲亚梅塔替补（3名高产出干员）检查
+  const fiamSlot = Object.values(ws.mainPlan.facilities)
+    .filter((r) => r.type === 'dormitory')
+    .flatMap((r) => r.slots)
+    .find((s) => s.occupant.kind === 'operator' && restoreOperatorMowerName(s.occupant.operatorId) === '菲亚梅塔')
+  if (fiamSlot) {
+    const fiamReps = fiamSlot.replacements.map(restoreOperatorMowerName)
+    console.log(`  [菲亚梅塔机制] 配置替补人数: ${fiamReps.length === 3 ? `✅ 3人 (${fiamReps.join(', ')})` : `❌ 异常: ${fiamReps.length}人`}`)
+  }
+
+  // 8. 宿舍 Free 床位 > 最大组合人数检查
+  const groupCounts = new Map<string, number>()
+  for (const r of Object.values(ws.mainPlan.facilities)) {
+    if (r.type === 'dormitory') continue
+    for (const s of r.slots) {
+      if (s.occupant.kind === 'operator' && s.groupId) {
+        groupCounts.set(s.groupId, (groupCounts.get(s.groupId) ?? 0) + 1)
+      }
+    }
+  }
+  const maxGroupSize = Math.max(0, ...groupCounts.values(), 1)
+  const freeBeds = Object.values(ws.mainPlan.facilities)
+    .filter((r) => r.type === 'dormitory')
+    .reduce((sum, r) => sum + r.slots.filter((s) => s.occupant.kind === 'free').length, 0)
+  console.log(`  [宿舍Free床位规范] Free床位数(${freeBeds}) > 最大组合人数(${maxGroupSize}): ${freeBeds > maxGroupSize ? `✅ 通过 (余量: +${freeBeds - maxGroupSize})` : `❌ 不合规`}`)
+
+  // 9. 温蒂与清流同组绑定检查
+  if (allMainsSet.has('温蒂')) {
+    const goldRooms = Object.values(ws.mainPlan.facilities).filter((r) => r.type === 'manufacture' && r.product === 'gold')
+    const wendyRoom = goldRooms.find((r) => r.slots.some((s) => s.occupant.kind === 'operator' && restoreOperatorMowerName(s.occupant.operatorId) === '温蒂'))
+    const purestreamInWendyRoom = wendyRoom?.slots.some((s) => s.occupant.kind === 'operator' && restoreOperatorMowerName(s.occupant.operatorId) === '清流')
+    console.log(`  [自动化温蒂清流同组] 温蒂与清流同站进驻: ${purestreamInWendyRoom ? `✅ 通过 (${wendyRoom?.roomId})` : '❌ 失败'}`)
+  }
+
+  // 10. 物理完整性检查
   const physErrors = validatePhysicalRoster(ws)
   console.log(`  [基建物理排班验证] 错误数: ${physErrors.length === 0 ? '✅ 0 (排班完全合法)' : `❌ ${physErrors.map((e) => e.message).join('；')}`}`)
 }

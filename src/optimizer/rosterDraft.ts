@@ -7,6 +7,7 @@ import {resolveOperatorCharId as resolveId} from '../workbench/compat/mowerJson'
 import {validateRosterWorkspace} from '../workbench/validate'
 import {admitCombinationCandidates,validateScheduleInventory} from './inventoryAdmission'
 import type {CandidateAvailability,CandidateRoom} from './combinationCandidates'
+import {ALL_ATOMIC_CORE_NAMES} from './riicAtomicUnits'
 
 export const CANDIDATE_FACILITY_TYPES:Record<CandidateRoom,MowerFacilityType>={MANUFACTURE:'manufacture',TRADING:'trading',POWER:'power',CONTROL:'central',DORMITORY:'dormitory',HIRE:'contact',TRAINING:'train',MEETING:'meeting'}
 export interface LayoutAssignment {
@@ -194,7 +195,7 @@ export function assignBackups(draft:RosterWorkspace,inventory:OperatorInventory,
  const reserved=new Set(Object.values(draft.mainPlan.facilities).flatMap(r=>r.slots.flatMap(s=>[...(s.occupant.kind==='operator'?[resolveId(s.occupant.operatorId)]:[]),...s.replacements.map(resolveId)])))
  const positions=added.filter(s=>draft.mainPlan.facilities[s.roomId].type!=='dormitory')
  const roomTypes=new Map(Object.entries(CANDIDATE_FACILITY_TYPES).map(([game,type])=>[type,game]))
- const pools=positions.map(p=>inventory.operators.filter(o=>o.matchesMaximumSkills&&!reserved.has(o.charId)&&!isShiftRunOperator(o.charId)&&o.name!=='菲亚梅塔'&&o.skills.some(s=>s.roomType===roomTypes.get(draft.mainPlan.facilities[p.roomId].type))).map(o=>o.charId))
+ const pools=positions.map(p=>inventory.operators.filter(o=>o.matchesMaximumSkills&&!reserved.has(o.charId)&&!isShiftRunOperator(o.charId)&&o.name!=='菲亚梅塔'&&!ALL_ATOMIC_CORE_NAMES.has(o.name)&&o.skills.some(s=>s.roomType===roomTypes.get(draft.mainPlan.facilities[p.roomId].type))).map(o=>o.charId))
  // Bipartite augmentation avoids consuming a scarce multi-facility backup greedily.
  const owner=new Map<string,number>()
  function match(index:number,seen:Set<string>):boolean{
