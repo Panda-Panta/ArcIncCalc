@@ -487,6 +487,24 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
     expect(parsed.compatibility.unrecognizedFields.custom_flag_x).toBe(9999)
   })
 
+  it('upgrades untouched legacy 4-gold default workspace in localStorage to 2-gold and 2-exp', async () => {
+    localStorage.clear()
+    const expectedKey = `arc-income-calculator-workspace-v8-${EDITION.storageNamespace}`
+    const legacyWs = createDefaultWorkspace()
+    legacyWs.mainPlan.facilities.room_2_1.product = 'gold'
+    legacyWs.mainPlan.facilities.room_2_2.product = 'gold'
+    localStorage.setItem(expectedKey, JSON.stringify(legacyWs))
+
+    const wrapper = mountWithPinia(WorkbenchShell)
+    const store = useRosterWorkbenchStore()
+    await wrapper.vm.$nextTick()
+
+    expect(store.workspace.mainPlan.facilities.room_1_1.product).toBe('gold')
+    expect(store.workspace.mainPlan.facilities.room_1_2.product).toBe('gold')
+    expect(store.workspace.mainPlan.facilities.room_2_1.product).toBe('exp')
+    expect(store.workspace.mainPlan.facilities.room_2_2.product).toBe('exp')
+  })
+
   // 13. Responsive outer shell structure with non-distorting scrollable Mower board
   it('wraps the fixed Mower board in a horizontal scroll container while keeping toolbar reachable', () => {
     const wrapper = mountWithPinia(WorkbenchShell)

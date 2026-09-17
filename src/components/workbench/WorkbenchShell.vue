@@ -110,6 +110,18 @@ function initPersistence(): void {
     if (rawWs) {
       const parsed = JSON.parse(rawWs)
       if (parsed?.schemaVersion === 8 && parsed?.mainPlan?.facilities) {
+        const facs = parsed.mainPlan.facilities
+        const isUntouchedDefault =
+          parsed.name === '默认排班' &&
+          facs.room_2_1?.product === 'gold' &&
+          facs.room_2_2?.product === 'gold' &&
+          Object.values(facs).every((f: any) =>
+            f.slots.every((s: any) => s.occupant.kind === 'empty' || s.occupant.kind === 'free'),
+          )
+        if (isUntouchedDefault) {
+          if (facs.room_2_1) facs.room_2_1.product = 'exp'
+          if (facs.room_2_2) facs.room_2_2.product = 'exp'
+        }
         store.loadWorkspace(parsed as RosterWorkspace)
       }
     } else {
