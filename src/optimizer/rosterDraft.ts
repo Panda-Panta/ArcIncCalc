@@ -43,7 +43,7 @@ export function compileCandidateLayout(candidate:CandidateAvailability):LayoutCo
   operatorIds:a.operators.map(o=>o.charId),role:a.role,
   occupancy:(a.role==='target'&&['MANUFACTURE','TRADING','POWER'].includes(a.facility)?'exact':'contains') as 'exact'|'contains',
   product:a.role==='target'?product:undefined,
-  minimumLevel:a.role==='target'&&(product==='exp'||product==='fragment')?3:1,
+  minimumLevel:a.role==='target'&&product==='fragment'?3:1,
  }))
  const uncheckedConditions=['facility','roster','morale','resources','conflicts','moraleCaveats'].flatMap(kind=>
   (candidate.constraints[kind as 'facility'|'roster'|'morale'|'resources'|'conflicts'|'moraleCaveats']??[]).map(text=>({kind,text:`${candidate.name}：${text}`})))
@@ -76,7 +76,7 @@ export function validatePhysicalRoster(workspace:RosterWorkspace):DraftDiagnosti
   if(!Number.isInteger(room.level))diagnostics.push({code:'INVALID_LEVEL',message:`${room.roomId}：设施等级须为整数`})
   if(room.type==='manufacture'){
    if(!room.product)diagnostics.push({code:'PRODUCT_REQUIRED',message:`${room.roomId}：请明确制造配方`})
-   if(['exp','fragment'].includes(room.product??'')&&room.level<3)diagnostics.push({code:'RECIPE_LEVEL',message:`${room.roomId}：当前中级记录/碎片配方要求3级制造站`})
+   if(room.product==='fragment'&&room.level<3)diagnostics.push({code:'RECIPE_LEVEL',message:`${room.roomId}：当前源石碎片配方要求3级制造站`})
   }
   if(room.type==='trading'&&!room.product)diagnostics.push({code:'PRODUCT_REQUIRED',message:`${room.roomId}：请明确贸易策略`})
   room.slots.forEach((slot,index)=>{

@@ -60,10 +60,20 @@ describe('typed candidate layout and roster drafts',()=>{
   expect(generateRosterDraft(ws,allOwned,['dorm-perception-support']).status).toBe('blocked')
  })
  it('checks recipe unlocks and physical facility count independently of existing validator',()=>{
-  let ws=createDefaultWorkspace();ws.mainPlan.facilities.room_1_1.level=2;ws.mainPlan.facilities.room_1_1.product='exp'
+  let ws=createDefaultWorkspace();ws.mainPlan.facilities.room_1_1.level=2;ws.mainPlan.facilities.room_1_1.product='fragment'
   expect(generateRosterDraft(ws,allOwned,['power-aigis-makoto']).diagnostics.some(d=>d.code==='RECIPE_LEVEL')).toBe(true)
+  ws=createDefaultWorkspace();ws.mainPlan.facilities.room_1_1.level=2;ws.mainPlan.facilities.room_1_1.product='exp'
+  expect(generateRosterDraft(ws,allOwned,['power-aigis-makoto']).diagnostics.some(d=>d.code==='RECIPE_LEVEL')).toBe(false)
   ws=createDefaultWorkspace();ws.mainPlan.facilities.room_1_3.type='manufacture';ws.mainPlan.facilities.room_2_3.type='manufacture'
   expect(generateRosterDraft(ws,allOwned,['power-aigis-makoto']).diagnostics.some(d=>d.code==='FACILITY_COUNT')).toBe(true)
+ })
+ it('allows level 2 manufacture stations to produce exp without triggering RECIPE_LEVEL',()=>{
+  const ws=createDefaultWorkspace()
+  ws.mainPlan.facilities.room_2_2.level=2
+  ws.mainPlan.facilities.room_2_2.product='exp'
+  ws.mainPlan.facilities.room_2_2.slots=ws.mainPlan.facilities.room_2_2.slots.slice(0,2)
+  const res=generateRosterDraft(ws,allOwned,['manu-exp-p3-makoto'])
+  expect(res.diagnostics.some(d=>d.code==='RECIPE_LEVEL')).toBe(false)
  })
  it('assigns unique ordinary backups and an atomic new target group without stealing primary staff',()=>{
   const ws=createDefaultWorkspace();ws.mainPlan.facilities.dormitory_1.slots.slice(0,3).forEach(s=>s.occupant={kind:'free'})
