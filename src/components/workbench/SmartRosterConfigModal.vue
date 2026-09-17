@@ -353,8 +353,8 @@ const handleConfirm = () => {
 }
 
 .modal-intro {
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(56, 189, 248, 0.2);
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(66, 214, 199, 0.25);
   border-radius: 8px;
   padding: 10px 14px;
 }
@@ -363,7 +363,7 @@ const handleConfirm = () => {
   margin: 0 0 4px;
   font-size: 13px;
   font-weight: 700;
-  color: #38bdf8;
+  color: #42d6c7;
 }
 
 .intro-desc {
@@ -374,11 +374,11 @@ const handleConfirm = () => {
 }
 
 .config-fieldset {
-  border: 1px solid #2d3748;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   padding: 12px 14px 14px;
   margin: 0;
-  background: rgba(15, 23, 42, 0.35);
+  background: rgba(0, 0, 0, 0.22);
 }
 
 .fieldset-legend {
@@ -459,11 +459,11 @@ const handleConfirm = () => {
 
 .mower-num-input,
 .mower-select-input {
-  background: #0f172a;
-  border: 1px solid #334155;
+  background: #101921;
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 6px;
   padding: 6px 10px;
-  color: #f8fafc;
+  color: #e9f2f4;
   font-size: 13px;
   outline: none;
   transition: border-color 0.15s;
@@ -471,8 +471,8 @@ const handleConfirm = () => {
 
 .mower-num-input:focus,
 .mower-select-input:focus {
-  border-color: #38bdf8;
-  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+  border-color: #42d6c7;
+  box-shadow: 0 0 0 2px rgba(66, 214, 199, 0.2);
 }
 
 .checkbox-row {
@@ -523,7 +523,9 @@ const handleConfirm = () => {
 }
 
 .btn-confirm {
-  background: #0284c7 !important;
+  background: #18a058 !important;
+  border-color: #18a058 !important;
+  color: #ffffff !important;
   font-weight: 700;
 }
 </style>

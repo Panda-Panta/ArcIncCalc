@@ -1,5 +1,9 @@
 $ErrorActionPreference = "Stop"
 
+Write-Host ">>> Ensuring running instances of ArcIncCalc are closed before sync..."
+Get-Process ArcIncCalc -ErrorAction SilentlyContinue | Stop-Process -Force
+Start-Sleep -Milliseconds 500
+
 Write-Host ">>> Building Vue 3 Frontend (npm run build)..."
 npm run build
 

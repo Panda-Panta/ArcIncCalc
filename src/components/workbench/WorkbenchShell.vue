@@ -23,6 +23,8 @@ import OperatorSelectModal, { type OperatorSelectionPayload } from './OperatorSe
 import GlobalReplaceModal, { type GlobalReplacePayload } from './GlobalReplaceModal.vue'
 import SmartRosterConfigModal, { type SmartRosterConfig } from './SmartRosterConfigModal.vue'
 import RiicSkillsBrowser from './RiicSkillsBrowser.vue'
+import { NConfigProvider } from 'naive-ui'
+import { darkTheme, darkThemeOverrides } from '../../theme'
 import '../../workbench/styles.css'
 
 const store = useRosterWorkbenchStore()
@@ -576,7 +578,8 @@ defineExpose({
 </script>
 
 <template>
-  <div class="workbench-shell" data-test="workbench-shell">
+  <n-config-provider :theme="darkTheme" :theme-overrides="darkThemeOverrides">
+    <div class="workbench-shell" data-test="workbench-shell">
     <!-- Top Header & Brand -->
     <header class="workbench-topbar">
       <div class="brand">
@@ -907,7 +910,8 @@ defineExpose({
       @close="smartRosterConfigModalOpen = false"
       @confirm="handleConfirmSmartRosterConfig"
     />
-  </div>
+    </div>
+  </n-config-provider>
 </template>
 
 <style scoped>
