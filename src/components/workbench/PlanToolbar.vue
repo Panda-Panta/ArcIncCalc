@@ -17,6 +17,20 @@
           新建/重置
         </button>
 
+        <!-- Clear Stationed Operators -->
+        <button
+          type="button"
+          class="mower-btn btn-clear-operators"
+          data-test="clear-operators-btn"
+          :disabled="disabled || isExportingImage"
+          @click="onClearOperatorsClick"
+        >
+          <svg class="mower-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/>
+          </svg>
+          清空干员
+        </button>
+
         <!-- Import Operator Inventory (MAA & SKLand) -->
         <button
           type="button"
@@ -222,6 +236,7 @@ import {
   exportPlanToJson,
   importPlanFromFile,
   resolvePlanFileAdapters,
+  sanitizeFilename,
   PLAN_FILE_ADAPTERS_KEY,
   type PlanFileAdapters,
 } from '../../workbench/fileHelpers'
@@ -252,6 +267,7 @@ const emit = defineEmits<{
   (e: 'open-replace'): void
   (e: 'calculate'): void
   (e: 'reset'): void
+  (e: 'clear-operators'): void
   (e: 'imported', workspace: RosterWorkspace): void
   (e: 'exported-json'): void
   (e: 'exported-image'): void
@@ -307,6 +323,12 @@ function resolveBaseMapElement(): HTMLElement | null {
   return null
 }
 
+function getExportFilename(ext: 'json' | 'jpg'): string {
+  const raw = store.workspace.name?.trim() || store.workspace.mainPlan?.name?.trim() || 'mower_plan'
+  const base = sanitizeFilename(raw, 'mower_plan')
+  return `${base}.${ext}`
+}
+
 /**
  * 1. 新建/重置主表
  */
@@ -321,6 +343,24 @@ async function onResetClick(): Promise<void> {
   store.resetWorkspace()
   setStatus('success', '已重置为主排班初始状态')
   emit('reset')
+}
+
+/**
+ * 1b. 清空进驻干员（保留建筑与等级布局）
+ */
+async function onClearOperatorsClick(): Promise<void> {
+  clearStatus()
+  const resolved = resolvePlanFileAdapters(effectiveAdapters.value)
+  const confirmed = await resolved.dialog.confirm(
+    '确认清空所有设施内的进驻干员与替补？当前建筑类别与等级布局将被保留。'
+  )
+  if (!confirmed) {
+    return
+  }
+
+  store.clearAllOperators()
+  setStatus('success', '已清空所有进驻干员与替补（建筑布局已保留）')
+  emit('clear-operators')
 }
 
 /**
@@ -379,7 +419,7 @@ function onExportJsonClick(): void {
   clearStatus()
   try {
     exportPlanToJson(store.workspace, {
-      filename: 'mower_plan.json',
+      filename: getExportFilename('json'),
       adapters: effectiveAdapters.value,
     })
     setStatus('success', '成功导出 JSON 排班！')
@@ -410,7 +450,7 @@ async function onExportImageClick(): Promise<void> {
       workspace: store.workspace,
       baseMapElement: baseMapEl,
       theme: props.theme,
-      filename: 'mower_plan.jpg',
+      filename: getExportFilename('jpg'),
       adapters: effectiveAdapters.value,
     })
     setStatus('success', '成功导出排班图片！')
@@ -556,6 +596,17 @@ defineExpose({
   background-color: rgba(208, 48, 80, 0.2);
   border-color: #f5222d;
   color: #ff4d4f;
+}
+
+.mower-btn.btn-clear-operators {
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #fbbf24;
+}
+
+.mower-btn.btn-clear-operators:hover:not(:disabled) {
+  background-color: rgba(245, 158, 11, 0.2);
+  border-color: #f59e0b;
+  color: #fef3c7;
 }
 
 .mower-btn.btn-abort-roster {

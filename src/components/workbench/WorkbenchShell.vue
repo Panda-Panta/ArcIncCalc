@@ -281,6 +281,13 @@ function handleReset(): void {
   replaceStatusMessage.value = null
 }
 
+function handleClearOperators(): void {
+  calculationReport.value = null
+  calculationError.value = null
+  simulationReport.value = null
+  replaceStatusMessage.value = null
+}
+
 function handleImported(_workspace: RosterWorkspace): void {
   calculationReport.value = null
   calculationError.value = null
@@ -566,6 +573,7 @@ defineExpose({
   handleInventoryChange,
   handleInventoryImported,
   handleReset,
+  handleClearOperators,
   handleImported,
   handleRequestPicker,
   handlePickerSelected,
@@ -658,6 +666,7 @@ defineExpose({
           @open-replace="handleOpenReplace"
           @calculate="handleCalculate"
           @reset="handleReset"
+          @clear-operators="handleClearOperators"
           @imported="handleImported"
           @auto-generate="handleAutoGenerate"
           @abort-generation="handleAbortAutoGenerate"

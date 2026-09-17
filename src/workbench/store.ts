@@ -210,6 +210,20 @@ export const useRosterWorkbenchStore = defineStore('rosterWorkbench', () => {
     selectedRoomId.value = 'room_1_1'
   }
 
+  function clearAllOperators(): void {
+    const facilities = workspace.value.mainPlan.facilities
+    for (const roomId of Object.keys(facilities) as MowerRoomId[]) {
+      const facility = facilities[roomId]
+      if (!facility) continue
+      for (const slot of facility.slots) {
+        slot.occupant = { kind: 'empty' }
+        slot.groupId = null
+        slot.replacements = []
+        delete slot.metadata
+      }
+    }
+  }
+
   return {
     workspace,
     selectedRoomId,
@@ -229,5 +243,7 @@ export const useRosterWorkbenchStore = defineStore('rosterWorkbench', () => {
     updateConf,
     inferLevels,
     resetWorkspace,
+    clearAllOperators,
   }
 })
+

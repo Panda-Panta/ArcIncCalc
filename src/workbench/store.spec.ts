@@ -350,11 +350,59 @@ describe('RosterWorkbenchStore', () => {
     store.updateFacility('room_1_1', { product: undefined })
     expect(store.workspace.compatibility.facilityMetadata?.room_1_1?.rawProduct).toBeUndefined()
     expect(store.workspace.compatibility.facilityMetadata?.room_1_1?.rawName).toBe('原制造站')
-    expect(store.workspace.compatibility.facilityMetadata?.room_1_1?.otherMeta).toBe('keep_this')
-
     // Explicit type in patch clears rawName
     store.updateFacility('room_1_1', { type: 'trading' })
     expect(store.workspace.compatibility.facilityMetadata?.room_1_1?.rawName).toBeUndefined()
     expect(store.workspace.compatibility.facilityMetadata?.room_1_1?.otherMeta).toBe('keep_this')
   })
+
+  it('clears all operators and replacements across facilities while preserving layout, levels, products, and scheme name', () => {
+    const store = useRosterWorkbenchStore()
+    // Configure custom non-default layout and name
+    store.workspace.name = '我的自定义排班'
+    store.workspace.mainPlan.facilities.room_1_1.type = 'trading'
+    store.workspace.mainPlan.facilities.room_1_1.product = 'orundum'
+    store.workspace.mainPlan.facilities.room_1_1.level = 2
+    store.workspace.mainPlan.facilities.room_1_1.slots[0] = {
+      occupant: { kind: 'operator', operatorId: 'char_002_amiya' },
+      groupId: 'trading_team',
+      replacements: ['char_102_texas'],
+      metadata: { memo: 'test' },
+    }
+    store.workspace.mainPlan.facilities.central.slots[0] = {
+      occupant: { kind: 'operator', operatorId: 'char_003_kalts' },
+      groupId: 'central_group',
+      replacements: ['char_010_chen'],
+    }
+    store.selectRoom('room_1_1')
+
+    store.clearAllOperators()
+
+    // Layout, levels, products and scheme name must be preserved
+    expect(store.workspace.name).toBe('我的自定义排班')
+    expect(store.workspace.mainPlan.facilities.room_1_1.type).toBe('trading')
+    expect(store.workspace.mainPlan.facilities.room_1_1.product).toBe('orundum')
+    expect(store.workspace.mainPlan.facilities.room_1_1.level).toBe(2)
+    expect(store.selectedRoomId).toBe('room_1_1')
+
+    // All slots must be emptied
+    expect(store.workspace.mainPlan.facilities.room_1_1.slots[0]).toEqual({
+      occupant: { kind: 'empty' },
+      groupId: null,
+      replacements: [],
+    })
+    expect(store.workspace.mainPlan.facilities.central.slots[0]).toEqual({
+      occupant: { kind: 'empty' },
+      groupId: null,
+      replacements: [],
+    })
+
+    // Contrast with resetWorkspace() which reverts layout to default 243
+    store.resetWorkspace()
+    expect(store.workspace.name).toBe('默认排班')
+    expect(store.workspace.mainPlan.facilities.room_1_1.type).toBe('manufacture')
+    expect(store.workspace.mainPlan.facilities.room_1_1.product).toBe('gold')
+    expect(store.workspace.mainPlan.facilities.room_1_1.level).toBe(3)
+  })
 })
+

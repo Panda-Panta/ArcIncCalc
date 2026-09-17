@@ -437,6 +437,15 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
     expect(wrapper.vm.calculationReport).toBeNull()
     expect(wrapper.find('[data-test="results-panel"]').exists()).toBe(false)
 
+    // Clear operators also clears calculation report
+    wrapper.vm.handleCalculate()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.vm.calculationReport).not.toBeNull()
+
+    toolbar.vm.$emit('clear-operators')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.vm.calculationReport).toBeNull()
+
     // Import updates store and clears stale reports
     const customWs = createDefaultWorkspace()
     customWs.name = '导入的专属排班'
