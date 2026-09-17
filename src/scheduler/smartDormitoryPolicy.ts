@@ -169,10 +169,17 @@ export function applySmartDormitoryPolicy(
     }
   }
 
-  // Collect operators already assigned to output rooms or control center or Fiammetta
+  // Collect operators already assigned to output rooms, control center, Fiammetta, or pinned dorm slots
   const assignedWorkingIds = new Set<string>()
   for (const [rId, fac] of Object.entries(facilities)) {
-    if (rId.startsWith('dormitory')) continue
+    if (rId.startsWith('dormitory')) {
+      for (const slot of fac.slots) {
+        if (slot.occupant.kind === 'operator' && slot.groupId) {
+          assignedWorkingIds.add(resolveId(slot.occupant.operatorId))
+        }
+      }
+      continue
+    }
     for (const slot of fac.slots) {
       if (slot.occupant.kind === 'operator') {
         assignedWorkingIds.add(resolveId(slot.occupant.operatorId))
@@ -287,10 +294,10 @@ export function applySmartDormitoryPolicy(
     }
   }
 
-  // 3. Synergy operators without recovery skills (e.g. Durin race)
+  // 3. Synergy operators needing base presence (e.g. Durin race)
   const synergyReport: Array<{ operatorId: string; roomId: MowerRoomId; slotIndex: number }> = []
   const durinSynergyOps = poolOps.filter(
-    (o) => hasRiicTag(o, 'durin') && !hasDormRecoverySkill(o) && !usedKeepers.has(o.charId) && !assignedWorkingIds.has(o.charId),
+    (o) => hasRiicTag(o, 'durin') && !usedKeepers.has(o.charId) && !assignedWorkingIds.has(o.charId),
   )
 
   const auxiliaryRooms: MowerRoomId[] = ['factory', 'train', 'contact']
@@ -306,6 +313,7 @@ export function applySmartDormitoryPolicy(
         if (slot && (slot.occupant.kind === 'empty' || slot.occupant.kind === 'free')) {
           removeOperatorEverywhere(workspace, op.charId, auxId, sIdx)
           slot.occupant = { kind: 'operator', operatorId: op.charId }
+          slot.groupId = slot.groupId || 'durin_synergy'
           usedKeepers.add(op.charId)
           assignedWorkingIds.add(op.charId)
           synergyReport.push({ operatorId: op.charId, roomId: auxId, slotIndex: sIdx })
@@ -327,6 +335,7 @@ export function applySmartDormitoryPolicy(
           if (slot && (slot.occupant.kind === 'empty' || slot.occupant.kind === 'free')) {
             removeOperatorEverywhere(workspace, op.charId, dId, sIdx)
             slot.occupant = { kind: 'operator', operatorId: op.charId }
+            slot.groupId = slot.groupId || 'durin_synergy'
             usedKeepers.add(op.charId)
             assignedWorkingIds.add(op.charId)
             synergyReport.push({ operatorId: op.charId, roomId: dId, slotIndex: sIdx })
