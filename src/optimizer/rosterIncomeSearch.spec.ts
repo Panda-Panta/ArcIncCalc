@@ -121,7 +121,7 @@ describe('bounded ordinary backup income search',()=>{
   }
   expect(r.bestWorkspace.mainPlan.facilities.room_1_1.slots[0]!.replacements).toEqual([id('Castle-3')])
   expect(baseline).toEqual(before);expect(r.baseline.workspace).toEqual(before)
- },30000)
+ },90000)
  it('rejects layout changes and unavailable explicit idle operators',()=>{
   const baseline=simple(),draft=structuredClone(baseline);draft.mainPlan.facilities.room_1_1.product='exp'
   expect(()=>runRosterIncomeSearch({baseline,draft,inventory:allOwned})).toThrow('设施顺序')

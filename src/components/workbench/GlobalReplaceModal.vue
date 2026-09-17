@@ -568,10 +568,10 @@ function handleConfirm(): void {
 .mower-select {
   width: 100%;
   padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgb(51, 54, 57);
+  background: #101921;
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 4px;
-  color: #e0e0e0;
+  color: #e9f2f4;
   font-size: 13px;
   outline: none;
   box-sizing: border-box;
@@ -579,13 +579,13 @@ function handleConfirm(): void {
 }
 
 .mower-select:focus {
-  border-color: #2080f0;
-  background: rgba(255, 255, 255, 0.12);
+  border-color: #42d6c7;
+  background: #14202a;
 }
 
 .mower-select option {
-  background: #1e1e1e;
-  color: #e0e0e0;
+  background: #18181c;
+  color: #e9f2f4;
 }
 
 .empty-hint {
@@ -599,8 +599,8 @@ function handleConfirm(): void {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
   padding: 10px 14px;
   gap: 10px;
@@ -686,7 +686,7 @@ function handleConfirm(): void {
 
 .arrow-icon {
   font-size: 18px;
-  color: #2080f0;
+  color: #42d6c7;
   font-weight: bold;
 }
 
@@ -698,10 +698,10 @@ function handleConfirm(): void {
 .search-input {
   width: 100%;
   padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgb(51, 54, 57);
+  background: #101921;
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 4px;
-  color: #e0e0e0;
+  color: #e9f2f4;
   font-size: 12px;
   outline: none;
   box-sizing: border-box;
@@ -709,16 +709,16 @@ function handleConfirm(): void {
 }
 
 .search-input:focus {
-  border-color: #2080f0;
+  border-color: #42d6c7;
 }
 
 .target-grid-container {
   max-height: 160px;
   overflow-y: auto;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   padding: 6px;
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.25);
 }
 
 .target-grid {
@@ -746,8 +746,8 @@ function handleConfirm(): void {
 }
 
 .target-item.is-selected {
-  background: rgba(32, 128, 240, 0.25);
-  outline: 1px solid #2080f0;
+  background: rgba(66, 214, 199, 0.2);
+  outline: 1px solid #42d6c7;
 }
 
 .avatar-wrap {
@@ -785,9 +785,10 @@ function handleConfirm(): void {
   position: absolute;
   top: 0;
   right: 0;
-  background: #2080f0;
-  color: #fff;
+  background: #42d6c7;
+  color: #071015;
   font-size: 10px;
+  font-weight: bold;
   width: 14px;
   height: 14px;
   border-radius: 50%;
@@ -831,8 +832,8 @@ function handleConfirm(): void {
 
 /* Impact summary */
 .impact-summary-wrapper {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
   padding: 10px 12px;
   display: flex;
@@ -886,8 +887,8 @@ function handleConfirm(): void {
   font-size: 10px;
   padding: 1px 4px;
   border-radius: 2px;
-  background: rgba(32, 128, 240, 0.25);
-  color: #2080f0;
+  background: rgba(66, 214, 199, 0.2);
+  color: #42d6c7;
 }
 
 .impact-list {

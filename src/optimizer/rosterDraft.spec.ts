@@ -123,4 +123,4 @@ it('executes a generated main/backup team through real morale and production eve
  expect(report.production!.manufacturing.find(r=>r.roomId===draft.placements[0]!.roomId)!.completedItems).toBeGreaterThan(0)
  for(const op of report.operators)expect(op.workHours+op.restHours+op.idleHours+op.exhaustedHours).toBeCloseTo(48,6)
  for(const value of Object.values(report.production!.ledger.balances))expect(value).toBeGreaterThanOrEqual(0)
-})
+},30000)

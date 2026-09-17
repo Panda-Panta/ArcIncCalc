@@ -206,8 +206,86 @@ describe('PlanToolbar.vue', () => {
     })
   })
 
+  describe('Clear Operators Confirmation', () => {
+    it('cancels clearing operators and preserves stationed operators when confirm returns false', async () => {
+      const store = useRosterWorkbenchStore()
+      store.workspace.mainPlan.facilities.room_1_1.slots[0] = {
+        occupant: { kind: 'operator', operatorId: 'char_002_amiya' },
+        groupId: 'test_group',
+        replacements: ['char_102_texas'],
+      }
+
+      const adapters: PlanFileAdapters = {
+        dialog: {
+          confirm: () => false,
+        },
+      }
+
+      const wrapper = mount(PlanToolbar, {
+        props: { adapters },
+      })
+
+      await wrapper.find('[data-test="clear-operators-btn"]').trigger('click')
+      await flushPromises()
+
+      // Stationed operators must remain intact
+      expect(store.workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant).toEqual({
+        kind: 'operator',
+        operatorId: 'char_002_amiya',
+      })
+      expect(wrapper.emitted('clear-operators')).toBeUndefined()
+      expect(wrapper.find('[data-test="status-message"]').exists()).toBe(false)
+    })
+
+    it('clears all operators and replacements while preserving room layout and levels when confirmed', async () => {
+      const store = useRosterWorkbenchStore()
+      // Custom non-default layout
+      store.workspace.name = '我的极限252'
+      store.workspace.mainPlan.facilities.room_1_1.type = 'trading'
+      store.workspace.mainPlan.facilities.room_1_1.product = 'money'
+      store.workspace.mainPlan.facilities.room_1_1.level = 2
+      store.workspace.mainPlan.facilities.room_1_1.slots[0] = {
+        occupant: { kind: 'operator', operatorId: 'char_002_amiya' },
+        groupId: 'test_group',
+        replacements: ['char_102_texas'],
+      }
+
+      const adapters: PlanFileAdapters = {
+        dialog: {
+          confirm: () => true,
+        },
+      }
+
+      const wrapper = mount(PlanToolbar, {
+        props: { adapters },
+      })
+
+      await wrapper.find('[data-test="clear-operators-btn"]').trigger('click')
+      await flushPromises()
+
+      // Room layout and scheme name must be preserved
+      expect(store.workspace.name).toBe('我的极限252')
+      expect(store.workspace.mainPlan.facilities.room_1_1.type).toBe('trading')
+      expect(store.workspace.mainPlan.facilities.room_1_1.product).toBe('money')
+      expect(store.workspace.mainPlan.facilities.room_1_1.level).toBe(2)
+
+      // Slot must be empty
+      expect(store.workspace.mainPlan.facilities.room_1_1.slots[0]).toEqual({
+        occupant: { kind: 'empty' },
+        groupId: null,
+        replacements: [],
+      })
+
+      expect(wrapper.emitted('clear-operators')).toHaveLength(1)
+      const status = wrapper.find('[data-test="status-message"]')
+      expect(status.exists()).toBe(true)
+      expect(status.text()).toContain('已清空所有进驻干员与替补')
+      expect(status.classes()).toContain('success')
+    })
+  })
+
   describe('JSON Export', () => {
-    it('exports current workspace to UTF-8 json and shows success banner', async () => {
+    it('exports current workspace to UTF-8 json named after plan name and shows success banner', async () => {
       const store = useRosterWorkbenchStore()
       store.workspace.mainPlan.conf.ling_xi = 2
 
@@ -228,7 +306,7 @@ describe('PlanToolbar.vue', () => {
 
       await wrapper.find('[data-test="export-json-btn"]').trigger('click')
 
-      expect(downloadedFilename).toBe('mower_plan.json')
+      expect(downloadedFilename).toBe('默认排班.json')
       const parsed = JSON.parse(downloadedText)
       expect(parsed.conf.ling_xi).toBe(2)
 
@@ -236,6 +314,28 @@ describe('PlanToolbar.vue', () => {
       const status = wrapper.find('[data-test="status-message"]')
       expect(status.exists()).toBe(true)
       expect(status.text()).toContain('成功导出 JSON 排班！')
+    })
+
+    it('exports json named after custom scheme name with sanitization', async () => {
+      const store = useRosterWorkbenchStore()
+      store.workspace.name = '自定义:243/极限'
+
+      let downloadedFilename = ''
+      const adapters: PlanFileAdapters = {
+        download: {
+          downloadText(_text, filename) {
+            downloadedFilename = filename
+          },
+        },
+      }
+
+      const wrapper = mount(PlanToolbar, {
+        props: { adapters },
+      })
+
+      await wrapper.find('[data-test="export-json-btn"]').trigger('click')
+
+      expect(downloadedFilename).toBe('自定义_243_极限.json')
     })
   })
 
@@ -256,7 +356,7 @@ describe('PlanToolbar.vue', () => {
       expect(status.classes()).toContain('error')
     })
 
-    it('captures provided baseMapElement, overlays 16 QRs, and downloads image', async () => {
+    it('captures provided baseMapElement, overlays 16 QRs, and downloads image named after plan name', async () => {
       const domEl = document.createElement('div')
       domEl.className = 'plan-container'
 
@@ -294,12 +394,53 @@ describe('PlanToolbar.vue', () => {
       await flushPromises()
 
       expect(downloadedBlob).toBeDefined()
-      expect(downloadedName).toBe('mower_plan.jpg')
+      expect(downloadedName).toBe('默认排班.jpg')
       expect(wrapper.emitted('exported-image')).toHaveLength(1)
 
       const status = wrapper.find('[data-test="status-message"]')
       expect(status.exists()).toBe(true)
       expect(status.text()).toContain('成功导出排班图片！')
+    })
+
+    it('downloads image named after custom scheme name', async () => {
+      const store = useRosterWorkbenchStore()
+      store.workspace.name = '我的终极方案'
+
+      const domEl = document.createElement('div')
+      domEl.className = 'plan-container'
+
+      let downloadedName = ''
+
+      const adapters: PlanFileAdapters = {
+        imageCanvas: {
+          async captureElementToCanvas(_el) {
+            return createMockCanvas(2940, 1200)
+          },
+          async loadImageRgba(_file) {
+            return { data: new Uint8ClampedArray(400), width: 10, height: 10 }
+          },
+          createCanvas(w, h) {
+            return createMockCanvas(w, h)
+          },
+        },
+        download: {
+          downloadBlob(_blob, filename) {
+            downloadedName = filename
+          },
+        },
+      }
+
+      const wrapper = mount(PlanToolbar, {
+        props: {
+          baseMapElement: domEl,
+          adapters,
+        },
+      })
+
+      await wrapper.find('[data-test="export-image-btn"]').trigger('click')
+      await flushPromises()
+
+      expect(downloadedName).toBe('我的终极方案.jpg')
     })
   })
 
@@ -480,6 +621,29 @@ describe('PlanToolbar.vue', () => {
       expect(wrapper.emitted('imported')).toBeUndefined()
       expect(wrapper.emitted('error')).toBeUndefined()
       expect(wrapper.find('[data-test="status-message"]').exists()).toBe(false)
+    })
+  })
+
+  describe('Abort Auto Generation', () => {
+    it('shows abort button when isGeneratingRoster is true and emits abort-generation on click', async () => {
+      const wrapper = mount(PlanToolbar, {
+        props: { isGeneratingRoster: true },
+      })
+
+      const abortBtn = wrapper.find('[data-test="abort-roster-btn"]')
+      expect(abortBtn.exists()).toBe(true)
+      expect(abortBtn.text()).toContain('中止排班')
+
+      await abortBtn.trigger('click')
+      expect(wrapper.emitted('abort-generation')).toHaveLength(1)
+    })
+
+    it('does not show abort button when isGeneratingRoster is false', () => {
+      const wrapper = mount(PlanToolbar, {
+        props: { isGeneratingRoster: false },
+      })
+
+      expect(wrapper.find('[data-test="abort-roster-btn"]').exists()).toBe(false)
     })
   })
 })

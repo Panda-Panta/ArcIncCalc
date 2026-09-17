@@ -17,6 +17,20 @@
           新建/重置
         </button>
 
+        <!-- Clear Stationed Operators -->
+        <button
+          type="button"
+          class="mower-btn btn-clear-operators"
+          data-test="clear-operators-btn"
+          :disabled="disabled || isExportingImage"
+          @click="onClearOperatorsClick"
+        >
+          <svg class="mower-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/>
+          </svg>
+          清空干员
+        </button>
+
         <!-- Import Operator Inventory (MAA & SKLand) -->
         <button
           type="button"
@@ -88,6 +102,20 @@
 
       <!-- Right actions: Auto Roster, Replace & Yield Calculation -->
       <div class="action-cluster right-cluster">
+        <!-- Abort Auto Generate (Req 5) -->
+        <button
+          v-if="isGeneratingRoster"
+          type="button"
+          class="mower-btn btn-abort-roster"
+          data-test="abort-roster-btn"
+          @click="onAbortGenerateClick"
+        >
+          <svg class="mower-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11H7v-2h10v2z"/>
+          </svg>
+          中止排班
+        </button>
+
         <!-- Auto Generate Roster (Req 10) -->
         <button
           type="button"
@@ -208,6 +236,7 @@ import {
   exportPlanToJson,
   importPlanFromFile,
   resolvePlanFileAdapters,
+  sanitizeFilename,
   PLAN_FILE_ADAPTERS_KEY,
   type PlanFileAdapters,
 } from '../../workbench/fileHelpers'
@@ -238,11 +267,13 @@ const emit = defineEmits<{
   (e: 'open-replace'): void
   (e: 'calculate'): void
   (e: 'reset'): void
+  (e: 'clear-operators'): void
   (e: 'imported', workspace: RosterWorkspace): void
   (e: 'exported-json'): void
   (e: 'exported-image'): void
   (e: 'error', message: string): void
   (e: 'auto-generate'): void
+  (e: 'abort-generation'): void
   (e: 'inventory-imported', entries: OwnedOperatorInput[], text: string): void
 }>()
 
@@ -292,6 +323,12 @@ function resolveBaseMapElement(): HTMLElement | null {
   return null
 }
 
+function getExportFilename(ext: 'json' | 'jpg'): string {
+  const raw = store.workspace.name?.trim() || store.workspace.mainPlan?.name?.trim() || 'mower_plan'
+  const base = sanitizeFilename(raw, 'mower_plan')
+  return `${base}.${ext}`
+}
+
 /**
  * 1. 新建/重置主表
  */
@@ -306,6 +343,24 @@ async function onResetClick(): Promise<void> {
   store.resetWorkspace()
   setStatus('success', '已重置为主排班初始状态')
   emit('reset')
+}
+
+/**
+ * 1b. 清空进驻干员（保留建筑与等级布局）
+ */
+async function onClearOperatorsClick(): Promise<void> {
+  clearStatus()
+  const resolved = resolvePlanFileAdapters(effectiveAdapters.value)
+  const confirmed = await resolved.dialog.confirm(
+    '确认清空所有设施内的进驻干员与替补？当前建筑类别与等级布局将被保留。'
+  )
+  if (!confirmed) {
+    return
+  }
+
+  store.clearAllOperators()
+  setStatus('success', '已清空所有进驻干员与替补（建筑布局已保留）')
+  emit('clear-operators')
 }
 
 /**
@@ -364,7 +419,7 @@ function onExportJsonClick(): void {
   clearStatus()
   try {
     exportPlanToJson(store.workspace, {
-      filename: 'mower_plan.json',
+      filename: getExportFilename('json'),
       adapters: effectiveAdapters.value,
     })
     setStatus('success', '成功导出 JSON 排班！')
@@ -395,7 +450,7 @@ async function onExportImageClick(): Promise<void> {
       workspace: store.workspace,
       baseMapElement: baseMapEl,
       theme: props.theme,
-      filename: 'mower_plan.jpg',
+      filename: getExportFilename('jpg'),
       adapters: effectiveAdapters.value,
     })
     setStatus('success', '成功导出排班图片！')
@@ -418,7 +473,14 @@ function onInventoryImported(entries: OwnedOperatorInput[], text: string): void 
 }
 
 /**
- * 6. 自动生成排班
+ * 6. 中止排班生成
+ */
+function onAbortGenerateClick(): void {
+  emit('abort-generation')
+}
+
+/**
+ * 7. 自动生成排班
  */
 function onAutoGenerateClick(): void {
   emit('auto-generate')
@@ -534,6 +596,30 @@ defineExpose({
   background-color: rgba(208, 48, 80, 0.2);
   border-color: #f5222d;
   color: #ff4d4f;
+}
+
+.mower-btn.btn-clear-operators {
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #fbbf24;
+}
+
+.mower-btn.btn-clear-operators:hover:not(:disabled) {
+  background-color: rgba(245, 158, 11, 0.2);
+  border-color: #f59e0b;
+  color: #fef3c7;
+}
+
+.mower-btn.btn-abort-roster {
+  background-color: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+  color: #fca5a5;
+  font-weight: 600;
+}
+
+.mower-btn.btn-abort-roster:hover {
+  background-color: rgba(239, 68, 68, 0.38);
+  border-color: #f87171;
+  color: #ffffff;
 }
 
 .mower-btn.btn-calc {
