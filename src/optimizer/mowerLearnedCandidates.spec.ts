@@ -1,6 +1,8 @@
 import {describe,expect,it} from 'vitest'
 import learned from '../data/mower-learned-combinations.json'
 import checked from '../data/riic-combinations.json'
+import {createDefaultConfig} from '../domain/defaults'
+import {evaluateOperators} from '../engine/operatorRules'
 import {OPERATORS} from '../domain/operators'
 import {compileOperatorInventory} from '../domain/operatorInventory'
 import {selectCombinationCandidates} from './combinationCandidates'
@@ -47,5 +49,20 @@ describe('Mower learned local teams',()=>{
   const score=projectRosterOutput(draft.workspace!)
   expect(score.complete).toBe(true)
   expect(score.daily.score).toBeGreaterThan(projectRosterOutput(base).daily.score)
+ })
+ it('correctly calculates 120% skill bonus for 蕾缪安+能天使+空弦 in max-level dormitories', () => {
+  const c = learned.candidates.find(c => c.name === '合集同站：空弦+能天使+蕾缪安')!
+  expect(c).toBeDefined()
+  const config = createDefaultConfig()
+  const tradingRoom = config.rooms.find(r => r.type === 'trading')!
+  tradingRoom.operatorIds = [
+   OPERATORS.find(o => o.name === '蕾缪安')!.charId,
+   OPERATORS.find(o => o.name === '能天使')!.charId,
+   OPERATORS.find(o => o.name === '空弦')!.charId,
+  ]
+  const evaluation = evaluateOperators(tradingRoom, config)
+  // 蕾缪安 45% (20% + 25%) + 能天使 35% + 空弦 40% (4间5级宿舍*2%) = 120%
+  expect(evaluation.skillBonus).toBe(120)
+  expect(evaluation.efficiencyPercent).toBe(223)
  })
 })
