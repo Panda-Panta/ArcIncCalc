@@ -394,9 +394,13 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
 export const HIGH_EFFICIENCY_SINGLETONS = {
   goldManufacture: ['砾', '引星棘刺', '斑点', '夜烟', '温米', '铸铁'],
   expManufacture: ['白雪', '霜叶', '红豆', '截云', '断罪者', '食铁兽', '帕拉斯', '卡达', '豆苗', '圣约送葬人'],
-  generalManufacture: ['调香师', '史都华德', '杰西卡', '水月', '蛇屠箱'],
-  // 跑单分支：严禁但书、龙舌兰、可露希尔常驻，严禁空进驻企鹅物流
-  trading: ['雪雉', '古米', '月见夜', '空爆', '缠丸', '伺夜', '能天使', '贝洛内'],
+  generalManufacture: ['调香师', '史都华德', '蛇屠箱', '深律', '霜华'],
+  // 跑单分支：严禁但书、龙舌兰、可露希尔常驻，严禁空进驻企鹅物流，严禁包含原子核心
+  trading: ['雪雉', '古米', '月见夜', '空爆', '缠丸', '夜烟', '芬', '暗索', '远山'],
   control: ['缪尔赛思', '凯尔希', '阿米娅', '琴柳', '玛恩纳', '维娜·维多利亚', '早露', '灰风'],
   durinRace: ['杜林', '桃金娘', '褐果', '至简'],
 } as const
+
+export const ALL_ATOMIC_CORE_NAMES: ReadonlySet<string> = new Set(
+  ATOMIC_UNITS.flatMap((u) => u.coreMembers.map((m) => m.name)),
+)

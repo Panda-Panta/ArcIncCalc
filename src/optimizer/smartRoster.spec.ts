@@ -51,13 +51,24 @@ describe('smartRoster generation with 3-phase optimization', () => {
       }
     }
 
-    // Check backups are unique and do not overlap with mains
-    const backups = Object.values(workspace.mainPlan.facilities).flatMap((r) =>
+    // Check backups are unique and do not overlap with mains in working facilities
+    const workingRooms = Object.values(workspace.mainPlan.facilities).filter((r) => r.type !== 'dormitory')
+    const backups = workingRooms.flatMap((r) =>
       r.slots.flatMap((s) => s.replacements.map(id))
     )
     expect(new Set(backups).size).toBe(backups.length)
     const mainList = mains(workspace)
     expect(backups.every((b) => !mainList.includes(b))).toBe(true)
+
+    // Verify Fiammetta in dormitory has 3 swap targets from active production rooms
+    const fiamSlot = Object.values(workspace.mainPlan.facilities)
+      .filter((r) => r.type === 'dormitory')
+      .flatMap((r) => r.slots)
+      .find((s) => s.occupant.kind === 'operator' && id(s.occupant.operatorId) === 'char_300_phenxi')
+    if (fiamSlot) {
+      expect(fiamSlot.replacements.length).toBe(3)
+      expect(fiamSlot.replacements.every((rep) => mainList.includes(id(rep)))).toBe(true)
+    }
 
     // Verify physical validity
     expect(validatePhysicalRoster(workspace)).toEqual([])

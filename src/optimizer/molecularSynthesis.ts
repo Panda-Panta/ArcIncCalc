@@ -3,6 +3,7 @@ import { resolveOperatorCharId as resolveId } from '../workbench/compat/mowerJso
 import { type OperatorInventory, type OwnedOperatorInput } from '../domain/operatorInventory'
 import { isShiftRunOperator } from '../scheduler/scheduleAdapter'
 import {
+  ALL_ATOMIC_CORE_NAMES,
   ATOMIC_UNITS,
   HIGH_EFFICIENCY_SINGLETONS,
   type AtomicMember,
@@ -10,6 +11,7 @@ import {
   type AtomicUnitConfPolicy,
 } from './riicAtomicUnits'
 import { assignBackups, validatePhysicalRoster } from './rosterDraft'
+import { applySmartDormitoryPolicy } from '../scheduler/smartDormitoryPolicy'
 import { runScheduleSimulationBridge } from '../workbench/scheduleSimulationBridge'
 import { scoreProduction } from './productionObjective'
 
@@ -208,79 +210,74 @@ export function generateMolecularCandidates(
       const perceptionCheck = checkAtomicAvailability(perceptionAtom, inventory, powerCount)
 
       if (pozemkaCheck.available && perceptionCheck.available) {
-        const tRoom = tradingRooms[tradeRoomIndex++]!
-        const groupId = '感知信息+鸿雪组'
+        // Find a trading room with at least 2 slots
+        const eligibleIdx = tradingRooms.findIndex((r, idx) => idx >= tradeRoomIndex && r.slots.length >= 2)
+        if (eligibleIdx !== -1) {
+          const tRoom = tradingRooms[eligibleIdx]!
+          tradeRoomIndex = eligibleIdx + 1
+          const groupId = '感知信息+鸿雪组'
 
-        // 1. Pozemka + Tuyet in trade room
-        placeOperator(tRoom.roomId, 0, '鸿雪', groupId)
-        placeOperator(tRoom.roomId, 1, '图耶', groupId)
+          // 1. Pozemka + Tuyet in trade room
+          placeOperator(tRoom.roomId, 0, '鸿雪', groupId)
+          placeOperator(tRoom.roomId, 1, '图耶', groupId)
 
-        // 3rd in trade room: Ebenholz (黑键) if pure perception, or Kirara (绮良)
-        if (tRoom.slots.length >= 3) {
-          const thirdOp = isFireworks ? '绮良' : '黑键'
-          placeOperator(tRoom.roomId, 2, thirdOp, groupId)
-        }
-
-        // 2. Rosmontis (迷迭香) in 1st manufacture room
-        if (manufactureRooms.length > 0) {
-          const mRoom = manufactureRooms[0]!
-          placeOperator(mRoom.roomId, 0, '迷迭香', groupId)
-        }
-
-        // 3. Whisperain (絮雨) in office
-        if (contactRoom) {
-          placeOperator('contact', 0, '絮雨', groupId)
-        }
-
-        // 4. Place 4 Durins in base: Myrtle, Durin, Chestnut in dorms, Minimalist in manufacture or dorm
-        const dormRooms = Object.values(ws.mainPlan.facilities).filter((r) => r.type === 'dormitory')
-        const durinDormOps = ['杜林', '桃金娘', '褐果']
-        let durinPlaced = 0
-        for (const dorm of dormRooms) {
-          const startIdx = dorm.slots.length > 2 ? 2 : 0
-          for (let sIdx = startIdx; sIdx < dorm.slots.length; sIdx++) {
-            if (durinPlaced < durinDormOps.length) {
-              const op = durinDormOps[durinPlaced]!
-              const opId = resolveId(op)
-              if (!occupied.has(opId) && dorm.slots[sIdx]!.occupant.kind !== 'operator') {
-                dorm.slots[sIdx]!.occupant = { kind: 'operator', operatorId: opId }
-                dorm.slots[sIdx]!.groupId = groupId
-                occupied.add(opId)
-                durinPlaced++
-              }
-            }
+          // 3rd in trade room: Ebenholz (黑键) if pure perception, or Kirara (绮良)
+          if (tRoom.slots.length >= 3) {
+            const thirdOp = isFireworks ? '绮良' : '黑键'
+            placeOperator(tRoom.roomId, 2, thirdOp, groupId)
           }
-        }
 
-        // Minimalist: place in manufacture if available, else in dorm
-        if (manufactureRooms.length > 1 && manufactureRooms[1]!.slots.length > 0) {
-          placeOperator(manufactureRooms[1]!.roomId, 0, '至简', groupId)
-        } else if (dormRooms.length > 0) {
+          // 2. Rosmontis (迷迭香) in 1st manufacture room
+          if (manufactureRooms.length > 0) {
+            const mRoom = manufactureRooms[0]!
+            placeOperator(mRoom.roomId, 0, '迷迭香', groupId)
+          }
+
+          // 3. Whisperain (絮雨) in office
+          if (contactRoom) {
+            placeOperator('contact', 0, '絮雨', groupId)
+          }
+
+          // 4. Minimalist: place in manufacture if available
+          if (manufactureRooms.length > 1 && manufactureRooms[1]!.slots.length > 0) {
+            placeOperator(manufactureRooms[1]!.roomId, 0, '至简', groupId)
+          }
+
+          // 5. Place remaining 3 Durins in dormitories: Myrtle, Durin, Chestnut
+          const dormRooms = Object.values(ws.mainPlan.facilities).filter((r) => r.type === 'dormitory')
+          const durinDormOps = ['杜林', '桃金娘', '褐果']
+          let durinPlaced = 0
           for (const dorm of dormRooms) {
             const startIdx = dorm.slots.length > 2 ? 2 : 0
             for (let sIdx = startIdx; sIdx < dorm.slots.length; sIdx++) {
-              if (dorm.slots[sIdx]!.occupant.kind !== 'operator') {
-                dorm.slots[sIdx]!.occupant = { kind: 'operator', operatorId: resolveId('至简') }
-                dorm.slots[sIdx]!.groupId = groupId
-                occupied.add(resolveId('至简'))
-                break
+              if (durinPlaced < durinDormOps.length) {
+                const op = durinDormOps[durinPlaced]!
+                const opId = resolveId(op)
+                if (!occupied.has(opId) && dorm.slots[sIdx]!.occupant.kind !== 'operator') {
+                  dorm.slots[sIdx]!.occupant = { kind: 'operator', operatorId: opId }
+                  dorm.slots[sIdx]!.groupId = groupId
+                  occupied.add(opId)
+                  durinPlaced++
+                }
               }
             }
-            if (occupied.has(resolveId('至简'))) break
           }
-        }
 
-        // If Fireworks dual-core:
-        if (isFireworks && tradingRooms.length >= 2) {
-          const tRoom2 = tradingRooms[tradeRoomIndex++]!
-          placeOperator(tRoom2.roomId, 0, '乌有', groupId)
-          if (centralRoom) {
-            placeOperator('central', 0, '夕', groupId)
-            placeOperator('central', 1, '令', groupId)
+          // If Fireworks dual-core:
+          if (isFireworks && tradingRooms.length >= 2) {
+            const tRoom2 = tradingRooms.find((r, idx) => idx >= tradeRoomIndex && r.slots.length >= 1)
+            if (tRoom2) {
+              tradeRoomIndex = tradingRooms.indexOf(tRoom2) + 1
+              placeOperator(tRoom2.roomId, 0, '乌有', groupId)
+              if (centralRoom) {
+                placeOperator('central', 0, '夕', groupId)
+                placeOperator('central', 1, '令', groupId)
+              }
+            }
           }
-        }
 
-        appliedAtoms.push('pozemka_durin', perceptionAtom.id)
+          appliedAtoms.push('pozemka_durin', perceptionAtom.id)
+        }
       }
     }
 
@@ -288,10 +285,11 @@ export function generateMolecularCandidates(
     while (tradeRoomIndex < tradingRooms.length) {
       const tRoom = tradingRooms[tradeRoomIndex++]!
 
-      // Try Laterano
+      // Try Laterano (requires at least 2 slots)
       const lateranoAtom = ATOMIC_UNITS.find((a) => a.id === 'laterano')!
       const lateranoCheck = checkAtomicAvailability(lateranoAtom, inventory, powerCount)
       if (
+        tRoom.slots.length >= 2 &&
         lateranoCheck.available &&
         !occupied.has(resolveId('蕾缪安')) &&
         !occupied.has(resolveId('能天使'))
@@ -307,10 +305,11 @@ export function generateMolecularCandidates(
         continue
       }
 
-      // Try Penguin Logistics (德克萨斯 + 拉普兰德, excluding Sora)
+      // Try Penguin Logistics (德克萨斯 + 拉普兰德, excluding Sora; requires at least 2 slots)
       const penguinAtom = ATOMIC_UNITS.find((a) => a.id === 'penguin_logistics')!
       const penguinCheck = checkAtomicAvailability(penguinAtom, inventory, powerCount)
       if (
+        tRoom.slots.length >= 2 &&
         penguinCheck.available &&
         !occupied.has(resolveId('德克萨斯')) &&
         !occupied.has(resolveId('拉普兰德'))
@@ -329,10 +328,11 @@ export function generateMolecularCandidates(
         continue
       }
 
-      // Try Siracusa (伺夜 + 贝洛内)
+      // Try Siracusa (伺夜 + 贝洛内; requires at least 2 slots)
       const siracusaAtom = ATOMIC_UNITS.find((a) => a.id === 'siracusa')!
       const siracusaCheck = checkAtomicAvailability(siracusaAtom, inventory, powerCount)
       if (
+        tRoom.slots.length >= 2 &&
         siracusaCheck.available &&
         !occupied.has(resolveId('伺夜')) &&
         !occupied.has(resolveId('贝洛内'))
@@ -347,10 +347,11 @@ export function generateMolecularCandidates(
         continue
       }
 
-      // Try Karlan (银灰 + 孑 + 灵知)
+      // Try Karlan (银灰 + 孑 + 灵知; requires at least 2 slots)
       const karlanAtom = ATOMIC_UNITS.find((a) => a.id === 'karlan')!
       const karlanCheck = checkAtomicAvailability(karlanAtom, inventory, powerCount)
       if (
+        tRoom.slots.length >= 2 &&
         karlanCheck.available &&
         !occupied.has(resolveId('银灰')) &&
         !occupied.has(resolveId('孑')) &&
@@ -478,28 +479,38 @@ export function generateMolecularCandidates(
       appliedAtoms.push('pinus_sylvestris')
     }
 
-    // Molecule B: Automation Molecule (Wendy + Eunectes + Greyy + Lancet-2)
+    // Molecule B: Automation Molecule (Wendy + Eunectes + Greyy + Lancet-2 + Purestream)
     const autoAtom = ATOMIC_UNITS.find((a) => a.id === 'automation')!
     const autoCheck = checkAtomicAvailability(autoAtom, inventory, powerCount, 'gold')
-    if (autoCheck.available && !occupied.has(resolveId('温蒂'))) {
+    if (autoCheck.available && !occupied.has(resolveId('温蒂')) && !occupied.has(resolveId('清流'))) {
       const autoGroupId = '自动化组'
-      const goldRoom = manufactureRooms.find((r) => r.product === 'gold' && r.slots.some((s) => s.occupant.kind !== 'operator')) ?? manufactureRooms[0]
+      const minRequiredSlots = powerCount >= 3 ? 3 : 2
+      const goldRoom = manufactureRooms.find(
+        (r) =>
+          r.product === 'gold' &&
+          r.slots.filter((s) => s.occupant.kind !== 'operator').length >= minRequiredSlots,
+      ) ?? manufactureRooms.find(
+        (r) =>
+          r.product === 'gold' &&
+          r.slots.filter((s) => s.occupant.kind !== 'operator').length >= 2,
+      )
 
       if (goldRoom) {
-        // Place Wendy
-        const emptySlot1 = goldRoom.slots.findIndex((s) => s.occupant.kind !== 'operator')
-        if (emptySlot1 !== -1) placeOperator(goldRoom.roomId, emptySlot1, '温蒂', autoGroupId)
+        const emptySlots = goldRoom.slots
+          .map((s, idx) => (s.occupant.kind !== 'operator' ? idx : -1))
+          .filter((idx) => idx !== -1)
+
+        // Always place Wendy and Purestream together in gold room
+        placeOperator(goldRoom.roomId, emptySlots[0]!, '温蒂', autoGroupId)
+        placeOperator(goldRoom.roomId, emptySlots[1]!, '清流', autoGroupId)
 
         if (powerCount >= 3) {
-          // 3-Power: Eunectes in manufacture
-          const emptySlot2 = goldRoom.slots.findIndex((s) => s.occupant.kind !== 'operator')
-          if (emptySlot2 !== -1) placeOperator(goldRoom.roomId, emptySlot2, '森蚺', autoGroupId)
-
-          // 3rd member: Purestream if gold, else from whitelist
-          const emptySlot3 = goldRoom.slots.findIndex((s) => s.occupant.kind !== 'operator')
-          if (emptySlot3 !== -1) {
-            const whitelistOp = autoCheck.thirdMemberWhitelist?.find((n) => !occupied.has(resolveId(n))) ?? '清流'
-            placeOperator(goldRoom.roomId, emptySlot3, whitelistOp, autoGroupId)
+          // 3-Power: Eunectes in manufacture 3rd slot if available, else central
+          if (emptySlots.length >= 3) {
+            placeOperator(goldRoom.roomId, emptySlots[2]!, '森蚺', autoGroupId)
+          } else if (centralRoom) {
+            const emptyCentral = centralRoom.slots.findIndex((s) => s.occupant.kind !== 'operator')
+            if (emptyCentral !== -1) placeOperator('central', emptyCentral, '森蚺', autoGroupId)
           }
 
           // Greyy in power room
@@ -520,14 +531,17 @@ export function generateMolecularCandidates(
             placeOperator(powerRooms[0]!.roomId, 0, '承曦格雷伊', autoGroupId)
           }
 
-          // 2-power conf policy: Lancet-2 in workaholic
+          // 2-power conf policy: Lancet-2 in workaholic (0 mood, prohibited from dorms)
           confWorkaholic.add('Lancet-2')
 
-          // 3rd member in Wendy's room from whitelist
-          const emptySlot3 = goldRoom.slots.findIndex((s) => s.occupant.kind !== 'operator')
-          if (emptySlot3 !== -1) {
-            const whitelistOp = autoCheck.thirdMemberWhitelist?.find((n) => !occupied.has(resolveId(n))) ?? '清流'
-            placeOperator(goldRoom.roomId, emptySlot3, whitelistOp, autoGroupId)
+          // If 3rd slot available in Wendy's gold room, fill from whitelist
+          if (emptySlots.length >= 3) {
+            const whitelistOp = autoCheck.thirdMemberWhitelist?.find(
+              (n) => !occupied.has(resolveId(n)) && n !== '清流',
+            )
+            if (whitelistOp) {
+              placeOperator(goldRoom.roomId, emptySlots[2]!, whitelistOp, autoGroupId)
+            }
           }
         }
 
@@ -784,6 +798,7 @@ export function generateMolecularCandidates(
                 o.matchesMaximumSkills &&
                 !currentlyReserved.has(o.charId) &&
                 !isShiftRunOperator(o.charId) &&
+                !ALL_ATOMIC_CORE_NAMES.has(o.name) &&
                 o.name !== '菲亚梅塔',
             )
             if (fallbackOp) {
@@ -809,6 +824,13 @@ export function generateMolecularCandidates(
     ws.mainPlan.conf.resting_priority = (confPolicy.restingPriorityLow ?? []).map(resolveId)
     ws.mainPlan.conf.ope_resting_priority = (confPolicy.restingPriorityHigh ?? []).map(resolveId)
     ws.mainPlan.conf.workaholic = (confPolicy.workaholic ?? []).map(resolveId)
+
+    // Apply smart dormitory keepers, Fiammetta 3 swap targets, and Free beds preservation
+    applySmartDormitoryPolicy(ws, {
+      entries: [..._entries],
+      candidateOperatorIds: _entries.map((e) => e.operator),
+      force: true,
+    })
 
     // Physical roster validation
     const physErrors = validatePhysicalRoster(ws)
