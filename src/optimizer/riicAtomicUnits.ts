@@ -247,11 +247,11 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     ],
   },
 
-  // 9. 槐琥阿罗玛 (2人核心，需暖机配置)
+  // 9. 槐琥阿罗玛 (2人核心，无第三人)
   {
     id: 'aroma_waaifu',
     name: '槐琥阿罗玛',
-    description: '阿罗玛+槐琥进驻赤金制造站。配置exhaust_require与rest_in_full进行暖机轮转。',
+    description: '阿罗玛+槐琥进驻赤金制造站。严格双人核心，无第三人。配置exhaust_require与rest_in_full进行暖机轮转。',
     preferredFacilityType: 'manufacture',
     preferredProduct: 'gold',
     perCapitaOutput: 65,
@@ -287,7 +287,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
   {
     id: 'pure_perception',
     name: '纯感知信息体系',
-    description: '迷迭香制造站、絮雨办公室、黑键贸易站。独立于人间烟火。',
+    description: '迷迭香制造站、絮雨办公室、黑键贸易站。爱丽丝与车尔尼进驻宿舍。独立于人间烟火。',
     preferredFacilityType: 'trading',
     perCapitaOutput: 35,
     coreMembers: [
@@ -297,6 +297,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     ],
     nonCoreMembers: [
       { name: '爱丽丝', roomType: 'dormitory' },
+      { name: '车尔尼', roomType: 'dormitory' },
       { name: '琴柳', roomType: 'central' },
     ],
   },
@@ -305,7 +306,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
   {
     id: 'perception_fireworks',
     name: '感知+人间烟火双核体系',
-    description: '迷迭香制造、絮雨办公室、黑键贸易1、乌有贸易2、夕与令中枢。双贸易站双核同驻。',
+    description: '迷迭香制造、絮雨办公室、黑键贸易1、乌有贸易2、夕与令中枢。爱丽丝与车尔尼进驻宿舍。双贸易站双核同驻。',
     preferredFacilityType: 'trading',
     perCapitaOutput: 36,
     coreMembers: [
@@ -319,6 +320,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     nonCoreMembers: [
       { name: '桑葚', roomType: 'office' },
       { name: '爱丽丝', roomType: 'dormitory' },
+      { name: '车尔尼', roomType: 'dormitory' },
     ],
   },
 
@@ -326,7 +328,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
   {
     id: 'pozemka_durin',
     name: '鸿雪4杜林体系',
-    description: '鸿雪+图耶进驻贸易站，4杜林（杜林/桃金娘/至简/褐果）进驻基建制造/宿舍。',
+    description: '鸿雪+图耶进驻贸易站，4杜林（杜林/桃金娘/至简/褐果）进驻基建制造/宿舍。第3人匹配绮良（虚拟赤金线）。',
     preferredFacilityType: 'trading',
     perCapitaOutput: 46,
     coreMembers: [
@@ -335,13 +337,12 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     ],
     nonCoreMembers: [
       { name: '绮良', roomType: 'trading' },
-      { name: '黑键', roomType: 'trading' },
     ],
     externalRequirements: [
       {
         name: '4名杜林族进驻基建',
         count: 4,
-        pool: ['杜林', '桃金娘', '褐果', '至简', '褐果'],
+        pool: ['杜林', '桃金娘', '褐果', '至简'],
       },
     ],
   },
@@ -364,19 +365,16 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     ],
   },
 
-  // 15. 拉特兰商道 (2人核心)
+  // 15. 拉特兰商道 (2人双核心，无第三人)
   {
     id: 'laterano',
     name: '拉特兰商道',
-    description: '蕾缪安+能天使进驻贸易站。空弦为非核心辅助。',
+    description: '蕾缪安+能天使进驻贸易站。严格双人核心，无第三人。',
     preferredFacilityType: 'trading',
     perCapitaOutput: 43,
     coreMembers: [
       { name: '蕾缪安', roomType: 'trading' },
       { name: '能天使', roomType: 'trading' },
-    ],
-    nonCoreMembers: [
-      { name: '空弦', roomType: 'trading' },
     ],
   },
 

@@ -324,10 +324,9 @@ export function generateMolecularCandidates(
           placeOperator(tRoom.roomId, 0, '鸿雪', groupId)
           placeOperator(tRoom.roomId, 1, '图耶', groupId)
 
-          // 3rd in trade room: Ebenholz (黑键) if pure perception, or Kirara (绮良)
+          // 3rd in trade room: Kirara (绮良) provides virtual gold line for Pozemka
           if (tRoom.slots.length >= 3) {
-            const thirdOp = isFireworks ? '绮良' : '黑键'
-            placeOperator(tRoom.roomId, 2, thirdOp, groupId)
+            placeOperator(tRoom.roomId, 2, '绮良', groupId)
           }
 
           // 2. Rosmontis (迷迭香) in 1st manufacture room
@@ -358,15 +357,19 @@ export function generateMolecularCandidates(
           // Requirement 5: Chestnut as pendant operator (Workshop -> Training -> lowest recovery dorm slot)
           placePendantOperatorHelper('褐果', groupId)
 
-          // If Fireworks dual-core:
-          if (isFireworks && tradingRooms.length >= 2) {
+          // 6. Trade room 2: Ebenholz (纯感知) or Wuyou (人间烟火)
+          if (tradingRooms.length >= 2) {
             const tRoom2 = tradingRooms.find((r, idx) => idx >= tradeRoomIndex && r.slots.length >= 1)
             if (tRoom2) {
               tradeRoomIndex = tradingRooms.indexOf(tRoom2) + 1
-              placeOperator(tRoom2.roomId, 0, '乌有', groupId)
-              if (centralRoom) {
-                placeOperator('central', 0, '夕', groupId)
-                placeOperator('central', 1, '令', groupId)
+              if (isFireworks) {
+                placeOperator(tRoom2.roomId, 0, '乌有', groupId)
+                if (centralRoom) {
+                  placeOperator('central', 0, '夕', groupId)
+                  placeOperator('central', 1, '令', groupId)
+                }
+              } else {
+                placeOperator(tRoom2.roomId, 0, '黑键', groupId)
               }
             }
           }
@@ -392,13 +395,6 @@ export function generateMolecularCandidates(
         const groupId = '拉特兰商道'
         placeOperator(tRoom.roomId, 0, '蕾缪安', groupId)
         placeOperator(tRoom.roomId, 1, '能天使', groupId)
-        if (tRoom.slots.length >= 3) {
-          const validThirds = ['空弦', '雪雉', '古米', '月见夜', '空爆', '缠丸', '夜烟']
-          const third = validThirds.find(isAvailableSingleton)
-          if (third) {
-            placeOperator(tRoom.roomId, 2, third, groupId)
-          }
-        }
         appliedAtoms.push('laterano')
         continue
       }
@@ -519,11 +515,7 @@ export function generateMolecularCandidates(
             } else if (placed === 1) {
               placeOperator(mRoom.roomId, sIdx, '槐琥', aromaGroupId)
               placed++
-            } else {
-              // 3rd slot: metal singleton
-              const metalOps = HIGH_EFFICIENCY_SINGLETONS.goldManufacture.filter(isAvailableSingleton)
-              if (metalOps.length > 0) placeOperator(mRoom.roomId, sIdx, metalOps[0]!, aromaGroupId)
-              break
+              break // Strictly 2 persons, NO third person!
             }
           }
         }
