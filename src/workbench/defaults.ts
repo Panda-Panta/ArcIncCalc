@@ -25,7 +25,8 @@ function createDefaultFacility(roomId: MowerRoomId): MowerFacility {
     if (roomId === 'room_3_1' || roomId === 'room_3_2') {
       return { roomId, type: 'trading', level: 3, product: 'money', slots: createDefaultSlots(3) }
     }
-    return { roomId, type: 'manufacture', level: 3, product: 'gold', slots: createDefaultSlots(3) }
+    const product = roomId === 'room_2_1' || roomId === 'room_2_2' ? 'exp' : 'gold'
+    return { roomId, type: 'manufacture', level: 3, product, slots: createDefaultSlots(3) }
   }
   if (roomId === 'central') {
     return { roomId, type: 'central', level: 5, slots: createDefaultSlots(5) }

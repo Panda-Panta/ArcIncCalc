@@ -33,4 +33,12 @@ describe('createDefaultWorkspace', () => {
     expect(conf.refresh_drained).toEqual([])
     expect(conf.ope_resting_priority).toEqual([])
   })
+
+  it('initializes default 243 manufacture rooms with 2 gold and 2 exp', () => {
+    const ws = createDefaultWorkspace()
+    expect(ws.mainPlan.facilities.room_1_1.product).toBe('gold')
+    expect(ws.mainPlan.facilities.room_1_2.product).toBe('gold')
+    expect(ws.mainPlan.facilities.room_2_1.product).toBe('exp')
+    expect(ws.mainPlan.facilities.room_2_2.product).toBe('exp')
+  })
 })

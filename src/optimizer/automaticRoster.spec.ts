@@ -65,7 +65,8 @@ describe('bounded complete automatic roster drafts',()=>{
   expect(new Set(result.trials.map(t=>t.seed)).size).toBe(2)
  },30000)
  it('preserves a learned cross-room group and its chosen backups after filling and optimization',()=>{
-  const result=generateAutomaticRoster(createDefaultWorkspace(),allOwned,{seed:901,trials:2})
+  const base=createDefaultWorkspace();for(const r of Object.values(base.mainPlan.facilities))if(r.type==='manufacture')r.product='gold'
+  const result=generateAutomaticRoster(base,allOwned,{seed:901,trials:2})
   const selections=result.trials[result.selectedTrial!]!.crossRoomSelections
   expect(selections?.length).toBeGreaterThan(0)
   const workspace=result.draft!.workspace!,compiled=compileRosterSchedule(workspace)
