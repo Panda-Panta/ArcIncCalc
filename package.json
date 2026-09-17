@@ -11,7 +11,9 @@
     "sync:tools": "powershell -ExecutionPolicy Bypass -File scripts/sync-tools.ps1",
     "audit:data": "node scripts/audit-riic-data.mjs \"C:/Users/Panda-Panta/Downloads/Compressed/ArknightsGameData-master/zh_CN/gamedata/excel\"",
     "test": "vitest run",
-    "typecheck": "vue-tsc -b"
+    "typecheck": "vue-tsc -b",
+    "diagnose:roster": "tsx scripts/diagnose_roster.ts",
+    "check:skills": "node scripts/check_skills.mjs"
   },
   "dependencies": {
     "html-to-image": "^1.11.13",
