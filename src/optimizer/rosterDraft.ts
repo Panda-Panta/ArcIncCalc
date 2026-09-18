@@ -195,6 +195,7 @@ export function assignBackups(draft:RosterWorkspace,inventory:OperatorInventory,
  const reserved=new Set(Object.values(draft.mainPlan.facilities).flatMap(r=>r.slots.flatMap(s=>[...(s.occupant.kind==='operator'?[resolveId(s.occupant.operatorId)]:[]),...s.replacements.map(resolveId)])))
  const positions=added.filter(s=>draft.mainPlan.facilities[s.roomId].type!=='dormitory')
  const roomTypes=new Map(Object.entries(CANDIDATE_FACILITY_TYPES).map(([game,type])=>[type,game]))
+ roomTypes.set('factory', 'WORKSHOP')
  const pools=positions.map(p=>inventory.operators.filter(o=>o.matchesMaximumSkills&&!reserved.has(o.charId)&&!isShiftRunOperator(o.charId)&&o.name!=='菲亚梅塔'&&!ALL_ATOMIC_CORE_NAMES.has(o.name)&&o.skills.some(s=>s.roomType===roomTypes.get(draft.mainPlan.facilities[p.roomId].type))).map(o=>o.charId))
  // Bipartite augmentation avoids consuming a scarce multi-facility backup greedily.
  const owner=new Map<string,number>()
@@ -204,7 +205,14 @@ export function assignBackups(draft:RosterWorkspace,inventory:OperatorInventory,
  }
  positions.forEach((_,i)=>match(i,new Set()))
  const matched=new Map([...owner].map(([id,index])=>[index,id]))
- positions.forEach((p,i)=>{const id=matched.get(i);if(id)draft.mainPlan.facilities[p.roomId].slots[p.slotIndex]!.replacements=[id]})
+ positions.forEach((p,i)=>{
+  let id=matched.get(i)
+  if(!id){
+   const fallback=inventory.operators.find(o=>o.matchesMaximumSkills&&!reserved.has(o.charId)&&!isShiftRunOperator(o.charId)&&o.name!=='菲亚梅塔'&&!ALL_ATOMIC_CORE_NAMES.has(o.name))
+   if(fallback){id=fallback.charId;reserved.add(id)}
+  }
+  if(id)draft.mainPlan.facilities[p.roomId].slots[p.slotIndex]!.replacements=[id]
+ })
  const groupSizes=new Map<string,number>()
  for(const p of positions){const group=draft.mainPlan.facilities[p.roomId].slots[p.slotIndex]!.groupId??`${p.roomId}:${p.slotIndex}`;groupSizes.set(group,(groupSizes.get(group)??0)+1)}
  return {freeBeds:Object.values(draft.mainPlan.facilities).filter(r=>r.type==='dormitory').reduce((n,r)=>n+r.slots.filter(s=>s.occupant.kind==='free').length,0),minimumFreeBedsForNewGroup:Math.max(0,...groupSizes.values()),missingReplacementIds:positions.flatMap((p,i)=>matched.has(i)?[]:[p.operatorId])}

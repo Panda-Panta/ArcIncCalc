@@ -4,35 +4,70 @@ import { type OperatorInventory } from '../domain/operatorInventory'
 import {
   ATOMIC_UNITS,
   HIGH_EFFICIENCY_SINGLETONS,
+  ALL_ATOMIC_CORE_NAMES,
+  type AtomicUnit,
 } from './riicAtomicUnits'
-import { assignBackups } from './rosterDraft'
 import { placePendantOperator } from '../scheduler/smartDormitoryPolicy'
+import { isShiftRunOperator } from '../scheduler/scheduleAdapter'
 
 export interface ReplacementResult {
   workspace: RosterWorkspace
   swappedCount: number
+  score?: number
   logs: string[]
 }
 
+export interface ReplacementOptions {
+  powerCount?: number
+  lockedPositions?: Set<string>
+  lockedOperators?: Set<string>
+  baselineScore?: number
+  evaluator?: (workspace: RosterWorkspace) => number
+}
+
+function isPendantOperator(name: string, ws: RosterWorkspace): boolean {
+  const allFacs = Object.values(ws.mainPlan.facilities)
+  const hasPozemka = allFacs.some((f) =>
+    f.slots.some((s) => s.occupant.kind === 'operator' && resolveId(s.occupant.operatorId) === resolveId('鸿雪')),
+  )
+  if (hasPozemka && ['至简', '褐果', '杜林', '桃金娘', '黑', '绮良'].includes(name)) {
+    return true
+  }
+
+  const hasRosmontis = allFacs.some((f) =>
+    f.slots.some((s) => s.occupant.kind === 'operator' && resolveId(s.occupant.operatorId) === resolveId('迷迭香')),
+  )
+  if (hasRosmontis && ['絮雨', '爱丽丝', '车尔尼', '琴柳', '黑键'].includes(name)) {
+    return true
+  }
+
+  const hasWeedy = allFacs.some((f) =>
+    f.slots.some((s) => s.occupant.kind === 'operator' && resolveId(s.occupant.operatorId) === resolveId('温蒂')),
+  )
+  if (hasWeedy && ['Lancet-2', '承曦格雷伊', '森蚺'].includes(name)) {
+    return true
+  }
+
+  return false
+}
+
 /**
- * Stage 3 Global Optimization:
- * 1. Global audit of all groups & singletons in production rooms (manufacture, trading).
- * 2. If a pendant operator (e.g. Minimalist under 2-power) occupies a production room,
- *    relocate it to non-production facilities (factory, train, or lowest recovery dorm slot).
- * 3. Compare in-service units with unassigned combinations or singletons of equal size.
- *    If an unassigned combination/singleton has strictly higher per-capita output, swap it in.
- * 4. Loop iteratively until convergence (no further beneficial replacement targets).
+ * Stage 3 Global Optimization (Rules 1, 2, 3, 5, 6):
+ * 1. Check powerCount: if powerCount <= 2, Minimalist (至简) is strictly prohibited from manufacture.
+ * 2. Globally inspect all units and singletons in production rooms (manufacture, trading).
+ * 3. Match candidate replacements of the EXACT SAME HEADCOUNT (1-to-1, 2-to-2, 3-to-3).
+ * 4. If any operator being swapped out is a pendant, relocate them to non-production facilities
+ *    (factory -> train -> lowest-recovery dorm position).
+ * 5. Verify dynamic simulation: only accept swaps where newScore > currentScore.
+ *    If score degrades or does not improve, rollback immediately to guarantee monotonicity!
+ * 6. Repeat global detection loop iteratively until no further beneficial replacements exist.
  */
 export function runGlobalPerCapitaReplacement(
   base: RosterWorkspace,
   inventory: OperatorInventory,
-  options: {
-    powerCount?: number
-    lockedPositions?: Set<string>
-    lockedOperators?: Set<string>
-  } = {},
+  options: ReplacementOptions = {},
 ): ReplacementResult {
-  const ws = structuredClone(base)
+  let ws = structuredClone(base)
   const logs: string[] = []
   let swappedCount = 0
 
@@ -42,6 +77,8 @@ export function runGlobalPerCapitaReplacement(
   const powerRooms = Object.values(ws.mainPlan.facilities).filter((r) => r.type === 'power')
   const powerCount = options.powerCount ?? powerRooms.length
 
+  let currentScore = options.baselineScore ?? (options.evaluator ? options.evaluator(ws) : 0)
+
   const ownedNames = new Set(
     inventory.operators.filter((o) => o.matchesMaximumSkills).map((o) => o.name),
   )
@@ -49,8 +86,7 @@ export function runGlobalPerCapitaReplacement(
   // ----------------------------------------------------
   // Step 1: Detect and Relocate Misplaced Pendants
   // ----------------------------------------------------
-  // Minimalist (至简) check under 2-power constraint:
-  if (powerCount === 2) {
+  if (powerCount <= 2) {
     for (const [rId, fac] of Object.entries(ws.mainPlan.facilities)) {
       if (fac.type !== 'manufacture') continue
       for (let sIdx = 0; sIdx < fac.slots.length; sIdx++) {
@@ -61,7 +97,6 @@ export function runGlobalPerCapitaReplacement(
           !lockedPositions.has(`${rId}:${sIdx}`) &&
           !lockedOperators.has(resolveId('至简'))
         ) {
-          // Prohibited from manufacture! Remove and place in auxiliary
           slot.occupant = { kind: 'empty' }
           slot.groupId = null
           slot.replacements = []
@@ -76,14 +111,48 @@ export function runGlobalPerCapitaReplacement(
     }
   }
 
+  function ensureValidBackups(targetWs: RosterWorkspace) {
+    const currentlyReserved = new Set(
+      Object.values(targetWs.mainPlan.facilities).flatMap((r) =>
+        r.slots.flatMap((s) => [
+          ...(s.occupant.kind === 'operator' ? [resolveId(s.occupant.operatorId)] : []),
+          ...s.replacements.map(resolveId),
+        ]),
+      ),
+    )
+
+    for (const room of Object.values(targetWs.mainPlan.facilities)) {
+      if (['manufacture', 'trading', 'power', 'central', 'meeting', 'factory', 'train'].includes(room.type)) {
+        for (const slot of room.slots) {
+          if (slot.occupant.kind === 'operator' && slot.replacements.length === 0) {
+            const fallbackOp = inventory.operators.find(
+              (o) =>
+                o.matchesMaximumSkills &&
+                !currentlyReserved.has(o.charId) &&
+                !lockedOperators.has(o.charId) &&
+                !isShiftRunOperator(o.charId) &&
+                !ALL_ATOMIC_CORE_NAMES.has(o.name) &&
+                o.name !== '菲亚梅塔',
+            )
+            if (fallbackOp) {
+              slot.replacements = [fallbackOp.charId]
+              currentlyReserved.add(fallbackOp.charId)
+            }
+          }
+        }
+      }
+    }
+  }
+
   // ----------------------------------------------------
-  // Step 2: Global Per-Capita Optimization Loop
+  // Step 2: Global Per-Capita Detection & Swap Loop (Rule 6)
   // ----------------------------------------------------
-  const MAX_ITERATIONS = 10
+  const MAX_ITERATIONS = 3
+  const triedSwaps = new Set<string>()
+
   for (let iter = 0; iter < MAX_ITERATIONS; iter++) {
     let changed = false
 
-    // Collect currently occupied operators across the entire base
     const occupied = new Set<string>()
     for (const fac of Object.values(ws.mainPlan.facilities)) {
       for (const slot of fac.slots) {
@@ -93,130 +162,231 @@ export function runGlobalPerCapitaReplacement(
       }
     }
 
-    // Inspect manufacture and trading rooms
     const productionRooms = Object.values(ws.mainPlan.facilities).filter(
       (r) => r.type === 'manufacture' || r.type === 'trading',
     )
+
+    interface ProposedSwap {
+      roomId: MowerRoomId
+      slotIndices: number[]
+      oldOps: { name: string; id: string; groupId: string | null }[]
+      oldPerCapita: number
+      candidate: AtomicUnit
+      candidatePerCapita: number
+      gain: number
+    }
+
+    const swapProposals: ProposedSwap[] = []
 
     for (const room of productionRooms) {
       const isManufacture = room.type === 'manufacture'
       const product = isManufacture ? room.product : 'money'
       const cap = room.slots.length
 
-      // Group consecutive or related slots in this room
-      // Identify current occupants in this room
-      const currentOps: { slotIdx: number; name: string; id: string }[] = []
+      const currentOps: { slotIdx: number; name: string; id: string; groupId: string | null }[] = []
       for (let idx = 0; idx < cap; idx++) {
         const slot = room.slots[idx]!
         if (slot.occupant.kind === 'operator') {
           const charId = resolveId(slot.occupant.operatorId)
           const opRecord = inventory.operators.find((o) => o.charId === charId)
-          currentOps.push({ slotIdx: idx, name: opRecord?.name ?? charId, id: charId })
+          currentOps.push({ slotIdx: idx, name: opRecord?.name ?? charId, id: charId, groupId: slot.groupId })
         }
       }
 
       if (currentOps.length === 0) continue
 
-      // Estimate current room's average per-capita output
-      const roomGroupId = room.slots.find((s) => s.groupId)?.groupId
-      const activeUnit = ATOMIC_UNITS.find(
-        (u) => roomGroupId?.includes(u.name) || u.coreMembers.every((m) => currentOps.some((co) => co.name === m.name)),
+      // Generate possible target subsets in this room (whole room or sub-groups)
+      const possibleSubsets: { slotIndices: number[]; ops: typeof currentOps; activeUnit?: AtomicUnit; currentPerCapita: number }[] = []
+
+      // Check whole room unit
+      const wholeRoomUnit = ATOMIC_UNITS.find(
+        (u) =>
+          u.coreMembers.length === currentOps.length &&
+          u.coreMembers.every((m) => currentOps.some((co) => co.name === m.name)),
       )
-
-      let currentPerCapita = activeUnit?.perCapitaOutput ?? 30 // default singleton baseline ~30%
-
-      // Check available candidate atomic units
-      const candidates = ATOMIC_UNITS.filter((u) => {
-        if (u.preferredFacilityType !== room.type) return false
-        if (isManufacture && u.preferredProduct !== 'any' && u.preferredProduct !== product) return false
-        if (u.perCapitaOutput === undefined || u.perCapitaOutput <= currentPerCapita) return false
-        if (u.coreMembers.length > cap) return false
-
-        // Check if all core members are owned and either free or currently in this room
-        const currentRoomOpIds = new Set(currentOps.map((co) => co.id))
-        for (const m of u.coreMembers) {
-          if (!ownedNames.has(m.name)) return false
-          const mId = resolveId(m.name)
-          if (lockedOperators.has(mId)) return false
-          if (occupied.has(mId) && !currentRoomOpIds.has(mId)) return false
+      if (wholeRoomUnit) {
+        possibleSubsets.push({
+          slotIndices: currentOps.map((co) => co.slotIdx),
+          ops: currentOps,
+          activeUnit: wholeRoomUnit,
+          currentPerCapita: wholeRoomUnit.perCapitaOutput ?? 30,
+        })
+      } else {
+        // Sub-group units (e.g. 2-person unit in a 3-person room)
+        for (const u of ATOMIC_UNITS) {
+          if (u.coreMembers.length < currentOps.length && u.coreMembers.length >= 2) {
+            const matchingOps = currentOps.filter((co) => u.coreMembers.some((m) => m.name === co.name))
+            if (matchingOps.length === u.coreMembers.length) {
+              possibleSubsets.push({
+                slotIndices: matchingOps.map((co) => co.slotIdx),
+                ops: matchingOps,
+                activeUnit: u,
+                currentPerCapita: u.perCapitaOutput ?? 30,
+              })
+            }
+          }
         }
-        return true
-      }).sort((a, b) => (b.perCapitaOutput ?? 0) - (a.perCapitaOutput ?? 0))
+        // Entire room as generic/singleton set
+        possibleSubsets.push({
+          slotIndices: currentOps.map((co) => co.slotIdx),
+          ops: currentOps,
+          currentPerCapita: 30,
+        })
 
-      if (candidates.length > 0) {
-        const bestCandidate = candidates[0]!
-        // Check if any slot in this room is locked
-        const hasLockedSlot = Array.from({ length: cap }, (_, idx) =>
-          lockedPositions.has(`${room.roomId}:${idx}`) || (room.slots[idx]?.occupant.kind === 'operator' && lockedOperators.has(resolveId(room.slots[idx]!.occupant.operatorId))),
-        ).some(Boolean)
-
-        if (!hasLockedSlot) {
-          logs.push(
-            `[全局置换] 设施 ${room.roomId}：当前人均产出 ${currentPerCapita}% 替换为 ${bestCandidate.name} (人均产出 ${bestCandidate.perCapitaOutput}%)`,
-          )
-
-          // Clear previous members from this room
-          for (let sIdx = 0; sIdx < cap; sIdx++) {
-            room.slots[sIdx]!.occupant = { kind: 'empty' }
-            room.slots[sIdx]!.groupId = null
-            room.slots[sIdx]!.replacements = []
-          }
-
-          // Place candidate core members
-          const newGroupId = `优化_${bestCandidate.name}`
-          bestCandidate.coreMembers.forEach((m, idx) => {
-            if (idx < cap) {
-              const mId = resolveId(m.name)
-              room.slots[idx]!.occupant = { kind: 'operator', operatorId: mId }
-              room.slots[idx]!.groupId = newGroupId
-              occupied.add(mId)
-            }
+        // Also if room has 3 slots, check pairs of slots (0,1 and 1,2)
+        if (cap === 3 && currentOps.length === 3) {
+          possibleSubsets.push({
+            slotIndices: [currentOps[0]!.slotIdx, currentOps[1]!.slotIdx],
+            ops: [currentOps[0]!, currentOps[1]!],
+            currentPerCapita: 30,
           })
+          possibleSubsets.push({
+            slotIndices: [currentOps[1]!.slotIdx, currentOps[2]!.slotIdx],
+            ops: [currentOps[1]!, currentOps[2]!],
+            currentPerCapita: 30,
+          })
+        }
+      }
 
-          // Fill remaining slots in this room if cap > coreMembers.length
-          for (let sIdx = bestCandidate.coreMembers.length; sIdx < cap; sIdx++) {
-            const pool = isManufacture
-              ? (product === 'exp' ? HIGH_EFFICIENCY_SINGLETONS.expManufacture : HIGH_EFFICIENCY_SINGLETONS.goldManufacture)
-              : HIGH_EFFICIENCY_SINGLETONS.trading
-            const freeSingleton = pool.find((name) => {
-              const id = resolveId(name)
-              return ownedNames.has(name) && !occupied.has(id) && !lockedOperators.has(id)
-            })
-            if (freeSingleton) {
-              const sId = resolveId(freeSingleton)
-              room.slots[sIdx]!.occupant = { kind: 'operator', operatorId: sId }
-              room.slots[sIdx]!.groupId = `${newGroupId}_散件`
-              occupied.add(sId)
-            }
+      for (const target of possibleSubsets) {
+        const K = target.slotIndices.length
+        if (K === 0) continue
+
+        const hasLocked = target.slotIndices.some(
+          (idx) =>
+            lockedPositions.has(`${room.roomId}:${idx}`) ||
+            (room.slots[idx]?.occupant.kind === 'operator' && lockedOperators.has(resolveId(room.slots[idx]!.occupant.operatorId))),
+        )
+        if (hasLocked) continue
+
+        const currentTargetOpIds = new Set(target.ops.map((o) => o.id))
+
+        // Match candidates of the EXACT SAME HEADCOUNT K
+        const candidateUnits = ATOMIC_UNITS.filter((u) => {
+          if (u.coreMembers.length !== K) return false // EXACT SAME headcount!
+          if (u.preferredFacilityType !== room.type) return false
+          if (isManufacture && u.preferredProduct !== 'any' && u.preferredProduct !== product) return false
+          if (u.perCapitaOutput === undefined || u.perCapitaOutput <= target.currentPerCapita) return false
+          if (powerCount <= 2 && isManufacture && u.coreMembers.some((m) => m.name === '至简')) return false
+
+          for (const m of u.coreMembers) {
+            if (!ownedNames.has(m.name)) return false
+            const mId = resolveId(m.name)
+            if (lockedOperators.has(mId)) return false
+            if (occupied.has(mId) && !currentTargetOpIds.has(mId)) return false
           }
+          return true
+        })
 
-          // Apply unit conf policy if any
-          if (bestCandidate.confPolicy) {
-            if (bestCandidate.confPolicy.exhaustRequire) {
-              for (const n of bestCandidate.confPolicy.exhaustRequire) {
-                if (!ws.mainPlan.conf.exhaust_require.includes(n)) ws.mainPlan.conf.exhaust_require.push(n)
-              }
-            }
-            if (bestCandidate.confPolicy.restInFull) {
-              for (const n of bestCandidate.confPolicy.restInFull) {
-                if (!ws.mainPlan.conf.rest_in_full.includes(n)) ws.mainPlan.conf.rest_in_full.push(n)
-              }
-            }
+        for (const cand of candidateUnits) {
+          const swapKey = `${room.roomId}:${target.ops.map((o) => o.name).sort().join('+')}->${cand.id}`
+          if (triedSwaps.has(swapKey)) continue
+
+          swapProposals.push({
+            roomId: room.roomId,
+            slotIndices: target.slotIndices,
+            oldOps: target.ops,
+            oldPerCapita: target.currentPerCapita,
+            candidate: cand,
+            candidatePerCapita: cand.perCapitaOutput ?? 30,
+            gain: (cand.perCapitaOutput ?? 30) - target.currentPerCapita,
+          })
+        }
+      }
+    }
+
+    if (swapProposals.length === 0) break
+
+    swapProposals.sort((a, b) => b.gain - a.gain)
+    let evaluatedCount = 0
+
+    for (const proposal of swapProposals) {
+      if (options.evaluator && evaluatedCount >= 3) break
+      const swapKey = `${proposal.roomId}:${proposal.oldOps.map((o) => o.name).sort().join('+')}->${proposal.candidate.id}`
+      if (triedSwaps.has(swapKey)) continue
+
+      const draftWs = structuredClone(ws)
+      const targetRoom = draftWs.mainPlan.facilities[proposal.roomId]!
+
+      // 1. Relocate any replaced operator that is a pendant
+      for (const oldOp of proposal.oldOps) {
+        if (isPendantOperator(oldOp.name, draftWs) || oldOp.groupId?.includes('挂件')) {
+          const pendantResult = placePendantOperator(draftWs, oldOp.name, `${oldOp.name}_挂件`, inventory)
+          if (pendantResult.placed) {
+            logs.push(
+              `[挂件转移] 设施 ${proposal.roomId}：${oldOp.name} 作为协同挂件，置换后已安置于非生产设施 ${pendantResult.roomId}。`,
+            )
           }
+        }
+      }
 
+      // 2. Clear old slots
+      for (const sIdx of proposal.slotIndices) {
+        targetRoom.slots[sIdx]!.occupant = { kind: 'empty' }
+        targetRoom.slots[sIdx]!.groupId = null
+        targetRoom.slots[sIdx]!.replacements = []
+      }
+
+      // 3. Place new candidate core members
+      const newGroupId = `优化_${proposal.candidate.name}`
+      proposal.candidate.coreMembers.forEach((m, idx) => {
+        const slotIdx = proposal.slotIndices[idx]!
+        const mId = resolveId(m.name)
+        targetRoom.slots[slotIdx]!.occupant = { kind: 'operator', operatorId: mId }
+        targetRoom.slots[slotIdx]!.groupId = newGroupId
+      })
+
+      // 4. Apply unit conf policy
+      if (proposal.candidate.confPolicy) {
+        if (proposal.candidate.confPolicy.exhaustRequire) {
+          for (const n of proposal.candidate.confPolicy.exhaustRequire) {
+            if (!draftWs.mainPlan.conf.exhaust_require.includes(n)) draftWs.mainPlan.conf.exhaust_require.push(n)
+          }
+        }
+        if (proposal.candidate.confPolicy.restInFull) {
+          for (const n of proposal.candidate.confPolicy.restInFull) {
+            if (!draftWs.mainPlan.conf.rest_in_full.includes(n)) draftWs.mainPlan.conf.rest_in_full.push(n)
+          }
+        }
+      }
+
+      // 5. Ensure valid backups across draftWs
+      ensureValidBackups(draftWs)
+
+      // 6. Dynamic simulation check (Requirement 1 & Monotonicity)
+      if (options.evaluator) {
+        evaluatedCount++
+        const simScore = options.evaluator(draftWs)
+        if (simScore > currentScore) {
+          logs.push(
+            `[全局置换] 设施 ${proposal.roomId}：当前人均 ${proposal.oldPerCapita}% 成功替换为 ${proposal.candidate.name} (人均 ${proposal.candidatePerCapita}%)，动态拟真评分从 ${currentScore.toFixed(1)} 提升至 ${simScore.toFixed(1)} 分/日`,
+          )
+          ws = draftWs
+          currentScore = simScore
           swappedCount++
           changed = true
           break
+        } else {
+          logs.push(
+            `[置换放弃] 设施 ${proposal.roomId} 尝试置换为 ${proposal.candidate.name} 后动态拟真评分未提升 (${simScore.toFixed(1)} <= ${currentScore.toFixed(1)})，已回滚保持原状。`,
+          )
+          triedSwaps.add(swapKey)
         }
+      } else {
+        logs.push(
+          `[全局置换] 设施 ${proposal.roomId}：当前人均产出 ${proposal.oldPerCapita}% 替换为 ${proposal.candidate.name} (人均产出 ${proposal.candidatePerCapita}%)`,
+        )
+        ws = draftWs
+        swappedCount++
+        changed = true
+        break
       }
     }
 
     if (!changed) break
   }
 
-  // ----------------------------------------------------
-  // Step 2.5: Ensure all slots in production rooms are filled
-  // ----------------------------------------------------
+  // Ensure all production slots are filled
   const occupiedAll = new Set<string>()
   for (const fac of Object.values(ws.mainPlan.facilities)) {
     for (const slot of fac.slots) {
@@ -240,6 +410,7 @@ export function runGlobalPerCapitaReplacement(
           ? (product === 'exp' ? HIGH_EFFICIENCY_SINGLETONS.expManufacture : HIGH_EFFICIENCY_SINGLETONS.goldManufacture)
           : HIGH_EFFICIENCY_SINGLETONS.trading
         const freeSingleton = pool.find((name) => {
+          if (powerCount <= 2 && isManufacture && (name as string) === '至简') return false
           const id = resolveId(name)
           return ownedNames.has(name) && !occupiedAll.has(id) && !lockedOperators.has(id)
         })
@@ -253,56 +424,7 @@ export function runGlobalPerCapitaReplacement(
     }
   }
 
-  // ----------------------------------------------------
-  // Step 3: Backups & Validity Pass
-  // ----------------------------------------------------
-  const unbackedPositions: { roomId: MowerRoomId; slotIndex: number; operatorId: string }[] = []
-  for (const [rId, fac] of Object.entries(ws.mainPlan.facilities)) {
-    if (fac.type === 'dormitory') continue
-    fac.slots.forEach((slot, sIdx) => {
-      if (slot.occupant.kind === 'operator' && slot.replacements.length === 0) {
-        unbackedPositions.push({
-          roomId: rId as MowerRoomId,
-          slotIndex: sIdx,
-          operatorId: resolveId(slot.occupant.operatorId),
-        })
-      }
-    })
-  }
+  ensureValidBackups(ws)
 
-  if (unbackedPositions.length > 0) {
-    assignBackups(ws, inventory, unbackedPositions)
-  }
-
-  // Fallback assignment for any remaining unbacked slots in working facilities
-  const currentlyReserved = new Set(
-    Object.values(ws.mainPlan.facilities).flatMap((r) =>
-      r.slots.flatMap((s) => [
-        ...(s.occupant.kind === 'operator' ? [resolveId(s.occupant.operatorId)] : []),
-        ...s.replacements.map(resolveId),
-      ]),
-    ),
-  )
-
-  for (const room of Object.values(ws.mainPlan.facilities)) {
-    if (['manufacture', 'trading', 'power', 'central', 'meeting', 'factory', 'train'].includes(room.type)) {
-      for (const slot of room.slots) {
-        if (slot.occupant.kind === 'operator' && slot.replacements.length === 0) {
-          const fallbackOp = inventory.operators.find(
-            (o) =>
-              o.matchesMaximumSkills &&
-              !currentlyReserved.has(o.charId) &&
-              !lockedOperators.has(o.charId) &&
-              o.name !== '菲亚梅塔',
-          )
-          if (fallbackOp) {
-            slot.replacements = [fallbackOp.charId]
-            currentlyReserved.add(fallbackOp.charId)
-          }
-        }
-      }
-    }
-  }
-
-  return { workspace: ws, swappedCount, logs }
+  return { workspace: ws, swappedCount, score: currentScore, logs }
 }

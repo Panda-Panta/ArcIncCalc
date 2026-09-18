@@ -9,6 +9,8 @@ import { validatePhysicalRoster } from './rosterDraft'
 import { applySmartDormitoryPolicy } from '../scheduler/smartDormitoryPolicy'
 import { generateMolecularCandidates } from './molecularSynthesis'
 import { runGlobalPerCapitaReplacement } from './globalPerCapitaReplacement'
+import { ALL_ATOMIC_CORE_NAMES } from './riicAtomicUnits'
+import { isShiftRunOperator } from '../scheduler/scheduleAdapter'
 
 export interface SmartRosterOptions {
   seed?: number
@@ -107,7 +109,6 @@ export function runSmartRoster(
 
   const seed = options.seed ?? 42
   const trials = options.trials ?? 5
-  const simulationTopK = options.simulationTopK
   const enableDeepSearch = options.enableDeepSearch ?? true
   const droneTarget = options.droneTarget ?? 'gold'
 
@@ -199,9 +200,9 @@ export function runSmartRoster(
 
   // ==========================================
   // Phase 2: Dynamic Simulation Verification (1+3 Days, 82 Formula)
+  // Requirement 7: All branches generated in Phase 1 are not eliminated, all proceed to Phase 2 (unless options.simulationTopK is explicitly specified in tests)
   // ==========================================
-  const candidateBudget = Math.min(uniqueCandidates.length, Math.max(simulationTopK ?? uniqueCandidates.length, 1))
-  const simCandidates = uniqueCandidates.slice(0, candidateBudget)
+  const simCandidates = options.simulationTopK !== undefined ? uniqueCandidates.slice(0, Math.max(1, options.simulationTopK)) : [...uniqueCandidates]
   onProgress?.({
     phase: 'simulating',
     phaseProgress: 0,
@@ -323,49 +324,45 @@ export function runSmartRoster(
     powerCount: currentPowerCount,
     lockedPositions,
     lockedOperators,
+    baselineScore: finalScore,
+    evaluator: (candidateWs) => {
+      try {
+        const sim = runScheduleSimulationBridge(
+          candidateWs,
+          {
+            warmupHours: options.simulationWarmupHours ?? 24,
+            sampleHours: options.simulationSampleHours ?? 72,
+            maxStepHours: 0.25,
+            production: {
+              outputMode: 'potential',
+              runOrderMode: 'natural',
+              droneTarget,
+              seed,
+            },
+            operatorInventory: [...entries],
+          },
+          {
+            restingThreshold: 0.65,
+            operationDurationHours: 0,
+          },
+        )
+        if (sim.report?.production?.sample.completed && sim.report.observedHours > 0) {
+          return scoreProduction(sim.report.production.sample.completed, sim.report.observedHours).total
+        }
+      } catch {
+        // simulation error
+      }
+      return 0
+    },
   })
   result.phases.replacement = {
     swappedCount: repResult.swappedCount,
     logs: repResult.logs,
   }
 
-  if (repResult.swappedCount > 0) {
+  if (repResult.swappedCount > 0 && repResult.score && repResult.score > finalScore) {
     finalWorkspace = repResult.workspace
-    try {
-      const resim = runScheduleSimulationBridge(finalWorkspace, {
-        warmupHours: options.simulationWarmupHours ?? 24,
-        sampleHours: options.simulationSampleHours ?? 72,
-        maxStepHours: 0.25,
-        production: {
-          outputMode: 'potential',
-          runOrderMode: 'natural',
-          droneTarget,
-          seed,
-        },
-        operatorInventory: [...entries],
-      })
-      if (resim.report?.production?.sample.completed && resim.report.observedHours > 0) {
-        finalScore = scoreProduction(resim.report.production.sample.completed, resim.report.observedHours).total
-        const specials: SpecialOperatorSimData[] = []
-        for (const op of resim.report.operators) {
-          if (hasConsumptionSkill(op.operatorId)) {
-            specials.push({
-              operatorId: op.operatorId,
-              operatorName: op.operatorName,
-              workFraction: op.workFraction,
-              workRestRatio: op.workRestRatio,
-              workHours: op.workHours,
-              restHours: op.restHours,
-              exhaustedHours: op.exhaustedHours,
-              finalMorale: op.finalMorale,
-            })
-          }
-        }
-        result.specialOperators = specials
-      }
-    } catch {
-      // Retain previous score on simulation failure
-    }
+    finalScore = repResult.score
   }
 
   if (enableDeepSearch) {
@@ -442,6 +439,53 @@ export function runSmartRoster(
     candidateOperatorIds: entries.map(e => e.operator),
     force: true,
   })
+
+  // Requirement 2: Open meeting, factory, train for primary occupants and replacements
+  const currentlyReservedAll = new Set(
+    Object.values(finalWorkspace.mainPlan.facilities).flatMap((r) =>
+      r.slots.flatMap((s) => [
+        ...(s.occupant.kind === 'operator' ? [resolveId(s.occupant.operatorId)] : []),
+        ...s.replacements.map(resolveId),
+      ]),
+    ),
+  )
+
+  for (const auxId of ['meeting', 'factory', 'train'] as const) {
+    const fac = finalWorkspace.mainPlan.facilities[auxId]
+    if (!fac) continue
+    for (let sIdx = 0; sIdx < fac.slots.length; sIdx++) {
+      const slot = fac.slots[sIdx]!
+      if (slot.occupant.kind !== 'operator') {
+        const freePrimary = inventory.operators.find(
+          (o) =>
+            o.matchesMaximumSkills &&
+            !currentlyReservedAll.has(o.charId) &&
+            !isShiftRunOperator(o.charId) &&
+            !ALL_ATOMIC_CORE_NAMES.has(o.name) &&
+            o.name !== '菲亚梅塔',
+        )
+        if (freePrimary) {
+          slot.occupant = { kind: 'operator', operatorId: freePrimary.charId }
+          slot.groupId = `${auxId}_辅助`
+          currentlyReservedAll.add(freePrimary.charId)
+        }
+      }
+      if (slot.occupant.kind === 'operator' && slot.replacements.length === 0) {
+        const freeBackup = inventory.operators.find(
+          (o) =>
+            o.matchesMaximumSkills &&
+            !currentlyReservedAll.has(o.charId) &&
+            !isShiftRunOperator(o.charId) &&
+            !ALL_ATOMIC_CORE_NAMES.has(o.name) &&
+            o.name !== '菲亚梅塔',
+        )
+        if (freeBackup) {
+          slot.replacements = [freeBackup.charId]
+          currentlyReservedAll.add(freeBackup.charId)
+        }
+      }
+    }
+  }
 
   result.status = 'draft'
   result.workspace = finalWorkspace

@@ -819,6 +819,24 @@ export function generateMolecularCandidates(
       }
     }
 
+    // Trading rooms
+    for (const room of tradingRooms) {
+      const cap = capacity(room.type, room.level)
+      for (let sIdx = 0; sIdx < cap; sIdx++) {
+        if (room.slots[sIdx]!.occupant.kind !== 'operator') {
+          const available = HIGH_EFFICIENCY_SINGLETONS.trading.filter(isAvailableSingleton)
+          if (available.length > 0) {
+            placeOperator(room.roomId, sIdx, available[0]!, `贸易散件_${room.roomId}`)
+          } else {
+            const fallback = findFallbackMaxSkillOp('TRADING')
+            if (fallback) {
+              placeOperator(room.roomId, sIdx, fallback, `贸易散件_${room.roomId}`)
+            }
+          }
+        }
+      }
+    }
+
     // Central room
     if (centralRoom) {
       const cap = capacity(centralRoom.type, centralRoom.level)
