@@ -707,7 +707,23 @@ export function generateMolecularCandidates(
     const knightAtom = ATOMIC_UNITS.find((a) => a.id === 'pinus_sylvestris')!
     const knightCheck = checkAtomicAvailability(knightAtom, inventory, powerCount)
 
-    if (abyssalCheck.available && knightCheck.available && manufactureRooms.some(r => r.slots.some(s => s.occupant.kind !== 'operator'))) {
+    // Strict Rule for Abyssal Hunters:
+    // 1. Gladiia single-station cap is 90%. 2 hunters = 80%, 3 hunters = 120% capped at 90% (wasteful +10% marginal gain).
+    //    Therefore, AT MOST 2 Abyssal Hunters are allowed in ANY single manufacture room (<= 2 per room).
+    // 2. All 4 hunters (斯卡蒂, 乌尔比安, 安哲拉, 幽灵鲨) must be placed simultaneously in manufacture rooms,
+    //    and Gladiia must be placed in central. If fewer than 4 hunters can be accommodated under the <= 2 per room rule,
+    //    do NOT form Abyssal Hunters in this branch!
+    const canFitAllHuntersUnderCap = () => {
+      if (!centralRoom || !centralRoom.slots.some((s) => s.occupant.kind !== 'operator')) return false
+      const roomHunterCapacities = manufactureRooms.map((r) => {
+        const freeSlots = r.slots.filter((s) => s.occupant.kind !== 'operator').length
+        return Math.min(2, freeSlots)
+      })
+      const totalPossible = roomHunterCapacities.reduce((a, b) => a + b, 0)
+      return totalPossible >= 4
+    }
+
+    if (abyssalCheck.available && knightCheck.available && canFitAllHuntersUnderCap()) {
       const mirrorGroupId = '深海骑士替班组'
       if (centralRoom) {
         const cSlot = centralRoom.slots.findIndex((s) => s.occupant.kind !== 'operator')
@@ -726,19 +742,23 @@ export function generateMolecularCandidates(
 
       let pairIdx = 0
       for (const mRoom of manufactureRooms) {
+        if (pairIdx >= hunterPairs.length) break
         const cap = capacity(mRoom.type, mRoom.level)
-        for (let sIdx = 0; sIdx < cap; sIdx++) {
-          if (mRoom.slots[sIdx]!.occupant.kind !== 'operator' && pairIdx < hunterPairs.length) {
+        let placedInThisRoom = 0
+
+        for (let sIdx = 0; sIdx < cap && placedInThisRoom < 2 && pairIdx < hunterPairs.length; sIdx++) {
+          if (mRoom.slots[sIdx]!.occupant.kind !== 'operator') {
             const [hunter, knight] = hunterPairs[pairIdx]!
             const placed = placeOperator(mRoom.roomId, sIdx, hunter, mirrorGroupId, knight)
             if (placed) {
               pairIdx++
+              placedInThisRoom++
             }
           }
         }
       }
 
-      if (pairIdx > 0) {
+      if (pairIdx === 4) {
         confRestingPriorityLow.add('乌尔比安')
         confRestingPriorityLow.add('斯卡蒂')
         confRestingPriorityLow.add('幽灵鲨')

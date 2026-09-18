@@ -111,6 +111,36 @@ export function runGlobalPerCapitaReplacement(
     }
   }
 
+  // Detect and resolve Abyssal Hunter room concentration (> 2 hunters in a single manufacture room)
+  const abyssalNames = ['斯卡蒂', '乌尔比安', '安哲拉', '幽灵鲨']
+  for (const [rId, fac] of Object.entries(ws.mainPlan.facilities)) {
+    if (fac.type !== 'manufacture') continue
+    const hunterSlots: number[] = []
+    for (let sIdx = 0; sIdx < fac.slots.length; sIdx++) {
+      const slot = fac.slots[sIdx]!
+      if (
+        slot.occupant.kind === 'operator' &&
+        abyssalNames.some((n) => resolveId((slot.occupant as { kind: 'operator'; operatorId: string }).operatorId) === resolveId(n)) &&
+        !lockedPositions.has(`${rId}:${sIdx}`)
+      ) {
+        hunterSlots.push(sIdx)
+      }
+    }
+
+    // If more than 2 hunters in this manufacture room, remove the 3rd+ hunter so the room does not hit the 90% cap and waste capacity
+    while (hunterSlots.length > 2) {
+      const sIdxToRemove = hunterSlots.pop()!
+      const slot = fac.slots[sIdxToRemove]!
+      const opId = slot.occupant.kind === 'operator' ? slot.occupant.operatorId : ''
+      const removedName = abyssalNames.find((n) => resolveId(opId) === resolveId(n)) ?? '深海猎人'
+      slot.occupant = { kind: 'empty' }
+      slot.groupId = null
+      slot.replacements = []
+      logs.push(`[深海猎人防溢出] 检测到制造站 ${rId} 进驻超过2名深海猎人（受歌蕾蒂娅90%上限影响），已将第3人 ${removedName} 移出该站以释放高收益工位。`)
+      swappedCount++
+    }
+  }
+
   function ensureValidBackups(targetWs: RosterWorkspace) {
     const currentlyReserved = new Set(
       Object.values(targetWs.mainPlan.facilities).flatMap((r) =>

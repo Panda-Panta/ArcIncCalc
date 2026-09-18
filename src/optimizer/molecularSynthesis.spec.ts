@@ -50,7 +50,16 @@ describe('Molecular Synthesis & Indivisible Atomic Units', () => {
         expect(restingLow).toContain('乌尔比安')
         expect(restingLow).toContain('斯卡蒂')
         expect(restingLow).toContain('幽灵鲨')
-        expect(restingLow).toContain('安哲拉')
+        // Crucial Check: Abyssal Hunters in ANY manufacture room must NOT exceed 2 (to respect Gladiia 90% cap)
+        for (const room of Object.values(ws.mainPlan.facilities)) {
+          if (room.type === 'manufacture') {
+            const huntersInRoom = room.slots.filter((s) =>
+              s.occupant.kind === 'operator' &&
+              ['斯卡蒂', '乌尔比安', '安哲拉', '幽灵鲨'].includes(restoreOperatorMowerName(s.occupant.operatorId)),
+            ).length
+            expect(huntersInRoom).toBeLessThanOrEqual(2)
+          }
+        }
       }
 
       // 2. If Vermeil Dionysus applied: all 3 must be together in the same room
