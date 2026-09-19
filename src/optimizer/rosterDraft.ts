@@ -1,3 +1,4 @@
+import {isUnsupportedTradeOperator} from '../domain/shiftRunPolicy'
 import {OPERATOR_MAP} from '../domain/operators'
 import {compileOperatorInventory,type OwnedOperatorInput,type OperatorInventory} from '../domain/operatorInventory'
 import {compileRosterSchedule} from '../scheduler/compileRosterSchedule'
@@ -5,7 +6,7 @@ import {isShiftRunOperator} from '../scheduler/scheduleAdapter'
 import {MOWER_ROOM_IDS,MOWER_OUTPUT_ROOM_IDS,type MowerFacilityType,type MowerProduct,type MowerRoomId,type RosterWorkspace} from '../workbench/model'
 import {resolveOperatorCharId as resolveId} from '../workbench/compat/mowerJson'
 import {validateRosterWorkspace} from '../workbench/validate'
-import {admitCombinationCandidates,validateScheduleInventory} from './inventoryAdmission'
+import {admitCombinationCandidates,validateCatalogScheduleInventory as validateScheduleInventory} from './inventoryAdmission'
 import type {CandidateAvailability,CandidateRoom} from './combinationCandidates'
 import {ALL_ATOMIC_CORE_NAMES} from './riicAtomicUnits'
 
@@ -196,7 +197,7 @@ export function assignBackups(draft:RosterWorkspace,inventory:OperatorInventory,
  const positions=added.filter(s=>draft.mainPlan.facilities[s.roomId].type!=='dormitory')
  const roomTypes=new Map(Object.entries(CANDIDATE_FACILITY_TYPES).map(([game,type])=>[type,game]))
  roomTypes.set('factory', 'WORKSHOP')
- const pools=positions.map(p=>inventory.operators.filter(o=>o.matchesMaximumSkills&&!reserved.has(o.charId)&&!isShiftRunOperator(o.charId)&&o.name!=='菲亚梅塔'&&!ALL_ATOMIC_CORE_NAMES.has(o.name)&&o.skills.some(s=>s.roomType===roomTypes.get(draft.mainPlan.facilities[p.roomId].type))).map(o=>o.charId))
+ const pools=positions.map(p=>inventory.operators.filter(o=>(draft.mainPlan.facilities[p.roomId].type!=='trading'||!isUnsupportedTradeOperator(o.charId))&&o.matchesMaximumSkills&&!reserved.has(o.charId)&&!isShiftRunOperator(o.charId)&&o.name!=='菲亚梅塔'&&!ALL_ATOMIC_CORE_NAMES.has(o.name)&&o.skills.some(s=>s.roomType===roomTypes.get(draft.mainPlan.facilities[p.roomId].type))).map(o=>o.charId))
  // Bipartite augmentation avoids consuming a scarce multi-facility backup greedily.
  const owner=new Map<string,number>()
  function match(index:number,seen:Set<string>):boolean{
@@ -205,10 +206,11 @@ export function assignBackups(draft:RosterWorkspace,inventory:OperatorInventory,
  }
  positions.forEach((_,i)=>match(i,new Set()))
  const matched=new Map([...owner].map(([id,index])=>[index,id]))
+ for(const id of matched.values())reserved.add(id)
  positions.forEach((p,i)=>{
   let id=matched.get(i)
   if(!id){
-   const fallback=inventory.operators.find(o=>o.matchesMaximumSkills&&!reserved.has(o.charId)&&!isShiftRunOperator(o.charId)&&o.name!=='菲亚梅塔'&&!ALL_ATOMIC_CORE_NAMES.has(o.name))
+   const fallback=inventory.operators.find(o=>(draft.mainPlan.facilities[p.roomId].type!=='trading'||!isUnsupportedTradeOperator(o.charId))&&o.matchesMaximumSkills&&!reserved.has(o.charId)&&!isShiftRunOperator(o.charId)&&o.name!=='菲亚梅塔'&&!ALL_ATOMIC_CORE_NAMES.has(o.name))
    if(fallback){id=fallback.charId;reserved.add(id)}
   }
   if(id)draft.mainPlan.facilities[p.roomId].slots[p.slotIndex]!.replacements=[id]

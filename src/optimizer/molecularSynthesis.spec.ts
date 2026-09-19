@@ -167,7 +167,7 @@ describe('Molecular Synthesis & Indivisible Atomic Units', () => {
   it('runs full smartRoster end-to-end with 82 dynamic simulation scoring', () => {
     const base = createDefaultWorkspace()
     const result = runSmartRoster(base, allOwned, {
-      trials: 2,
+      branchCount: 2,
       simulationTopK: 2,
       simulationWarmupHours: 12,
       simulationSampleHours: 24,

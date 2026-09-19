@@ -1,3 +1,4 @@
+import { assertSupportedSpecialOrder } from '../domain/shiftRunPolicy'
 import type {
   AppConfig,
   CalculationReport,
@@ -54,6 +55,7 @@ function distribution(level: number, quality: QualityRule): OrderTemplate[] {
 }
 
 function transformSpecial(template: OrderTemplate, special: SpecialOrder, roomLevel: number): OrderTemplate {
+  assertSupportedSpecialOrder(special)
   switch (special) {
     case 'pepe':
       return { probability: template.probability, cost: 0, reward: 1000, minutes: 270, efficiencyAffected: false }

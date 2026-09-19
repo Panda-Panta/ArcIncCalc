@@ -12,7 +12,7 @@ import type {RosterWorkspace} from '../../workbench/model'
 import type {ScheduleSimulationReport} from '../../simulator/scheduleSimulation'
 const props=defineProps<{workspace:RosterWorkspace}>()
 const sampleDays=ref(14),warmupDays=ref(7),step=ref(.25),warmupModel=ref<'continuous'|'hourly'>('continuous'),idleNames=ref('')
-const runOrderMode=ref<'natural'|'drone'>('natural'),droneTarget=ref<'gold'|'exp'|'none'>('gold')
+const runOrderMode=ref<'ideal'>('ideal'),droneTarget=ref<'gold'|'exp'|'none'>('gold')
 const initialGold=ref(0),initialLmd=ref(0),initialOrirock=ref(0),initialDevice=ref(0),initialDrone=ref(0),seed=ref(1),collectionIntervalHours=ref(0)
 const outputMode=ref<'potential'|'settled'>('potential')
 const productionInputs=[outputMode,runOrderMode,droneTarget,initialGold,initialLmd,initialOrirock,initialDevice,initialDrone,seed,collectionIntervalHours]
@@ -70,11 +70,11 @@ const number=(n:number)=>n.toLocaleString('zh-CN',{maximumFractionDigits:2})
   </div>
   <div class="simulation-controls production-controls">
    <label>产出口径<select v-model="outputMode" data-test="output-mode"><option value="potential">直观产出（忽略库存）</option><option value="settled">实际收支（含库存约束）</option></select></label>
-   <label>跑单方式<select v-model="runOrderMode" data-test="run-order-mode"><option value="natural">自然等待</option><option value="drone">无人机补完</option></select></label>
+   <label>跑单方式<select v-model="runOrderMode" data-test="run-order-mode" disabled><option value="ideal">理想跑单（无冲突、无等待）</option></select></label>
    <label>余量无人机<select v-model="droneTarget" data-test="drone-target"><option value="gold">加速赤金</option><option value="exp">加速作战记录</option><option value="none">不用</option></select></label>
   </div>
   <p class="simulation-note" data-test="simulation-controls-scope">以上设置用于“运行模拟”，不影响旧版快速估算；更改后需要重新运行。</p>
-  <p class="simulation-note">自然模式在等待订单完成期间，按临时阵容计算效率与心情；无人机补完会消耗库存中的无人机。</p>
+  <p class="simulation-note">理想跑单在订单完成瞬间应用但书／龙舌兰效果，不临时进驻、不增加等待、不消耗跑单心情或无人机；常驻阵容照常获取订单。</p>
   <details class="simulation-idle production-settings"><summary>随机种子、无人机与可选库存设置</summary>
    <p v-if="outputMode==='potential'">直观产出仅使用随机种子和初始无人机。其他库存与收取设置仅用于实际收支口径。</p><p v-else>库存从预热开始计入，采样只统计采样期间的到账与支出。收取间隔为 0 时，完成后及时收取。</p>
    <div class="simulation-controls">

@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { isShiftRunOperator } from '../scheduler/scheduleAdapter'
+import { afterEach, describe, expect, it } from 'vitest'
+import { setTimeout as yieldToRunner } from 'node:timers/promises'
 import { OPERATORS } from '../domain/operators'
 import type { OwnedOperatorInput } from '../domain/operatorInventory'
 import { createDefaultWorkspace } from '../workbench/defaults'
@@ -7,6 +9,10 @@ import { runSmartRoster, type SmartRosterProgress } from './smartRoster'
 import { validatePhysicalRoster } from './rosterDraft'
 import { MOWER_OUTPUT_ROOM_IDS } from '../workbench/model'
 import { runCalculationBridge } from '../workbench/calculationBridge'
+
+// Each synchronous simulation takes tens of seconds. Flush pending test-runner
+// messages between cases so their combined CPU time cannot starve Vitest RPC.
+afterEach(() => yieldToRunner(5))
 
 const allOwned: OwnedOperatorInput[] = OPERATORS.map((o) => ({
   operator: o.name,
@@ -29,7 +35,7 @@ describe('smartRoster generation with 3-phase optimization', () => {
       base,
       allOwned,
       {
-        trials: 2,
+        branchCount: 2,
         simulationTopK: 1,
         simulationWarmupHours: 6,
         simulationSampleHours: 18,
@@ -48,14 +54,14 @@ describe('smartRoster generation with 3-phase optimization', () => {
       if (['manufacture', 'trading', 'power', 'central'].includes(room.type)) {
         const cap = room.type === 'central' ? 5 : room.type === 'power' ? 1 : room.level
         expect(room.slots.slice(0, cap).every((s) => s.occupant.kind === 'operator')).toBe(true)
-        expect(room.slots.slice(0, cap).every((s) => s.replacements.length === 1)).toBe(true)
+        expect(room.slots.slice(0, cap).every((s) => s.replacements.filter(x => !isShiftRunOperator(x)).length === 1)).toBe(true)
       }
     }
 
     // Check backups are unique and do not overlap with mains in working facilities
     const workingRooms = Object.values(workspace.mainPlan.facilities).filter((r) => r.type !== 'dormitory')
     const backups = workingRooms.flatMap((r) =>
-      r.slots.flatMap((s) => s.replacements.map(id))
+      r.slots.flatMap((s) => s.replacements.map(id).filter(x => !isShiftRunOperator(x)))
     )
     expect(new Set(backups).size).toBe(backups.length)
     const mainList = mains(workspace)
@@ -92,7 +98,7 @@ describe('smartRoster generation with 3-phase optimization', () => {
     base.mainPlan.facilities.room_1_1.slots[1]!.occupant = { kind: 'operator', operatorId: id('拉普兰德') }
 
     const result = runSmartRoster(base, allOwned, {
-      trials: 1,
+      branchCount: 1,
       simulationTopK: 1,
       simulationWarmupHours: 6,
       simulationSampleHours: 18,
@@ -135,7 +141,7 @@ describe('smartRoster generation with 3-phase optimization', () => {
     }
 
     const result = runSmartRoster(base, allOwned, {
-      trials: 1,
+      branchCount: 1,
       simulationTopK: 1,
       simulationWarmupHours: 6,
       simulationSampleHours: 18,
@@ -161,7 +167,7 @@ describe('smartRoster generation with 3-phase optimization', () => {
     })
 
     const result = runSmartRoster(base, mixedInventory, {
-      trials: 1,
+      branchCount: 1,
       simulationTopK: 1,
       simulationWarmupHours: 6,
       simulationSampleHours: 18,

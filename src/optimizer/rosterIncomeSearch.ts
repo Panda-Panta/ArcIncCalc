@@ -60,7 +60,7 @@ function normalize(request:IncomeSearchRequest):IncomeSearchSettings {
  if(assumptions.idleOperators.some(id=>!owned.has(id)))throw new Error('闲置干员须已拥有且解锁当前最高技能')
  assumptions.idleOperators=[...new Set(assumptions.idleOperators)]
  for(const [key,min,max] of [['sampleHours',1,2160],['warmupHours',0,2160],['maxEvents',1,200000]] as const){const n=options[key]!;if(!Number.isFinite(n)||n<min||n>max||(key==='maxEvents'&&!Number.isSafeInteger(n)))throw new Error(`无效的比较设置 ${key}`)}
- options.production={runOrderMode:'natural',...options.production}
+ options.production={runOrderMode:'ideal',...options.production}
  if(objective==='composite'){options.production={...options.production,outputMode:'potential',collectionIntervalHours:0,initialResources:{drone:options.production.initialResources?.drone??0}};assumptions.initialGold=0;assumptions.initialFragments=0}
  // Validate every supplied numeric setting before any expensive simulation.
  const finite=(value:unknown):void=>{if(typeof value==='number'&&!Number.isFinite(value))throw new Error('比较设置必须包含有限数值');if(value&&typeof value==='object')Object.values(value).forEach(finite)}

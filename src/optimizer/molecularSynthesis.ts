@@ -1,3 +1,5 @@
+import { isUnsupportedTradeOperator } from '../domain/shiftRunPolicy'
+import { configureRunOrder } from './configureRunOrder'
 import type { MowerFacilityType, MowerRoomId, RosterWorkspace } from '../workbench/model'
 import { resolveOperatorCharId as resolveId } from '../workbench/compat/mowerJson'
 import { type OperatorInventory, type OwnedOperatorInput } from '../domain/operatorInventory'
@@ -126,8 +128,10 @@ export function generateMolecularCandidates(
   const lockedOperators = options.lockedOperators ?? new Set<string>()
 
   const candidates: MolecularCandidate[] = []
+  const seen = new Set<string>()
+  const maxAttempts = Math.max(50, branchCount * 50)
 
-  for (let branchIdx = 0; branchIdx < branchCount; branchIdx++) {
+  for (let branchIdx = 0; branchIdx < maxAttempts && candidates.length < branchCount; branchIdx++) {
     const branchSeed = (seed + branchIdx * 0x9e3779b9) >>> 0
     const nextRandom = randomGenerator(branchSeed)
     const ws = structuredClone(base)
@@ -146,7 +150,8 @@ export function generateMolecularCandidates(
     const powerRooms = Object.values(ws.mainPlan.facilities).filter((r) => r.type === 'power')
     const powerCount = powerRooms.length
     const tradingRooms = Object.values(ws.mainPlan.facilities).filter((r) => r.type === 'trading')
-    const manufactureRooms = Object.values(ws.mainPlan.facilities).filter((r) => r.type === 'manufacture')
+    const availableManufactureRooms = Object.values(ws.mainPlan.facilities).filter((r) => r.type === 'manufacture')
+    const manufactureRooms = branchIdx === 0 ? availableManufactureRooms : shuffle(availableManufactureRooms, nextRandom)
     const centralRoom = ws.mainPlan.facilities.central
     const contactRoom = ws.mainPlan.facilities.contact
 
@@ -174,6 +179,7 @@ export function generateMolecularCandidates(
       if (inventory.operators.length === 0) return undefined
       const found = inventory.operators.find(
         (o) =>
+          (roomType !== 'TRADING' || !isUnsupportedTradeOperator(o.charId)) &&
           o.matchesMaximumSkills &&
           !occupied.has(o.charId) &&
           !isShiftRunOperator(o.charId) &&
@@ -200,6 +206,7 @@ export function generateMolecularCandidates(
       }
       const room = ws.mainPlan.facilities[roomId]
       if (!room) return false
+      if (room.type === 'trading' && (isUnsupportedTradeOperator(charId) || isShiftRunOperator(charId))) return false
       const cap = capacity(room.type, room.level)
       if (slotIdx >= cap || slotIdx >= room.slots.length) return false
       const slot = room.slots[slotIdx]!
@@ -218,6 +225,7 @@ export function generateMolecularCandidates(
         }
       }
 
+      if (validBackupId && room.type === 'trading' && isUnsupportedTradeOperator(validBackupId)) validBackupId = undefined
       slot.occupant = { kind: 'operator', operatorId: charId }
       slot.groupId = groupId
       occupied.add(charId)
@@ -987,6 +995,7 @@ export function generateMolecularCandidates(
           if (slot && slot.occupant.kind === 'operator' && slot.replacements.length === 0) {
             const fallbackOp = inventory.operators.find(
               (o) =>
+                (room.type !== 'trading' || !isUnsupportedTradeOperator(o.charId)) &&
                 o.matchesMaximumSkills &&
                 !currentlyReserved.has(o.charId) &&
                 !isShiftRunOperator(o.charId) &&
@@ -1024,9 +1033,13 @@ export function generateMolecularCandidates(
       force: true,
     })
 
+    if (!configureRunOrder(ws, inventory)) continue
+
     // Physical roster validation
     const physErrors = validatePhysicalRoster(ws)
-    if (physErrors.length === 0) {
+    const fingerprint = JSON.stringify(Object.values(ws.mainPlan.facilities).map(r => [r.roomId, r.slots.map(s => [s.occupant, s.replacements])]))
+    if (physErrors.length === 0 && !seen.has(fingerprint)) {
+      seen.add(fingerprint)
       candidates.push({
         id: `branch_${branchIdx + 1}`,
         name: `分子分支 ${branchIdx + 1}: ${appliedAtoms.map((id) => ATOMIC_UNITS.find((a) => a.id === id)?.name ?? id).join(' + ')}`,
@@ -1075,7 +1088,7 @@ export function evaluateMolecularCandidates(
         maxStepHours: 0.25,
         production: {
           outputMode: 'potential',
-          runOrderMode: 'natural',
+          runOrderMode: 'ideal',
           droneTarget,
           seed,
         },

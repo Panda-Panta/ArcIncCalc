@@ -1,3 +1,4 @@
+import { runOrderInventoryDiagnostics } from './configureRunOrder'
 import type { RosterWorkspace } from '../workbench/model'
 import { resolveOperatorCharId as resolveId } from '../workbench/compat/mowerJson'
 import { compileOperatorInventory, type OwnedOperatorInput } from '../domain/operatorInventory'
@@ -14,6 +15,8 @@ import { isShiftRunOperator } from '../scheduler/scheduleAdapter'
 
 export interface SmartRosterOptions {
   seed?: number
+  branchCount?: number
+  /** Legacy settings retained for old saved configurations; no longer control branch admission. */
   trials?: number
   maxStaticEvals?: number
   simulationTopK?: number
@@ -108,7 +111,11 @@ export function runSmartRoster(
   }
 
   const seed = options.seed ?? 42
-  const trials = options.trials ?? 5
+  const trials = options.branchCount ?? 10
+  if (!Number.isSafeInteger(trials) || trials < 1 || trials > 20) {
+    result.diagnostics.push({ code: 'INVALID_BRANCH_COUNT', message: '有效分支数必须为 1–20 的整数。' })
+    return result
+  }
   const enableDeepSearch = options.enableDeepSearch ?? true
   const droneTarget = options.droneTarget ?? 'gold'
 
@@ -116,6 +123,12 @@ export function runSmartRoster(
   const inventory = compileOperatorInventory(entries)
   if (!inventory.valid) {
     result.diagnostics.push(...inventory.diagnostics)
+    return result
+  }
+
+  const runOrderErrors = runOrderInventoryDiagnostics(base, inventory)
+  if (runOrderErrors.length) {
+    result.diagnostics.push(...runOrderErrors)
     return result
   }
 
@@ -158,7 +171,7 @@ export function runSmartRoster(
     label: '阶段 1/2: 不可分割原子组合与多分支分子合成...',
   })
 
-  const branchCount = Math.max(trials * 2, 8)
+  const branchCount = trials
   const molecularBranches = generateMolecularCandidates(base, entries, inventory, {
     seed,
     branchCount,
@@ -193,16 +206,16 @@ export function runSmartRoster(
     })
   }
 
-  if (uniqueCandidates.length === 0) {
-    result.diagnostics.push({ code: 'NO_CANDIDATE_FOUND', message: '分子构建阶段未能生成满足约束的完整排班。' })
+  if (uniqueCandidates.length < branchCount) {
+    result.diagnostics.push({ code: 'INSUFFICIENT_UNIQUE_BRANCHES', message: `仅生成 ${uniqueCandidates.length}/${branchCount} 个不同且无布局冲突的分支，未启动模拟。请检查持有干员与锁定工位。` })
     return result
   }
 
   // ==========================================
   // Phase 2: Dynamic Simulation Verification (1+3 Days, 82 Formula)
-  // Requirement 7: All branches generated in Phase 1 are not eliminated, all proceed to Phase 2 (unless options.simulationTopK is explicitly specified in tests)
+  // Admit the complete distinct, physically valid branch set before simulating every member.
   // ==========================================
-  const simCandidates = options.simulationTopK !== undefined ? uniqueCandidates.slice(0, Math.max(1, options.simulationTopK)) : [...uniqueCandidates]
+  const simCandidates = [...uniqueCandidates]
   onProgress?.({
     phase: 'simulating',
     phaseProgress: 0,
@@ -220,7 +233,7 @@ export function runSmartRoster(
         maxStepHours: 0.25,
         production: {
           outputMode: 'potential',
-          runOrderMode: 'natural',
+          runOrderMode: 'ideal',
           droneTarget,
           seed,
         },
@@ -232,7 +245,7 @@ export function runSmartRoster(
       }
     )
 
-    if (simResponse.report && (simResponse.report.success || (simResponse.report.observedHours > 0 && simResponse.report.production?.sample.completed))) {
+    if (simResponse.report?.success) {
       const rep = simResponse.report
       if (rep.production?.sample.completed && rep.observedHours > 0) {
         const prodScore = scoreProduction(rep.production.sample.completed, rep.observedHours)
@@ -335,7 +348,7 @@ export function runSmartRoster(
             maxStepHours: 0.25,
             production: {
               outputMode: 'potential',
-              runOrderMode: 'natural',
+              runOrderMode: 'ideal',
               droneTarget,
               seed,
             },
@@ -346,7 +359,7 @@ export function runSmartRoster(
             operationDurationHours: 0,
           },
         )
-        if (sim.report?.production?.sample.completed && sim.report.observedHours > 0) {
+        if (sim.report?.success && sim.report.production?.sample.completed && sim.report.observedHours > 0) {
           return scoreProduction(sim.report.production.sample.completed, sim.report.observedHours).total
         }
       } catch {
@@ -389,7 +402,7 @@ export function runSmartRoster(
             maxStepHours: 0.25,
             production: {
               outputMode: 'potential',
-              runOrderMode: 'natural',
+              runOrderMode: 'ideal',
               droneTarget,
               seed,
             },

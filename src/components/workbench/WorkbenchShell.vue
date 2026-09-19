@@ -330,6 +330,8 @@ function handleInventoryImported(entries: OwnedOperatorInput[], csvText: string)
 
 function handleCalculate(): void {
   calculationError.value = null
+  calculationReport.value = null
+  simulationReport.value = null
   if (!validationResult.value.isValid) {
     calculationError.value = '排班存在阻断错误，请根据下方诊断信息修复后再计算。'
     return
@@ -365,7 +367,7 @@ function handleCalculate(): void {
         operatorInventory: inventoryEntries,
         production: {
           outputMode: 'potential',
-          runOrderMode: 'drone',
+          runOrderMode: 'ideal',
           seed: simSettings.value.seed < 0
             ? (typeof process !== 'undefined' && Boolean(process.env?.VITEST) ? 42 : Math.floor(Math.random() * 0xffffffff))
             : simSettings.value.seed,
@@ -375,6 +377,7 @@ function handleCalculate(): void {
       },
     })
 
+    simulationReport.value = bridgeResult.simulationReport ?? null
     if (bridgeResult.success && bridgeResult.report) {
       calculationReport.value = bridgeResult.report
       simulationReport.value = bridgeResult.simulationReport ?? null
@@ -470,9 +473,9 @@ function executeAutoGenerate(inventoryEntries: OwnedOperatorInput[], config?: Sm
     seed: (config?.seed !== undefined && config.seed >= 0)
       ? config.seed
       : (simSettings.value.seed < 0 ? (isVitest ? 42 : Math.floor(Math.random() * 0xffffffff)) : simSettings.value.seed),
-    trials: config?.trials ?? (isVitest ? 1 : 5),
+    branchCount: isVitest ? 1 : 10,
     maxStaticEvals: config?.maxStaticEvals ?? (isVitest ? 500 : 3000),
-    simulationTopK: config?.simulationTopK ?? (isVitest ? 1 : 8),
+
     simulationWarmupHours: config?.simulationWarmupHours ?? (isVitest ? 6 : 24),
     simulationSampleHours: config?.simulationSampleHours ?? (isVitest ? 18 : 72),
     enableDeepSearch: config?.enableDeepSearch ?? !isVitest,

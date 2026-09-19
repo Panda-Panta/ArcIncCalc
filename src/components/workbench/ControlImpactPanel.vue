@@ -9,7 +9,7 @@ import {createRosterRuntime} from '../../scheduler/rosterRuntime'
 import {projectScheduleState} from '../../simulator/scheduleSimulation'
 import {resolveOperatorCharId} from '../../workbench/compat/mowerJson'
 import {validatePhysicalRoster} from '../../optimizer/rosterDraft'
-import {validateScheduleInventory} from '../../optimizer/inventoryAdmission'
+import {validateCatalogScheduleInventory as validateScheduleInventory} from '../../optimizer/inventoryAdmission'
 import {analyzeControlImpact,compareControlConfigurations,type ControlImpactAnalysis,type ControlConfigurationComparison} from '../../optimizer/controlImpact'
 const props=defineProps<{workspace:RosterWorkspace;inventory:{enabled:boolean;valid:boolean;entries:OwnedOperatorInput[]}}>()
 const result=ref<ControlImpactAnalysis|null>(null),comparison=ref<ControlConfigurationComparison|null>(null),alternative=ref(''),error=ref('')

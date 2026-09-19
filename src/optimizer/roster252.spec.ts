@@ -88,7 +88,7 @@ describe('252 Layout Automatic Roster Generation (Trade 2+1, Manufacture 33332, 
       ws,
       allOwned,
       {
-        trials: 2,
+        branchCount: 2,
         simulationTopK: 2,
         simulationWarmupHours: 6,
         simulationSampleHours: 18,

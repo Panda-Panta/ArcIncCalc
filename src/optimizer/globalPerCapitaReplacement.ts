@@ -1,3 +1,5 @@
+import { isUnsupportedTradeOperator } from '../domain/shiftRunPolicy'
+import { configureRunOrder } from './configureRunOrder'
 import type { MowerRoomId, RosterWorkspace } from '../workbench/model'
 import { resolveOperatorCharId as resolveId } from '../workbench/compat/mowerJson'
 import { type OperatorInventory } from '../domain/operatorInventory'
@@ -68,6 +70,7 @@ export function runGlobalPerCapitaReplacement(
   options: ReplacementOptions = {},
 ): ReplacementResult {
   let ws = structuredClone(base)
+  const maintainRunOrder = Object.values(base.mainPlan.facilities).some(r => r.type === 'trading' && r.slots.some(s => s.replacements.some(isShiftRunOperator)))
   const logs: string[] = []
   let swappedCount = 0
 
@@ -157,6 +160,7 @@ export function runGlobalPerCapitaReplacement(
           if (slot.occupant.kind === 'operator' && slot.replacements.length === 0) {
             const fallbackOp = inventory.operators.find(
               (o) =>
+                (room.type !== 'trading' || !isUnsupportedTradeOperator(o.charId)) &&
                 o.matchesMaximumSkills &&
                 !currentlyReserved.has(o.charId) &&
                 !lockedOperators.has(o.charId) &&
@@ -382,6 +386,7 @@ export function runGlobalPerCapitaReplacement(
 
       // 5. Ensure valid backups across draftWs
       ensureValidBackups(draftWs)
+      if (maintainRunOrder && !configureRunOrder(draftWs, inventory)) continue
 
       // 6. Dynamic simulation check (Requirement 1 & Monotonicity)
       if (options.evaluator) {
@@ -455,6 +460,7 @@ export function runGlobalPerCapitaReplacement(
   }
 
   ensureValidBackups(ws)
+  if (maintainRunOrder) configureRunOrder(ws, inventory)
 
   return { workspace: ws, swappedCount, score: currentScore, logs }
 }
