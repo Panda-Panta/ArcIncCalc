@@ -1,0 +1,60 @@
+{
+  "fullRun": {
+    "passed": 1018,
+    "failed": 0,
+    "skipped": 1,
+    "exitCode": 1,
+    "unhandledErrors": 1,
+    "log": "artifacts/final-regression.log"
+  },
+  "frameworkFixRetest": {
+    "passed": 58,
+    "failed": 0,
+    "success": true,
+    "exitCode": 0,
+    "unhandledErrors": 0,
+    "log": "artifacts/progress-barrier-regression.log"
+  },
+  "typecheck": "passed",
+  "build": "passed with chunk-size warning",
+  "simulation": {
+    "runs": [
+      {
+        "success": true,
+        "productionSuccess": true,
+        "hours": 240,
+        "violations": 0,
+        "shortestRestMinutes": 24.242424242423226,
+        "restsUnderOneMinute": 0,
+        "completedRestPairs": 864,
+        "completed": {
+          "exp": 331000,
+          "gold": 1011,
+          "orderLmd": 682500
+        }
+      },
+      {
+        "success": true,
+        "productionSuccess": true,
+        "hours": 240,
+        "violations": 0,
+        "shortestRestMinutes": 24.24242424242152,
+        "restsUnderOneMinute": 0,
+        "completedRestPairs": 864,
+        "completed": {
+          "exp": 331000,
+          "gold": 1011,
+          "orderLmd": 682500
+        }
+      }
+    ],
+    "completedOutputMatches": true,
+    "inputUnchanged": true,
+    "unquantified": [
+      {
+        "code": "UNQUANTIFIED_EFFICIENCY",
+        "message": "room_1_2: 黍·春雷响，万物长"
+      }
+    ]
+  }
+}

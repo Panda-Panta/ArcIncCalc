@@ -694,6 +694,11 @@ export function evaluateOperators(
           )
           applied = room.product === 'gold' ? count * 2 : 0
           facilityDetail = `Blacksteel operators ${count}`
+        } else if (skill.buffId === 'manu_constrLv[000]') {
+          // This supplies the robots already derived by the global context. It
+          // is not an additional productivity term and must not mark Minimalist unknown.
+          applied = 0
+          facilityDetail = `engineering robots ${globalContext.engineeringRobots}`
         } else if (skill.buffId === 'manu_prod_spd_bd[110]') {
           const robots = globalContext.engineeringRobots
           applied = Math.floor(robots / 8) * 5

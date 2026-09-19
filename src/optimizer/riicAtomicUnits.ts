@@ -1,3 +1,5 @@
+import { PRODUCTION_SINGLETONS } from './productionSingletons'
+
 export type AtomicFacilityType = 'manufacture' | 'trading' | 'power' | 'central' | 'office' | 'dormitory'
 
 export interface AtomicMember {
@@ -56,7 +58,7 @@ export const AUXILIARY_FACILITY_CANDIDATES = {
     { primary: '特克诺', backup: '锡兰', fallbackPrimary: '年', fallbackBackup: '九色鹿' },
   ],
   train: [
-    { primary: '玛恩纳', backup: '左乐', fallbackPrimary: '达利尔', fallbackBackup: '截云' },
+    { primary: '左乐', backup: '达利尔', fallbackPrimary: '截云', fallbackBackup: '鞭刃' },
     { primary: '艾丽妮', backup: '达利尔', fallbackPrimary: '火龙S黑角', fallbackBackup: '鞭刃' },
   ],
 } as const
@@ -430,11 +432,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
 ] as const
 
 export const HIGH_EFFICIENCY_SINGLETONS = {
-  goldManufacture: ['砾', '引星棘刺', '斑点', '夜烟', '温米', '铸铁'],
-  expManufacture: ['白雪', '霜叶', '红豆', '截云', '断罪者', '食铁兽', '帕拉斯', '卡达', '豆苗', '圣约送葬人'],
-  generalManufacture: ['调香师', '史都华德', '蛇屠箱', '深律', '霜华'],
-  // 跑单分支：严禁但书、龙舌兰、可露希尔常驻，严禁空进驻企鹅物流，严禁包含原子核心
-  trading: ['雪雉', '古米', '月见夜', '空爆', '缠丸', '夜烟', '芬', '暗索', '远山'],
+  ...PRODUCTION_SINGLETONS,
   control: ['缪尔赛思', '凯尔希', '阿米娅', '琴柳', '玛恩纳', '维娜·维多利亚', '早露', '灰风'],
   durinRace: ['杜林', '桃金娘', '褐果', '至简'],
 } as const

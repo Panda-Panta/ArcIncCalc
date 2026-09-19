@@ -35,14 +35,14 @@ describe('roster draft preview',()=>{
 })
 
 it('shows the actual assigned ordinary backups in the reviewable draft',async()=>{
- const entries=['砾','阿罗玛','槐琥','调香师','红豆'].map(operator=>({operator,elitePhase:2,level:1}))
+ const entries=['砾','阿罗玛','槐琥','调香师','雪猎'].map(operator=>({operator,elitePhase:2,level:1}))
  entries.push({operator:'芬',elitePhase:1,level:1})
  const w=mount(RosterDraftPanel,{props:{workspace:createDefaultWorkspace(),inventory:{enabled:true,valid:true,entries}}})
  await w.get('[data-candidate=manu-gold-waai-fu-copy]').setValue(true)
  await w.get('[data-test=generate-draft]').trigger('click')
  const table=w.get('[data-test=draft-roster]')
  expect(table.findAll('tbody tr')).toHaveLength(3)
- expect(table.text()).toContain('芬');expect(table.text()).toContain('红豆');expect(table.text()).toContain('调香师')
+ expect(table.text()).toContain('芬');expect(table.text()).toContain('雪猎');expect(table.text()).toContain('调香师')
  w.unmount()
 })
 

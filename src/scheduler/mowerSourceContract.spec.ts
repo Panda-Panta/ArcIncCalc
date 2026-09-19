@@ -63,7 +63,7 @@ describe('Mower source contract: policy projection and ideal operations', () => 
  })
 
  it('exhaustion can preempt an ordinary resting group to obtain a bed',()=>{
-  const c=cfg();c.positions=[{id:'p',roomId:'t',primary:'A',candidates:['B'],exhaustRequired:true,shiftOffThreshold:0},{id:'q',roomId:'t2',primary:'C',candidates:['D'],shiftOffThreshold:15}];c.initialMorale={A:1,B:24,C:15,D:24};const s=createRosterRuntime(c);settleRoster(s);expect(s.bedOccupants.b).toBe('C');s.morale.A=0;settleRoster(s);expect(s.occupants.q).toBe('C');expect(s.occupants.p).toBe('B');expect(s.bedOccupants.b).toBe('A')
+  const c=cfg();c.positions=[{id:'p',roomId:'t',primary:'A',candidates:['B'],exhaustRequired:true,shiftOffThreshold:0},{id:'q',roomId:'t2',primary:'C',candidates:['D'],shiftOffThreshold:15}];c.initialMorale={A:1,B:24,C:15,D:24};const s=createRosterRuntime(c);settleRoster(s);expect(s.bedOccupants.b).toBe('C');s.morale.C=24;s.morale.A=0;settleRoster(s);expect(s.occupants.q).toBe('C');expect(s.occupants.p).toBe('B');expect(s.bedOccupants.b).toBe('A')
  })
  it('exhaustion does not evict an exhaustion-plus-full-rest protected group',()=>{
   const c=cfg();c.positions=[{id:'p',roomId:'t',primary:'A',candidates:['B'],exhaustRequired:true,shiftOffThreshold:0},{id:'q',roomId:'t2',primary:'C',candidates:['D'],exhaustRequired:true,restToFull:true,shiftOffThreshold:0}];c.initialMorale={A:1,B:24,C:0,D:24};const s=createRosterRuntime(c);settleRoster(s);s.morale.A=0;settleRoster(s);expect(s.occupants.p).toBe('A');expect(s.bedOccupants.b).toBe('C')
@@ -91,8 +91,8 @@ describe('Mower source contract: policy projection and ideal operations', () => 
   const w=createDefaultWorkspace();w.mainPlan.facilities.room_1_1.slots[0]={occupant:{kind:'operator',operatorId:'砾'},groupId:null,replacements:['芬','香草']};const c=compiledScheduleToRuntimeConfig(compileRosterSchedule(w,{initialMorale:12,idleOperators:['斑点'],operatorMorale:{[id('芬')]:3}}));const s=createRosterRuntime(c);expect(s.morale[id('砾')]).toBe(12);expect(s.morale[id('芬')]).toBe(3);expect(s.morale[id('香草')]).toBe(12);expect(s.morale[id('斑点')]).toBe(12)
  })
 
- it('a physical recovery-rate change exposes a newly due action at zero delay',()=>{
-  const c=cfg();c.mowerPolicy!.taskBuffers=true;c.positions[0]!.restToFull=true;const s=createRosterRuntime(c);const slow={workRate:()=>1,recoveryRate:()=>1};settleRoster(s,slow);advanceRoster(s,1,slow);const fast={workRate:()=>1,recoveryRate:()=>100};expect(nextRosterActionHours(s,fast)).toBe(0);settleRoster(s,fast);expect(s.occupants.p).toBe('A');expect(nextRosterActionHours(s,fast)).toBeGreaterThan(0)
+ it('a physical recovery-rate change advances the deadline but still waits for full recovery',()=>{
+  const c=cfg();c.mowerPolicy!.taskBuffers=true;c.positions[0]!.restToFull=true;const s=createRosterRuntime(c);const slow={workRate:()=>1,recoveryRate:()=>1};settleRoster(s,slow);advanceRoster(s,1,slow);const fast={workRate:()=>1,recoveryRate:()=>100};expect(nextRosterActionHours(s,fast)).toBeCloseTo(.08);settleRoster(s,fast);expect(s.occupants.p).toBe('B');advanceRoster(s,.08,fast);settleRoster(s,fast);expect(s.occupants.p).toBe('A');expect(nextRosterActionHours(s,fast)).toBeGreaterThan(0)
  })
 
 })

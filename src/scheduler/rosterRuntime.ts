@@ -82,6 +82,12 @@ function shiftThreshold(p: RuntimePosition, s: RuntimeState, rates?: RuntimeRate
   // base_schedule.py:1467–1497; first refresh at lower+2, fallback lower+.25 minus 30 minutes.
   return (p.lowerLimit ?? 0) + Math.min(2, .25 + rates.workRate(p.primary,p.roomId,s) * .5)
 }
+/** Returning a group must leave its working members above the next shift-off threshold. */
+function minimumReturnMorale(p: RuntimePosition, s: RuntimeState, rates: RuntimeRates): number {
+  if (p.restToFull) return upper(p)
+  if ((p.roomId === 'factory' || p.roomId === 'train') && rates.workRate(p.primary, p.roomId, s) <= 0) return 0
+  return Math.min(upper(p), shiftThreshold(p, s, rates) + 2)
+}
 export function settleRoster(s: RuntimeState, rates?: RuntimeRates, retryDepth = 0): void {
   if (s.config.mowerPolicy) s.nextPlanningTime = s.time + 2.5
   const swapped = applyFiammetta(s)
@@ -105,7 +111,8 @@ export function settleRoster(s: RuntimeState, rates?: RuntimeRates, retryDepth =
     const recovered = (p: RuntimePosition) => (s.morale[p.primary] ?? 0) >= upper(p) - MORALE_EPSILON
     const fiaReturn = Boolean(s.config.mowerPolicy && fiaTarget && ps.some(p => p.primary === fiaTarget))
     const deadline = s.returnDeadlines?.[key]
-    const ready = fiaReturn || (s.config.mowerPolicy && deadline !== undefined ? s.time >= deadline - MORALE_EPSILON : s.config.mowerPolicy ? (fullMembers.length ? fullMembers.every(recovered) : returnMembers.some(recovered)) : ps.every(recovered))
+    const usefulRecovery = !s.config.mowerPolicy || !rates || ps.every(p => (s.morale[p.primary] ?? 0) >= minimumReturnMorale(p, s, rates) - MORALE_EPSILON)
+    const ready = usefulRecovery && (fiaReturn || (s.config.mowerPolicy && deadline !== undefined ? s.time >= deadline - MORALE_EPSILON : s.config.mowerPolicy ? (fullMembers.length ? fullMembers.every(recovered) : returnMembers.some(recovered)) : ps.every(recovered)))
     if (resting && ready) {
       const covers = ps.map(p => s.occupants[p.id]!)
       for (const p of ps) {
@@ -141,7 +148,7 @@ export function settleRoster(s: RuntimeState, rates?: RuntimeRates, retryDepth =
       if (!candidate || !bed) break
       reserved.add(candidate); beds[bed.id] = p.primary; swaps.push({ p, candidate, bed: bed.id })
     }
-    if (swaps.length !== ps.length && s.config.mowerPolicy && ps.some(p => p.exhaustRequired) && retryDepth < s.config.positions.length && preemptMowerRest(s,ps.length)) { settleRoster(s,rates,retryDepth+1); return }
+    if (swaps.length !== ps.length && s.config.mowerPolicy && ps.some(p => p.exhaustRequired) && retryDepth < s.config.positions.length && preemptMowerRest(s,ps.length,rates)) { settleRoster(s,rates,retryDepth+1); return }
     if (swaps.length !== ps.length) { rosterDiagnostic(s, 'group-blocked', `${key}: insufficient available candidates or beds; original occupants retained`); continue }
     s.bedOccupants = beds
     for (const { p, candidate } of swaps) s.occupants[p.id] = candidate
@@ -156,7 +163,7 @@ export function settleRoster(s: RuntimeState, rates?: RuntimeRates, retryDepth =
 }
 
 /** Exhaustion fallback: return highest-morale resting groups, except exhausted/full protected groups. */
-function preemptMowerRest(s: RuntimeState, required: number): boolean {
+function preemptMowerRest(s: RuntimeState, required: number, rates?: RuntimeRates): boolean {
   const free = () => s.config.beds.filter(b => !s.bedOccupants[b.id] || !s.config.positions.some(p => p.primary === s.bedOccupants[b.id])).length
   if (free() >= required) return false
   const selected: RuntimePosition[][]=[]; const seen=new Set<string>()
@@ -170,6 +177,9 @@ function preemptMowerRest(s: RuntimeState, required: number): boolean {
     seen.add(key)
     const group=s.config.positions.filter(q => !q.permanent && !q.dormitory && (p.group ? q.group===p.group : q.id===p.id))
     if (group.some(q=>q.exhaustRequired) && group.some(q=>q.restToFull)) continue
+    // Emergency bed release is also a return-to-work action. It cannot bypass recovery.
+    if (group.some(q => s.occupants[q.id] === q.primary ||
+      (s.morale[q.primary] ?? 0) < (rates ? minimumReturnMorale(q,s,rates) : upper(q)) - MORALE_EPSILON)) continue
     selected.push(group);available+=group.filter(q=>Object.values(s.bedOccupants).includes(q.primary)).length
     if (available>=required) break
   }
@@ -226,7 +236,15 @@ function updateMowerReturnDeadlines(s: RuntimeState, rates: RuntimeRates): void 
       if (first.group && (full || mismatch) && !first.exhaustRequired) delay -= .4*members.length/60
       if (full && !members.some(p => p.exhaustRequired)) delay -= 8/60
     }
-    deadlines[key]=s.time+Math.max(0,delay)
+    // A full-morale passive pendant must not send exhausted peers straight back to work.
+    // Apply after operation buffers, which otherwise repeatedly schedule returns before recovery.
+    const usefulRecoveryDelay = Math.max(0, ...ps.map(p => {
+      const deficit = minimumReturnMorale(p, s, rates) - (s.morale[p.primary] ?? 0)
+      if (deficit <= MORALE_EPSILON) return 0
+      const rate = moraleDerivative(s, p.primary, rates)
+      return rate > 0 ? deficit / rate : Infinity
+    }))
+    deadlines[key]=s.time+Math.max(0,delay,usefulRecoveryDelay)
   }
   s.returnDeadlines=deadlines
 }

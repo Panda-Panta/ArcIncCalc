@@ -1,4 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { setTimeout as yieldToRunner } from 'node:timers/promises'
+
+// annotate flushes pending task updates and awaits the IPC acknowledgement.
+// A fixed delay cannot guarantee this before a long synchronous generation.
+
+// Large synchronous generation cases must let Vitest flush worker progress messages.
+beforeEach(() => yieldToRunner(5))
+afterEach(() => yieldToRunner(5))
 import { OPERATORS } from '../domain/operators'
 import { compileOperatorInventory, type OwnedOperatorInput } from '../domain/operatorInventory'
 import { createDefaultWorkspace } from '../workbench/defaults'
@@ -15,7 +23,9 @@ const allOwned: OwnedOperatorInput[] = OPERATORS.map((o) => ({
 const inventory = compileOperatorInventory(allOwned)
 
 describe('Molecular Synthesis & Indivisible Atomic Units', () => {
-  it('strictly respects indivisible atomic core members', () => {
+  it('strictly respects indivisible atomic core members', async ({ annotate }) => {
+
+    await annotate('同步计算前确认测试进度已送达')
     const base = createDefaultWorkspace()
     const candidates = generateMolecularCandidates(base, allOwned, inventory, {
       seed: 42,
@@ -100,9 +110,12 @@ describe('Molecular Synthesis & Indivisible Atomic Units', () => {
         expect(durinsInBase.length).toBe(4)
       }
     }
-  })
+  }, 120000)
 
-  it('generates correct 2-power adaptive automation conf with Lancet-2 in workaholic', () => {
+  it('generates correct 2-power adaptive automation conf with Lancet-2 in workaholic', async ({ annotate }) => {
+
+
+    await annotate('同步计算前确认测试进度已送达')
     const base = createDefaultWorkspace()
     // Configure as 2-power layout (room_3_3 changed to manufacture)
     base.mainPlan.facilities.room_3_3 = {
@@ -144,9 +157,12 @@ describe('Molecular Synthesis & Indivisible Atomic Units', () => {
       .flatMap((r) => r.slots.map((s) => (s.occupant.kind === 'operator' ? restoreOperatorMowerName(s.occupant.operatorId) : '')))
     expect(powerOps).toContain('Lancet-2')
     expect(powerOps).toContain('承曦格雷伊')
-  })
+  }, 120000)
 
-  it('configures Aroma and Waai Fu in exhaust_require and rest_in_full', () => {
+  it('configures Aroma and Waai Fu in exhaust_require and rest_in_full', async ({ annotate }) => {
+
+
+    await annotate('同步计算前确认测试进度已送达')
     const base = createDefaultWorkspace()
     const candidates = generateMolecularCandidates(base, allOwned, inventory, {
       seed: 42,
@@ -162,9 +178,12 @@ describe('Molecular Synthesis & Indivisible Atomic Units', () => {
       expect(restInFullNames).toContain('阿罗玛')
       expect(restInFullNames).toContain('槐琥')
     }
-  })
+  }, 120000)
 
-  it('runs full smartRoster end-to-end with 82 dynamic simulation scoring', () => {
+  it('runs full smartRoster end-to-end with 82 dynamic simulation scoring', async ({ annotate }) => {
+
+
+    await annotate('同步计算前确认测试进度已送达')
     const base = createDefaultWorkspace()
     const result = runSmartRoster(base, allOwned, {
       branchCount: 2,
@@ -188,5 +207,5 @@ describe('Molecular Synthesis & Indivisible Atomic Units', () => {
     expect(Array.isArray(conf.resting_priority)).toBe(true)
     expect(Array.isArray(conf.ope_resting_priority)).toBe(true)
     expect(Array.isArray(conf.workaholic)).toBe(true)
-  }, 60000)
+  }, 120000)
 })

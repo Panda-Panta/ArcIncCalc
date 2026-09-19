@@ -1,4 +1,9 @@
-import {describe,expect,it,vi} from 'vitest'
+import {afterEach,describe,expect,it,vi} from 'vitest'
+import {setTimeout as yieldToRunner} from 'node:timers/promises'
+
+// annotate flushes pending task updates and awaits the IPC acknowledgement.
+// A fixed delay cannot guarantee this before a long synchronous generation.
+afterEach(()=>yieldToRunner(5))
 import {OPERATORS} from '../domain/operators'
 import {compileOperatorInventory,type OwnedOperatorInput} from '../domain/operatorInventory'
 import {createDefaultWorkspace} from '../workbench/defaults'
@@ -14,7 +19,9 @@ const allOwned:OwnedOperatorInput[]=OPERATORS.map(o=>({operator:o.name,elitePhas
 const mains=(w:ReturnType<typeof createDefaultWorkspace>)=>Object.values(w.mainPlan.facilities).flatMap(r=>r.slots.flatMap(s=>s.occupant.kind==='operator'?[id(s.occupant.operatorId)]:[]))
 
 describe('bounded complete automatic roster drafts',()=>{
- it('builds complete 243 mains with unique backups and retains the source layout',()=>{
+ it('builds complete 243 mains with unique backups and retains the source layout', async ({ annotate }) => {
+
+   await annotate('同步计算前确认测试进度已送达')
   const base=createDefaultWorkspace()
   base.compatibility.importedPresentRooms=[...MOWER_OUTPUT_ROOM_IDS,'central']
   const before=JSON.stringify(base)
@@ -44,7 +51,9 @@ describe('bounded complete automatic roster drafts',()=>{
   const free=(w:typeof workspace)=>Object.values(w.mainPlan.facilities).flatMap(r=>r.slots).filter(s=>s.occupant.kind==='free').length
   expect(free(exported)).toBe(free(workspace))
  },30000)
- it('uses actual dorm residents rather than Free beds in every static projection',()=>{
+ it('uses actual dorm residents rather than Free beds in every static projection', async ({ annotate }) => {
+
+   await annotate('同步计算前确认测试进度已送达')
   const spy=vi.spyOn(controlImpact,'projectControlOutput')
   try{
    const result=generateAutomaticRoster(createDefaultWorkspace(),allOwned,{trials:1})
@@ -56,15 +65,19 @@ describe('bounded complete automatic roster drafts',()=>{
    }
   }finally{spy.mockRestore()}
  },30000)
- it('is repeatable and selects the highest complete pair ranking score among trials',()=>{
+ it('is repeatable and selects the highest complete pair ranking score among trials', async ({ annotate }) => {
+
+   await annotate('同步计算前确认测试进度已送达')
   const base=createDefaultWorkspace(),options={seed:901,trials:2}
   const result=generateAutomaticRoster(base,allOwned,options)
   expect(result).toEqual(generateAutomaticRoster(base,allOwned,options))
   expect(result.status,JSON.stringify(result.diagnostics)+JSON.stringify(result.trials)).toBe('draft')
   expect(result.trials[result.selectedTrial!]!.duty!.rankingScore).toBe(Math.max(...result.trials.flatMap(t=>t.complete?[t.duty!.rankingScore!]:[])))
   expect(new Set(result.trials.map(t=>t.seed)).size).toBe(2)
- },30000)
- it('preserves a learned cross-room group and its chosen backups after filling and optimization',()=>{
+ },90000)
+ it('preserves a learned cross-room group and its chosen backups after filling and optimization', async ({ annotate }) => {
+
+   await annotate('同步计算前确认测试进度已送达')
   const base=createDefaultWorkspace();for(const r of Object.values(base.mainPlan.facilities))if(r.type==='manufacture')r.product='gold'
   const result=generateAutomaticRoster(base,allOwned,{seed:901,trials:2})
   const selections=result.trials[result.selectedTrial!]!.crossRoomSelections
@@ -82,7 +95,9 @@ describe('bounded complete automatic roster drafts',()=>{
    }
   }
  },30000)
- it('adapts to a 252 layout with two-seat trade and keeps fixed auxiliary occupants and Free',()=>{
+ it('adapts to a 252 layout with two-seat trade and keeps fixed auxiliary occupants and Free', async ({ annotate }) => {
+
+   await annotate('同步计算前确认测试进度已送达')
   const base=createDefaultWorkspace()
   base.mainPlan.facilities.room_3_3={roomId:'room_3_3',type:'manufacture',level:3,product:'exp',slots:Array.from({length:3},()=>({occupant:{kind:'empty'},groupId:null,replacements:[]}))}
   base.mainPlan.facilities.room_3_1.level=2
@@ -97,7 +112,9 @@ describe('bounded complete automatic roster drafts',()=>{
   expect(w.mainPlan.facilities.room_3_1.slots[2]!.occupant.kind).toBe('empty')
   expect(w.mainPlan.facilities.room_3_3.slots.filter(s=>s.occupant.kind==='operator')).toHaveLength(3)
  },30000)
- it('builds from a reduced owned roster without borrowing missing or locked high-efficiency staff',()=>{
+ it('builds from a reduced owned roster without borrowing missing or locked high-efficiency staff', async ({ annotate }) => {
+
+   await annotate('同步计算前确认测试进度已送达')
   const missing=new Set(['鸿雪','图耶','Mon3tr','凯尔希','斩业星熊','诗怀雅','蕾缪安','能天使','推进之王','摩根','戴菲恩'])
   const inventory=allOwned.filter(o=>!missing.has(o.operator)).map(o=>o.operator==='白面鸮'?{...o,elitePhase:0,level:1}:o)
   const result=generateAutomaticRoster(createDefaultWorkspace(),inventory,{trials:2,seed:1337})
@@ -106,7 +123,9 @@ describe('bounded complete automatic roster drafts',()=>{
   const w=result.draft!.workspace!,participants=[...mains(w),...Object.values(w.mainPlan.facilities).flatMap(r=>r.slots.flatMap(s=>s.replacements))]
   expect(participants.every(operator=>eligible.has(id(operator)))).toBe(true)
  },30000)
- it('never returns a half-filled draft for an insufficient inventory or state budget',()=>{
+ it('never returns a half-filled draft for an insufficient inventory or state budget', async ({ annotate }) => {
+
+   await annotate('同步计算前确认测试进度已送达')
   for(const options of [{trials:1,maxStates:1},{trials:1,maxStates:20}]){
    const result=generateAutomaticRoster(createDefaultWorkspace(),allOwned,options)
    expect(result.status).toBe('blocked');expect(result.draft).toBeNull()
@@ -114,7 +133,9 @@ describe('bounded complete automatic roster drafts',()=>{
   const result=generateAutomaticRoster(createDefaultWorkspace(),allOwned.filter(o=>['砾','芬'].includes(o.operator)),{trials:1})
   expect(result.status).toBe('blocked');expect(result.draft).toBeNull()
  })
- it('protects occupied output, control, and opaque policies without modifying the source',()=>{
+ it('protects occupied output, control, and opaque policies without modifying the source', async ({ annotate }) => {
+
+   await annotate('同步计算前确认测试进度已送达')
   for(const change of ['main','control','conf','metadata','backup','group'] as const){
    const base=createDefaultWorkspace()
    if(change==='main')base.mainPlan.facilities.room_1_1.slots[0]!.occupant={kind:'operator',operatorId:id('砾')}
@@ -128,7 +149,9 @@ describe('bounded complete automatic roster drafts',()=>{
    expect(JSON.stringify(base)).toBe(before)
   }
  })
- it('rejects unsupported product, low-stage fixed support, and invalid options',()=>{
+ it('rejects unsupported product, low-stage fixed support, and invalid options', async ({ annotate }) => {
+
+   await annotate('同步计算前确认测试进度已送达')
   const base=createDefaultWorkspace();base.mainPlan.facilities.room_1_1.product='fragment'
   expect(generateAutomaticRoster(base,allOwned).diagnostics[0]!.code).toBe('UNSUPPORTED_PRODUCT')
   base.mainPlan.facilities.room_1_1.product='gold';base.mainPlan.facilities.meeting.slots[0]!.occupant={kind:'operator',operatorId:id('陈')}

@@ -5,10 +5,8 @@ import { resolveOperatorCharId as resolveId } from '../workbench/compat/mowerJso
 import { type OperatorInventory, type OwnedOperatorInput } from '../domain/operatorInventory'
 import { isShiftRunOperator } from '../scheduler/scheduleAdapter'
 import {
-  ALL_ATOMIC_CORE_NAMES,
   ATOMIC_UNITS,
   AUXILIARY_FACILITY_CANDIDATES,
-  HIGH_EFFICIENCY_SINGLETONS,
   type AtomicMember,
   type AtomicUnit,
   type AtomicUnitConfPolicy,
@@ -20,6 +18,7 @@ import {
 } from '../scheduler/smartDormitoryPolicy'
 import { runScheduleSimulationBridge } from '../workbench/scheduleSimulationBridge'
 import { scoreProduction } from './productionObjective'
+import { rankStaffingCandidates } from './staffingQuality'
 
 export interface MolecularCandidate {
   id: string
@@ -129,6 +128,7 @@ export function generateMolecularCandidates(
 
   const candidates: MolecularCandidate[] = []
   const seen = new Set<string>()
+  const attemptedSkeletons = new Set<string>()
   const maxAttempts = Math.max(50, branchCount * 50)
 
   for (let branchIdx = 0; branchIdx < maxAttempts && candidates.length < branchCount; branchIdx++) {
@@ -155,7 +155,8 @@ export function generateMolecularCandidates(
     const centralRoom = ws.mainPlan.facilities.central
     const contactRoom = ws.mainPlan.facilities.contact
 
-    const occupied = new Set<string>(lockedOperators)
+    const occupied = new Set<string>([...lockedOperators, ...Object.values(ws.mainPlan.facilities).flatMap(room =>
+      room.slots.flatMap(slot => [...(slot.occupant.kind === 'operator' ? [resolveId(slot.occupant.operatorId)] : []), ...slot.replacements.map(resolveId)]))])
     const appliedAtoms: string[] = []
     const confExhaustRequire = new Set<string>()
     const confRestInFull = new Set<string>()
@@ -175,19 +176,10 @@ export function generateMolecularCandidates(
       return true
     }
 
-    const findFallbackMaxSkillOp = (roomType: 'MANUFACTURE' | 'TRADING' | 'CONTROL' | 'POWER'): string | undefined => {
-      if (inventory.operators.length === 0) return undefined
-      const found = inventory.operators.find(
-        (o) =>
-          (roomType !== 'TRADING' || !isUnsupportedTradeOperator(o.charId)) &&
-          o.matchesMaximumSkills &&
-          !occupied.has(o.charId) &&
-          !isShiftRunOperator(o.charId) &&
-          o.name !== '菲亚梅塔' &&
-          !ALL_ATOMIC_CORE_NAMES.has(o.name) &&
-          o.skills.some((s) => s.roomType === roomType),
-      )
-      return found?.name
+    const bestSingleton = (roomId: MowerRoomId, slotIndex: number, metalcraftOnly = false): string | undefined => {
+      const pool = inventory.operators.filter(o => isAvailableSingleton(o.name) &&
+        (!metalcraftOnly || o.skills.some(s => s.roomType === 'MANUFACTURE' && /^金属工艺·[αβγ]$/.test(s.name))))
+      return rankStaffingCandidates(ws, inventory, { roomId, slotIndex }, pool.map(o => o.charId), 'main')[0]
     }
 
     const placeOperator = (
@@ -198,6 +190,7 @@ export function generateMolecularCandidates(
       backupName?: string,
     ) => {
       const charId = resolveId(opName)
+      if (occupied.has(charId)) return false
       if (inventory.operators.length > 0) {
         const op = inventory.operators.find((o) => o.charId === charId || o.name === opName)
         if (!op || !op.matchesMaximumSkills) {
@@ -225,9 +218,14 @@ export function generateMolecularCandidates(
         }
       }
 
-      if (validBackupId && room.type === 'trading' && isUnsupportedTradeOperator(validBackupId)) validBackupId = undefined
+      if (backupName && !validBackupId) return false
+      if (validBackupId && (validBackupId === charId || occupied.has(validBackupId) || isShiftRunOperator(validBackupId) || room.type === 'trading' && isUnsupportedTradeOperator(validBackupId))) return false
       slot.occupant = { kind: 'operator', operatorId: charId }
       slot.groupId = groupId
+      if (room.type === 'manufacture' && charId === resolveId('机械师')) {
+        slot.groupId = null
+        confExhaustRequire.add('机械师')
+      }
       occupied.add(charId)
 
       if (validBackupId) {
@@ -239,16 +237,31 @@ export function generateMolecularCandidates(
       return true
     }
 
+    type Placement = { roomId: MowerRoomId; index: number; name: string; group: string; backup?: string }
+    const placeTogether = (placements: Placement[]): boolean => {
+      const before = structuredClone(ws.mainPlan.facilities)
+      const reservedBefore = new Set(occupied), addedBefore = addedPositions.length
+      for (const p of placements) {
+        if (placeOperator(p.roomId, p.index, p.name, p.group, p.backup)) continue
+        for (const room of Object.values(ws.mainPlan.facilities)) Object.assign(room, before[room.roomId])
+        occupied.clear(); reservedBefore.forEach(id => occupied.add(id)); addedPositions.length = addedBefore
+        return false
+      }
+      return true
+    }
+    const emptyIndices = (roomId: MowerRoomId) => ws.mainPlan.facilities[roomId].slots.flatMap((slot, index) =>
+      slot.occupant.kind === 'empty' && !lockedPositions.has(`${roomId}:${index}`) ? [index] : [])
+
     const placePendantOperatorHelper = (opName: string, grpId: string): boolean => {
       const charId = resolveId(opName)
       if (occupied.has(charId)) return false
 
       // 1. Try factory (Workshop)
       const factory = ws.mainPlan.facilities.factory
-      if (factory && factory.slots.length > 0 && factory.slots[0]!.occupant.kind !== 'operator') {
+      if (factory && emptyIndices('factory').includes(0)) {
         const slot = factory.slots[0]!
         slot.occupant = { kind: 'operator', operatorId: charId }
-        slot.groupId = grpId
+        slot.groupId = null
         occupied.add(charId)
         const backupOp = ['特克诺', '年', '锡兰'].find(isAvailableSingleton)
         if (backupOp) {
@@ -263,13 +276,13 @@ export function generateMolecularCandidates(
       // 2. Try train (Training Room)
       const train = ws.mainPlan.facilities.train
       if (train && train.slots.length > 0) {
-        const emptySlotIdx = train.slots.findIndex((s) => s.occupant.kind !== 'operator')
+        const emptySlotIdx = emptyIndices('train')[0] ?? -1
         if (emptySlotIdx !== -1) {
           const slot = train.slots[emptySlotIdx]!
           slot.occupant = { kind: 'operator', operatorId: charId }
-          slot.groupId = grpId
+          slot.groupId = null
           occupied.add(charId)
-          const backupOp = ['玛恩纳', '艾丽妮', '左乐'].find(isAvailableSingleton)
+          const backupOp = ['艾丽妮', '左乐', '达利尔'].find(isAvailableSingleton)
           if (backupOp) {
             const bId = resolveId(backupOp)
             slot.replacements = [bId]
@@ -282,7 +295,7 @@ export function generateMolecularCandidates(
 
       // 3. Dormitory slot with LOWEST recovery rate
       const lowest = findLowestRecoveryDormitorySlot(ws, true)
-      if (lowest) {
+      if (lowest && !lockedPositions.has(`${lowest.roomId}:${lowest.slotIndex}`)) {
         const targetRoom = ws.mainPlan.facilities[lowest.roomId]!
         const targetSlot = targetRoom.slots[lowest.slotIndex]!
         targetSlot.occupant = { kind: 'operator', operatorId: charId }
@@ -421,10 +434,8 @@ export function generateMolecularCandidates(
         placeOperator(tRoom.roomId, 1, '拉普兰德', groupId)
         if (tRoom.slots.length >= 3) {
           // High-efficiency singleton: exclude Sora, exclude shift-run operators
-          const singletons = HIGH_EFFICIENCY_SINGLETONS.trading.filter(isAvailableSingleton)
-          if (singletons.length > 0) {
-            placeOperator(tRoom.roomId, 2, singletons[0]!, groupId)
-          }
+          const singleton = bestSingleton(tRoom.roomId, 2)
+          if (singleton) placeOperator(tRoom.roomId, 2, singleton, groupId)
         }
         appliedAtoms.push('penguin_logistics')
         continue
@@ -482,15 +493,8 @@ export function generateMolecularCandidates(
       const tCap = capacity(tRoom.type, tRoom.level)
       for (let sIdx = 0; sIdx < tCap; sIdx++) {
         if (tRoom.slots[sIdx]!.occupant.kind !== 'operator') {
-          const pool = HIGH_EFFICIENCY_SINGLETONS.trading.filter(isAvailableSingleton)
-          if (pool.length > 0) {
-            placeOperator(tRoom.roomId, sIdx, pool[0]!, `贸易散件_${tRoom.roomId}`)
-          } else {
-            const fallback = findFallbackMaxSkillOp('TRADING')
-            if (fallback) {
-              placeOperator(tRoom.roomId, sIdx, fallback, `贸易散件_${tRoom.roomId}`)
-            }
-          }
+          const singleton = bestSingleton(tRoom.roomId, sIdx)
+          if (singleton) placeOperator(tRoom.roomId, sIdx, singleton)
         }
       }
     }
@@ -536,73 +540,32 @@ export function generateMolecularCandidates(
       }
     }
 
-    // 1.2 Automation Molecule (Wendy + Eunectes + Greyy + Lancet-2 + Purestream: 47.5%)
+    // 1.2 Place automation and its cross-room supports as one complete unit.
     const autoAtom = ATOMIC_UNITS.find((a) => a.id === 'automation')!
     const autoCheck = checkAtomicAvailability(autoAtom, inventory, powerCount, 'gold')
-    if (autoCheck.available && !occupied.has(resolveId('温蒂')) && !occupied.has(resolveId('清流'))) {
-      const autoGroupId = '自动化组'
-      const minRequiredSlots = powerCount >= 3 ? 3 : 2
-      const goldRoom = manufactureRooms.find(
-        (r) =>
-          r.product === 'gold' &&
-          r.slots.filter((s) => s.occupant.kind !== 'operator').length >= minRequiredSlots,
-      ) ?? manufactureRooms.find(
-        (r) =>
-          r.product === 'gold' &&
-          r.slots.filter((s) => s.occupant.kind !== 'operator').length >= 2,
-      )
-
-      if (goldRoom) {
-        const emptySlots = goldRoom.slots
-          .map((s, idx) => (s.occupant.kind !== 'operator' ? idx : -1))
-          .filter((idx) => idx !== -1)
-
-        // Always place Wendy and Purestream together in gold room
-        placeOperator(goldRoom.roomId, emptySlots[0]!, '温蒂', autoGroupId)
-        placeOperator(goldRoom.roomId, emptySlots[1]!, '清流', autoGroupId)
-
-        if (powerCount >= 3) {
-          // 3-Power: Eunectes in manufacture 3rd slot if available, else central
-          if (emptySlots.length >= 3) {
-            placeOperator(goldRoom.roomId, emptySlots[2]!, '森蚺', autoGroupId)
-          } else if (centralRoom) {
-            const emptyCentral = centralRoom.slots.findIndex((s) => s.occupant.kind !== 'operator')
-            if (emptyCentral !== -1) placeOperator('central', emptyCentral, '森蚺', autoGroupId)
+    if (autoCheck.available) {
+      const group = '自动化组'
+      const requiredGoldSlots = powerCount >= 3 ? 3 : 2
+      const goldRoom = manufactureRooms.find(r => r.product === 'gold' && emptyIndices(r.roomId).length >= requiredGoldSlots)
+      const freePower = powerRooms.filter(r => emptyIndices(r.roomId).includes(0))
+      const centralIndex = emptyIndices('central')[0]
+      if (goldRoom && freePower.length >= (powerCount >= 3 ? 1 : 2) && (powerCount >= 3 || centralIndex !== undefined)) {
+        const indices = emptyIndices(goldRoom.roomId)
+        const placements: Placement[] = [
+          { roomId: goldRoom.roomId, index: indices[0]!, name: '温蒂', group },
+          { roomId: goldRoom.roomId, index: indices[1]!, name: '清流', group },
+          { roomId: powerCount >= 3 ? goldRoom.roomId : 'central', index: powerCount >= 3 ? indices[2]! : centralIndex!, name: '森蚺', group },
+          { roomId: freePower[0]!.roomId, index: 0, name: '承曦格雷伊', group },
+        ]
+        if (powerCount < 3) placements.push({ roomId: freePower[1]!.roomId, index: 0, name: 'Lancet-2', group })
+        if (placeTogether(placements)) {
+          if (powerCount < 3) {
+            confWorkaholic.add('Lancet-2')
+            const third = autoCheck.thirdMemberWhitelist?.find(n => isAvailableSingleton(n) && n !== '清流')
+            if (third && indices[2] !== undefined) placeOperator(goldRoom.roomId, indices[2], third, group)
           }
-
-          // Greyy in power room
-          if (powerRooms.length > 0) {
-            placeOperator(powerRooms[0]!.roomId, 0, '承曦格雷伊', autoGroupId)
-          }
-        } else {
-          // 2-Power: Eunectes in central, Lancet-2 in power, Greyy in power
-          if (centralRoom) {
-            const emptyCentral = centralRoom.slots.findIndex((s) => s.occupant.kind !== 'operator')
-            if (emptyCentral !== -1) placeOperator('central', emptyCentral, '森蚺', autoGroupId)
-          }
-
-          if (powerRooms.length >= 2) {
-            placeOperator(powerRooms[0]!.roomId, 0, 'Lancet-2', autoGroupId)
-            placeOperator(powerRooms[1]!.roomId, 0, '承曦格雷伊', autoGroupId)
-          } else if (powerRooms.length === 1) {
-            placeOperator(powerRooms[0]!.roomId, 0, '承曦格雷伊', autoGroupId)
-          }
-
-          // 2-power conf policy: Lancet-2 in workaholic (0 mood, prohibited from dorms)
-          confWorkaholic.add('Lancet-2')
-
-          // If 3rd slot available in Wendy's gold room, fill from whitelist
-          if (emptySlots.length >= 3) {
-            const whitelistOp = autoCheck.thirdMemberWhitelist?.find(
-              (n) => isAvailableSingleton(n) && n !== '清流',
-            )
-            if (whitelistOp) {
-              placeOperator(goldRoom.roomId, emptySlots[2]!, whitelistOp, autoGroupId)
-            }
-          }
+          appliedAtoms.push('automation')
         }
-
-        appliedAtoms.push('automation')
       }
     }
 
@@ -619,9 +582,9 @@ export function generateMolecularCandidates(
         const emptyIndices = mRoom.slots.flatMap((s, idx) => (s.occupant.kind !== 'operator' ? [idx] : []))
         if (emptyIndices.length >= 2) {
           placeOperator(mRoom.roomId, emptyIndices[0]!, '苍苔', cantabileGroupId)
-          const metals = HIGH_EFFICIENCY_SINGLETONS.goldManufacture.filter(isAvailableSingleton)
-          for (let i = 1; i < emptyIndices.length && metals.length > 0; i++) {
-            placeOperator(mRoom.roomId, emptyIndices[i]!, metals.shift()!, cantabileGroupId)
+          for (let i = 1; i < emptyIndices.length; i++) {
+            const metal = bestSingleton(mRoom.roomId, emptyIndices[i]!, true)
+            if (metal) placeOperator(mRoom.roomId, emptyIndices[i]!, metal, cantabileGroupId)
           }
           appliedAtoms.push('cantabile_metalcraft')
           continue
@@ -731,64 +694,60 @@ export function generateMolecularCandidates(
       return totalPossible >= 4
     }
 
-    if (abyssalCheck.available && knightCheck.available && canFitAllHuntersUnderCap()) {
+    let placedMirror = false
+    if (abyssalCheck.available && knightCheck.available && canFitAllHuntersUnderCap() && emptyIndices('central').length >= 2) {
       const mirrorGroupId = '深海骑士替班组'
-      if (centralRoom) {
-        const cSlot = centralRoom.slots.findIndex((s) => s.occupant.kind !== 'operator')
-        if (cSlot !== -1) {
-          placeOperator('central', cSlot, '歌蕾蒂娅', mirrorGroupId, '薇薇安娜')
-          confRestingPriorityHigh.add('歌蕾蒂娅')
-        }
-      }
-
       const hunterPairs: [string, string][] = [
         ['斯卡蒂', '野鬃'],
         ['乌尔比安', '灰毫'],
         ['安哲拉', '远牙'],
         ['幽灵鲨', '砾'],
       ]
-
+      const centralIndices = emptyIndices('central')
+      const placements: Placement[] = [
+        { roomId: 'central', index: centralIndices[0]!, name: '歌蕾蒂娅', group: mirrorGroupId, backup: '薇薇安娜' },
+        { roomId: 'central', index: centralIndices[1]!, name: '玛恩纳', group: mirrorGroupId, backup: '焰尾' },
+      ]
       let pairIdx = 0
-      for (const mRoom of manufactureRooms) {
+      // The mirrored knights produce EXP; do not place their shift in a gold factory.
+      for (const mRoom of manufactureRooms.filter(room => room.product === 'exp')) {
         if (pairIdx >= hunterPairs.length) break
         const cap = capacity(mRoom.type, mRoom.level)
         let placedInThisRoom = 0
 
         for (let sIdx = 0; sIdx < cap && placedInThisRoom < 2 && pairIdx < hunterPairs.length; sIdx++) {
-          if (mRoom.slots[sIdx]!.occupant.kind !== 'operator') {
+          if (emptyIndices(mRoom.roomId).includes(sIdx)) {
             const [hunter, knight] = hunterPairs[pairIdx]!
-            const placed = placeOperator(mRoom.roomId, sIdx, hunter, mirrorGroupId, knight)
-            if (placed) {
-              pairIdx++
-              placedInThisRoom++
-            }
+            placements.push({ roomId: mRoom.roomId, index: sIdx, name: hunter, group: mirrorGroupId, backup: knight })
+            pairIdx++
+            placedInThisRoom++
           }
         }
       }
 
-      if (pairIdx === 4) {
+      if (pairIdx === 4 && placeTogether(placements)) {
+        placedMirror = true
+        confRestingPriorityHigh.add('歌蕾蒂娅')
         confRestingPriorityLow.add('乌尔比安')
         confRestingPriorityLow.add('斯卡蒂')
         confRestingPriorityLow.add('幽灵鲨')
         confRestingPriorityLow.add('安哲拉')
         appliedAtoms.push('abyssal_hunters', 'pinus_sylvestris')
       }
-    } else if (knightCheck.available && !occupied.has(resolveId('薇薇安娜')) && !occupied.has(resolveId('焰尾'))) {
+    }
+    if (!placedMirror && knightCheck.available && !occupied.has(resolveId('薇薇安娜')) && !occupied.has(resolveId('焰尾'))) {
       const knightGroupId = '红松林骑士组'
-      if (centralRoom) {
-        placeOperator('central', 2, '薇薇安娜', knightGroupId)
-        placeOperator('central', 3, '焰尾', knightGroupId)
+      const centralIndices = emptyIndices('central')
+      const expRoom = manufactureRooms.find(r => r.product === 'exp' && emptyIndices(r.roomId).length >= 3)
+      if (centralIndices.length >= 2 && expRoom) {
+        const slots = emptyIndices(expRoom.roomId)
+        const placements: Placement[] = [
+          { roomId: 'central', index: centralIndices[0]!, name: '薇薇安娜', group: knightGroupId },
+          { roomId: 'central', index: centralIndices[1]!, name: '焰尾', group: knightGroupId },
+          ...['野鬃', '灰毫', '远牙'].map((name, index) => ({ roomId: expRoom.roomId, index: slots[index]!, name, group: knightGroupId })),
+        ]
+        if (placeTogether(placements)) appliedAtoms.push('pinus_sylvestris')
       }
-      const expRoom = manufactureRooms.find((r) => r.product === 'exp') ?? manufactureRooms[0]
-      if (expRoom) {
-        const knights = ['野鬃', '灰毫', '远牙']
-        for (let sIdx = 0; sIdx < expRoom.slots.length; sIdx++) {
-          if (expRoom.slots[sIdx]!.occupant.kind !== 'operator' && knights.length > 0) {
-            placeOperator(expRoom.roomId, sIdx, knights.shift()!, knightGroupId)
-          }
-        }
-      }
-      appliedAtoms.push('pinus_sylvestris')
     }
 
     // Blacksteel (涤火杰西卡 + 水月 + 香草 + 杰西卡: 25%)
@@ -802,96 +761,36 @@ export function generateMolecularCandidates(
       !occupied.has(resolveId('杰西卡'))
     ) {
       const bsGroupId = '黑钢国际'
-      if (centralRoom) {
-        const centralSlot = centralRoom.slots.findIndex((s) => s.occupant.kind !== 'operator')
-        if (centralSlot !== -1) placeOperator('central', centralSlot, '涤火杰西卡', bsGroupId)
+      const centralSlot = emptyIndices('central')[0]
+      const factory = manufactureRooms.find(room => emptyIndices(room.roomId).length >= 3)
+      if (centralSlot !== undefined && factory) {
+        const slots = emptyIndices(factory.roomId)
+        if (placeTogether([
+          { roomId: 'central', index: centralSlot, name: '涤火杰西卡', group: bsGroupId },
+          ...['水月', '香草', '杰西卡'].map((name, index) => ({ roomId: factory.roomId, index: slots[index]!, name, group: bsGroupId })),
+        ])) appliedAtoms.push('blacksteel')
       }
-      const bsOps = ['水月', '香草', '杰西卡']
-      for (const mRoom of manufactureRooms) {
-        for (let sIdx = 0; sIdx < mRoom.slots.length; sIdx++) {
-          if (mRoom.slots[sIdx]!.occupant.kind !== 'operator' && bsOps.length > 0) {
-            placeOperator(mRoom.roomId, sIdx, bsOps.shift()!, bsGroupId)
-          }
-        }
-      }
-      appliedAtoms.push('blacksteel')
     }
 
     // ----------------------------------------------------
     // Step 3: Fill Remaining Empty Slots with High-Efficiency Singletons
     // ----------------------------------------------------
-    // Manufacture rooms
-    for (const room of manufactureRooms) {
-      const cap = capacity(room.type, room.level)
-      for (let sIdx = 0; sIdx < cap; sIdx++) {
-        if (room.slots[sIdx]!.occupant.kind !== 'operator') {
-          const pool =
-            room.product === 'exp'
-              ? HIGH_EFFICIENCY_SINGLETONS.expManufacture
-              : HIGH_EFFICIENCY_SINGLETONS.goldManufacture
-          const available = pool.filter(isAvailableSingleton)
-          if (available.length > 0) {
-            placeOperator(room.roomId, sIdx, available[0]!, `制造散件_${room.roomId}`)
-          } else {
-            const general = HIGH_EFFICIENCY_SINGLETONS.generalManufacture.filter(isAvailableSingleton)
-            if (general.length > 0) {
-              placeOperator(room.roomId, sIdx, general[0]!, `制造散件_${room.roomId}`)
-            } else {
-              const fallback = findFallbackMaxSkillOp('MANUFACTURE')
-              if (fallback) {
-                placeOperator(room.roomId, sIdx, fallback, `制造散件_${room.roomId}`)
-              }
-            }
-          }
-        }
-      }
-    }
-
-    // Trading rooms
-    for (const room of tradingRooms) {
-      const cap = capacity(room.type, room.level)
-      for (let sIdx = 0; sIdx < cap; sIdx++) {
-        if (room.slots[sIdx]!.occupant.kind !== 'operator') {
-          const available = HIGH_EFFICIENCY_SINGLETONS.trading.filter(isAvailableSingleton)
-          if (available.length > 0) {
-            placeOperator(room.roomId, sIdx, available[0]!, `贸易散件_${room.roomId}`)
-          } else {
-            const fallback = findFallbackMaxSkillOp('TRADING')
-            if (fallback) {
-              placeOperator(room.roomId, sIdx, fallback, `贸易散件_${room.roomId}`)
-            }
-          }
-        }
-      }
-    }
-
-    // Central room
-    if (centralRoom) {
-      const cap = capacity(centralRoom.type, centralRoom.level)
-      for (let sIdx = 0; sIdx < cap; sIdx++) {
-        if (centralRoom.slots[sIdx]!.occupant.kind !== 'operator') {
-          const available = HIGH_EFFICIENCY_SINGLETONS.control.filter(isAvailableSingleton)
-          if (available.length > 0) {
-            placeOperator('central', sIdx, available[0]!, '中枢散件')
-          } else {
-            const fallback = findFallbackMaxSkillOp('CONTROL')
-            if (fallback) {
-              placeOperator('central', sIdx, fallback, '中枢散件')
-            }
-          }
-        }
-      }
-    }
-
-    // Power rooms
-    for (const pRoom of powerRooms) {
-      if (pRoom.slots.length > 0 && pRoom.slots[0]!.occupant.kind !== 'operator') {
-        const eligibleDroneOps = inventory.operators.filter(
-          (o) => o.matchesMaximumSkills && !occupied.has(o.charId) && !isShiftRunOperator(o.charId) && o.skills.some((s) => s.roomType === 'POWER'),
-        )
-        if (eligibleDroneOps.length > 0) {
-          placeOperator(pRoom.roomId, 0, eligibleDroneOps[0]!.name, `电站_${pRoom.roomId}`)
-        }
+    // Repeated random draws must not redo deterministic staffing and backup ranking.
+    const skeleton = JSON.stringify([ws.mainPlan.facilities, manufactureRooms.map(r => r.roomId),
+      [...confExhaustRequire], [...confRestInFull], [...confRestingPriorityLow], [...confRestingPriorityHigh], [...confWorkaholic]])
+    if (attemptedSkeletons.has(skeleton)) continue
+    attemptedSkeletons.add(skeleton)
+    // Production singletons use their theoretical skill efficiency under this layout.
+    const roomSkills = { manufacture: 'MANUFACTURE', trading: 'TRADING', central: 'CONTROL', power: 'POWER' } as const
+    for (const room of [...manufactureRooms, ...tradingRooms, centralRoom, ...powerRooms]) {
+      if (!room || !(room.type in roomSkills)) continue
+      const skillType = roomSkills[room.type as keyof typeof roomSkills]
+      for (const index of emptyIndices(room.roomId)) {
+        const pool = inventory.operators.filter(o => o.matchesMaximumSkills && !occupied.has(o.charId) &&
+          !isShiftRunOperator(o.charId) && o.name !== '菲亚梅塔' &&
+          (room.type !== 'trading' || !isUnsupportedTradeOperator(o.charId)) && o.skills.some(s => s.roomType === skillType))
+        const selected = rankStaffingCandidates(ws, inventory, { roomId: room.roomId, slotIndex: index }, pool.map(o => o.charId), 'main')[0]
+        if (selected) placeOperator(room.roomId, index, selected)
       }
     }
 
@@ -968,49 +867,6 @@ export function generateMolecularCandidates(
     // ----------------------------------------------------
     // Step 4: Complete Backups & Assemble Conf Policies
     // ----------------------------------------------------
-    // Assign backups for any added position that still lacks replacement
-    const needBackups = addedPositions.filter((p) => {
-      const room = ws.mainPlan.facilities[p.roomId]
-      return room && room.type !== 'dormitory' && room.slots[p.slotIndex]?.replacements.length === 0
-    })
-
-    if (needBackups.length > 0) {
-      assignBackups(ws, inventory, needBackups)
-    }
-
-    const currentlyReserved = new Set(
-      Object.values(ws.mainPlan.facilities).flatMap((r) =>
-        r.slots.flatMap((s) => [
-          ...(s.occupant.kind === 'operator' ? [resolveId(s.occupant.operatorId)] : []),
-          ...s.replacements.map(resolveId),
-        ]),
-      ),
-    )
-
-    for (const room of Object.values(ws.mainPlan.facilities)) {
-      if (['manufacture', 'trading', 'power', 'central', 'meeting', 'factory', 'train'].includes(room.type)) {
-        const cap = capacity(room.type, room.level)
-        for (let sIdx = 0; sIdx < cap; sIdx++) {
-          const slot = room.slots[sIdx]
-          if (slot && slot.occupant.kind === 'operator' && slot.replacements.length === 0) {
-            const fallbackOp = inventory.operators.find(
-              (o) =>
-                (room.type !== 'trading' || !isUnsupportedTradeOperator(o.charId)) &&
-                o.matchesMaximumSkills &&
-                !currentlyReserved.has(o.charId) &&
-                !isShiftRunOperator(o.charId) &&
-                !ALL_ATOMIC_CORE_NAMES.has(o.name) &&
-                o.name !== '菲亚梅塔',
-            )
-            if (fallbackOp) {
-              slot.replacements = [fallbackOp.charId]
-              currentlyReserved.add(fallbackOp.charId)
-            }
-          }
-        }
-      }
-    }
-
     // Assemble conf
     const confPolicy: AtomicUnitConfPolicy = {
       exhaustRequire: [...confExhaustRequire],
@@ -1020,19 +876,60 @@ export function generateMolecularCandidates(
       workaholic: [...confWorkaholic],
     }
 
-    ws.mainPlan.conf.exhaust_require = (confPolicy.exhaustRequire ?? []).map(resolveId)
-    ws.mainPlan.conf.rest_in_full = (confPolicy.restInFull ?? []).map(resolveId)
-    ws.mainPlan.conf.resting_priority = (confPolicy.restingPriorityLow ?? []).map(resolveId)
-    ws.mainPlan.conf.ope_resting_priority = (confPolicy.restingPriorityHigh ?? []).map(resolveId)
-    ws.mainPlan.conf.workaholic = (confPolicy.workaholic ?? []).map(resolveId)
+    ws.mainPlan.conf.exhaust_require = [...new Set([...base.mainPlan.conf.exhaust_require, ...(confPolicy.exhaustRequire ?? [])].map(resolveId))]
+    ws.mainPlan.conf.rest_in_full = [...new Set([...base.mainPlan.conf.rest_in_full, ...(confPolicy.restInFull ?? [])].map(resolveId))]
+    ws.mainPlan.conf.resting_priority = [...new Set([...base.mainPlan.conf.resting_priority, ...(confPolicy.restingPriorityLow ?? [])].map(resolveId))]
+    ws.mainPlan.conf.ope_resting_priority = [...new Set([...base.mainPlan.conf.ope_resting_priority, ...(confPolicy.restingPriorityHigh ?? [])].map(resolveId))]
+    ws.mainPlan.conf.workaholic = [...new Set([...base.mainPlan.conf.workaholic, ...(confPolicy.workaholic ?? [])].map(resolveId))]
 
-    // Apply smart dormitory keepers, Fiammetta 3 swap targets, and Free beds preservation
+    // Assign backups for any added position that still lacks replacement
+    const needBackups = addedPositions.filter((p) => {
+      const room = ws.mainPlan.facilities[p.roomId]
+      const slot = room?.slots[p.slotIndex]
+      return room && room.type !== 'dormitory' && slot?.occupant.kind === 'operator' &&
+        !ws.mainPlan.conf.workaholic.some(id => resolveId(id) === resolveId(p.operatorId)) &&
+        !slot.replacements.some(id => !isShiftRunOperator(id))
+    })
+
+    if (needBackups.length > 0) {
+      assignBackups(ws, inventory, needBackups)
+    }
+
+    // Do not fill missing backups with unrelated operators just to make every slot nonempty.
+    const missingBackup = needBackups.some(p => {
+      const slot = ws.mainPlan.facilities[p.roomId].slots[p.slotIndex]!
+      return !slot.replacements.some(id => !isShiftRunOperator(id))
+    })
+    if (missingBackup) continue
+
+    // Keep an unchanged copy if automatic dormitory placement touches a user lock.
+    const beforeDormitoryPolicy = structuredClone(ws)
     applySmartDormitoryPolicy(ws, {
       entries: [..._entries],
       candidateOperatorIds: _entries.map((e) => e.operator),
-      force: true,
     })
+    const changedLock = [...lockedPositions].some(key => {
+      const [roomId, index] = key.split(':')
+      return JSON.stringify(ws.mainPlan.facilities[roomId as MowerRoomId]?.slots[Number(index)]) !==
+        JSON.stringify(beforeDormitoryPolicy.mainPlan.facilities[roomId as MowerRoomId]?.slots[Number(index)])
+    })
+    if (changedLock) Object.assign(ws, beforeDormitoryPolicy)
+    for (const room of Object.values(ws.mainPlan.facilities)) if (room.type === 'dormitory') {
+      room.slots.forEach((slot, index) => {
+        if (slot.occupant.kind === 'empty' && !lockedPositions.has(`${room.roomId}:${index}`)) slot.occupant = { kind: 'free' }
+      })
+    }
 
+    // Dormitory support placement may remove an operator from an ordinary backup list.
+    const missingAfterPolicy = Object.values(ws.mainPlan.facilities)
+      .filter(room => ['manufacture', 'trading', 'power', 'central', 'meeting', 'contact'].includes(room.type))
+      .flatMap(room => room.slots.flatMap((slot, slotIndex) => {
+        if (slot.occupant.kind !== 'operator' || lockedPositions.has(`${room.roomId}:${slotIndex}`)) return []
+        const operatorId = resolveId(slot.occupant.operatorId)
+        if (slot.replacements.some(id => !isShiftRunOperator(id)) || ws.mainPlan.conf.workaholic.some(id => resolveId(id) === operatorId)) return []
+        return [{ roomId: room.roomId, slotIndex, operatorId }]
+      }))
+    if (missingAfterPolicy.length && assignBackups(ws, inventory, missingAfterPolicy).missingReplacementIds.length) continue
     if (!configureRunOrder(ws, inventory)) continue
 
     // Physical roster validation
@@ -1100,7 +997,7 @@ export function evaluateMolecularCandidates(
       },
     )
 
-    if (simResponse.report && simResponse.report.success) {
+    if (simResponse.report?.success && simResponse.report.production?.success) {
       const rep = simResponse.report
       if (rep.production?.sample.completed) {
         const prodScore = scoreProduction(rep.production.sample.completed, rep.observedHours)

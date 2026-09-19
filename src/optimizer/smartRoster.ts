@@ -7,11 +7,8 @@ import { scoreProduction } from './productionObjective'
 import { hasConsumptionSkill } from './fixedDuty'
 import { runRosterIncomeSearch, type IncomeSearchResult } from './rosterIncomeSearch'
 import { validatePhysicalRoster } from './rosterDraft'
-import { applySmartDormitoryPolicy } from '../scheduler/smartDormitoryPolicy'
 import { generateMolecularCandidates } from './molecularSynthesis'
 import { runGlobalPerCapitaReplacement } from './globalPerCapitaReplacement'
-import { ALL_ATOMIC_CORE_NAMES } from './riicAtomicUnits'
-import { isShiftRunOperator } from '../scheduler/scheduleAdapter'
 
 export interface SmartRosterOptions {
   seed?: number
@@ -245,7 +242,7 @@ export function runSmartRoster(
       }
     )
 
-    if (simResponse.report?.success) {
+    if (simResponse.report?.success && simResponse.report.production?.success) {
       const rep = simResponse.report
       if (rep.production?.sample.completed && rep.observedHours > 0) {
         const prodScore = scoreProduction(rep.production.sample.completed, rep.observedHours)
@@ -359,7 +356,7 @@ export function runSmartRoster(
             operationDurationHours: 0,
           },
         )
-        if (sim.report?.success && sim.report.production?.sample.completed && sim.report.observedHours > 0) {
+        if (sim.report?.success && sim.report.production?.success && sim.report.observedHours > 0) {
           return scoreProduction(sim.report.production.sample.completed, sim.report.observedHours).total
         }
       } catch {
@@ -391,14 +388,16 @@ export function runSmartRoster(
           baseline: finalWorkspace,
           inventory: [...entries],
           mode: 'hill-climb',
-          maxCandidates: 8,
-          maxDepth: 2,
+          maxCandidates: 20,
+          maxDepth: 3,
+          lockedPositions: [...lockedPositions],
           objective: 'composite',
           includeControlMains: true,
           includeProductionMains: true,
+          assumptions: { restingThreshold: 0.65, operationDurationHours: 0 },
           options: {
-            warmupHours: 24,
-            sampleHours: 72,
+            warmupHours: options.simulationWarmupHours ?? 24,
+            sampleHours: options.simulationSampleHours ?? 72,
             maxStepHours: 0.25,
             production: {
               outputMode: 'potential',
@@ -446,59 +445,34 @@ export function runSmartRoster(
     }
   }
 
-  // Post-processing: apply smart dormitory keepers
-  applySmartDormitoryPolicy(finalWorkspace, {
-    entries: [...entries],
-    candidateOperatorIds: entries.map(e => e.operator),
-    force: true,
-  })
-
-  // Requirement 2: Open meeting, factory, train for primary occupants and replacements
-  const currentlyReservedAll = new Set(
-    Object.values(finalWorkspace.mainPlan.facilities).flatMap((r) =>
-      r.slots.flatMap((s) => [
-        ...(s.occupant.kind === 'operator' ? [resolveId(s.occupant.operatorId)] : []),
-        ...s.replacements.map(resolveId),
-      ]),
-    ),
-  )
-
-  for (const auxId of ['meeting', 'factory', 'train'] as const) {
-    const fac = finalWorkspace.mainPlan.facilities[auxId]
-    if (!fac) continue
-    for (let sIdx = 0; sIdx < fac.slots.length; sIdx++) {
-      const slot = fac.slots[sIdx]!
-      if (slot.occupant.kind !== 'operator') {
-        const freePrimary = inventory.operators.find(
-          (o) =>
-            o.matchesMaximumSkills &&
-            !currentlyReservedAll.has(o.charId) &&
-            !isShiftRunOperator(o.charId) &&
-            !ALL_ATOMIC_CORE_NAMES.has(o.name) &&
-            o.name !== '菲亚梅塔',
-        )
-        if (freePrimary) {
-          slot.occupant = { kind: 'operator', operatorId: freePrimary.charId }
-          slot.groupId = `${auxId}_辅助`
-          currentlyReservedAll.add(freePrimary.charId)
-        }
-      }
-      if (slot.occupant.kind === 'operator' && slot.replacements.length === 0) {
-        const freeBackup = inventory.operators.find(
-          (o) =>
-            o.matchesMaximumSkills &&
-            !currentlyReservedAll.has(o.charId) &&
-            !isShiftRunOperator(o.charId) &&
-            !ALL_ATOMIC_CORE_NAMES.has(o.name) &&
-            o.name !== '菲亚梅塔',
-        )
-        if (freeBackup) {
-          slot.replacements = [freeBackup.charId]
-          currentlyReservedAll.add(freeBackup.charId)
-        }
-      }
-    }
+  // The exported roster must be the one whose score was evaluated. Never fill or rewrite
+  // dormitories/auxiliary seats after simulation; molecular synthesis already prepares them.
+  const finalErrors = validatePhysicalRoster(finalWorkspace)
+  if (finalErrors.length) {
+    result.workspace = finalWorkspace
+    result.diagnostics.push(...finalErrors)
+    return result
   }
+  const finalSimulation = runScheduleSimulationBridge(finalWorkspace, {
+    warmupHours: options.simulationWarmupHours ?? 24,
+    sampleHours: options.simulationSampleHours ?? 72,
+    maxStepHours: 0.25,
+    operatorInventory: [...entries],
+    production: { outputMode: 'potential', runOrderMode: 'ideal', droneTarget, seed },
+  }, { restingThreshold: 0.65, operationDurationHours: 0 })
+  const verified = finalSimulation.report
+  if (!verified?.success || !verified.production?.success || verified.observedHours <= 0) {
+    result.workspace = finalWorkspace
+    result.diagnostics.push({ code: 'FINAL_ROSTER_SIMULATION_FAILED', message: finalSimulation.error ??
+      verified?.diagnostics.map(d => d.message).join('；') ?? '最终排班模拟未完成' })
+    return result
+  }
+  finalScore = scoreProduction(verified.production.sample.completed, verified.observedHours).total
+  result.specialOperators = verified.operators.filter(op => hasConsumptionSkill(op.operatorId)).map(op => ({
+    operatorId: op.operatorId, operatorName: op.operatorName, workFraction: op.workFraction,
+    workRestRatio: op.workRestRatio, workHours: op.workHours, restHours: op.restHours,
+    exhaustedHours: op.exhaustedHours, finalMorale: op.finalMorale,
+  }))
 
   result.status = 'draft'
   result.workspace = finalWorkspace

@@ -8,7 +8,7 @@ import {resolveOperatorCharId as resolveId} from '../workbench/compat/mowerJson'
 import {validateRosterWorkspace} from '../workbench/validate'
 import {admitCombinationCandidates,validateCatalogScheduleInventory as validateScheduleInventory} from './inventoryAdmission'
 import type {CandidateAvailability,CandidateRoom} from './combinationCandidates'
-import {ALL_ATOMIC_CORE_NAMES} from './riicAtomicUnits'
+import {rankStaffingCandidates} from './staffingQuality'
 
 export const CANDIDATE_FACILITY_TYPES:Record<CandidateRoom,MowerFacilityType>={MANUFACTURE:'manufacture',TRADING:'trading',POWER:'power',CONTROL:'central',DORMITORY:'dormitory',HIRE:'contact',TRAINING:'train',MEETING:'meeting'}
 export interface LayoutAssignment {
@@ -187,17 +187,27 @@ export function generateRosterDraft(base:RosterWorkspace,entries:readonly OwnedO
  if(!admission.valid){result.diagnostics.push(...admission.diagnostics);return result}
  if(result.restResources.missingReplacementIds.length||result.restResources.freeBeds<result.restResources.minimumFreeBedsForNewGroup)result.diagnostics.push({code:'REST_RESOURCES_INCOMPLETE',message:'新增主班存在候补或Free床位不足；仅物理可放置，须补足并模拟工休'})
  if(base.compatibility.backupPlans.length)result.diagnostics.push({code:'BACKUP_PLANS_NOT_EXECUTED',message:'保留原备用计划；本草案的检查与模拟仅针对主排班'})
- result.diagnostics.push({code:'CONDITIONAL_DRAFT',message:'这是固定布局草案，未验证文字条件及长期工休；普通候补按录入顺序匹配设施技能，尚未按效率优化'})
+ result.diagnostics.push({code:'CONDITIONAL_DRAFT',message:'这是固定布局草案；普通候补按主替混班和跨站条件筛选，静态筛选不代表长期工休已验证'})
  result.status='draft';result.workspace=draft
  return result
 }
 
-export function assignBackups(draft:RosterWorkspace,inventory:OperatorInventory,added:{roomId:MowerRoomId;slotIndex:number;operatorId:string}[]):RosterDraftResult['restResources']{
+export function assignBackups(draft:RosterWorkspace,inventory:OperatorInventory,added:{roomId:MowerRoomId;slotIndex:number;operatorId:string}[],options:{excludedOperatorIds?:readonly string[]}={}):RosterDraftResult['restResources']{
  const reserved=new Set(Object.values(draft.mainPlan.facilities).flatMap(r=>r.slots.flatMap(s=>[...(s.occupant.kind==='operator'?[resolveId(s.occupant.operatorId)]:[]),...s.replacements.map(resolveId)])))
- const positions=added.filter(s=>draft.mainPlan.facilities[s.roomId].type!=='dormitory')
+ const excluded=new Set((options.excludedOperatorIds??[]).map(resolveId))
+ excluded.forEach(id=>reserved.add(id))
+ const permanent=new Set(draft.mainPlan.conf.workaholic.map(resolveId))
+ const seen=new Set<string>()
+ const ordinaryPositions=added.filter(p=>{
+  const room=draft.mainPlan.facilities[p.roomId],slot=room.slots[p.slotIndex],key=`${p.roomId}:${p.slotIndex}`
+  if(room.type==='dormitory'||slot?.occupant.kind!=='operator'||permanent.has(resolveId(slot.occupant.operatorId))||seen.has(key))return false
+  seen.add(key);return true
+ })
+ // Filling gaps must not discard an existing ordered list or consume a backup for a permanent worker.
+ const positions=ordinaryPositions.filter(p=>!draft.mainPlan.facilities[p.roomId].slots[p.slotIndex]!.replacements.some(id=>!isShiftRunOperator(id)))
  const roomTypes=new Map(Object.entries(CANDIDATE_FACILITY_TYPES).map(([game,type])=>[type,game]))
  roomTypes.set('factory', 'WORKSHOP')
- const pools=positions.map(p=>inventory.operators.filter(o=>(draft.mainPlan.facilities[p.roomId].type!=='trading'||!isUnsupportedTradeOperator(o.charId))&&o.matchesMaximumSkills&&!reserved.has(o.charId)&&!isShiftRunOperator(o.charId)&&o.name!=='菲亚梅塔'&&!ALL_ATOMIC_CORE_NAMES.has(o.name)&&o.skills.some(s=>s.roomType===roomTypes.get(draft.mainPlan.facilities[p.roomId].type))).map(o=>o.charId))
+ const pools=positions.map(p=>rankStaffingCandidates(draft,inventory,p,inventory.operators.filter(o=>(draft.mainPlan.facilities[p.roomId].type!=='trading'||!isUnsupportedTradeOperator(o.charId))&&o.matchesMaximumSkills&&!reserved.has(o.charId)&&!isShiftRunOperator(o.charId)&&o.name!=='菲亚梅塔'&&o.skills.some(s=>s.roomType===roomTypes.get(draft.mainPlan.facilities[p.roomId].type))).map(o=>o.charId),'backup',{completingReliefTeam:true}))
  // Bipartite augmentation avoids consuming a scarce multi-facility backup greedily.
  const owner=new Map<string,number>()
  function match(index:number,seen:Set<string>):boolean{
@@ -208,14 +218,36 @@ export function assignBackups(draft:RosterWorkspace,inventory:OperatorInventory,
  const matched=new Map([...owner].map(([id,index])=>[index,id]))
  for(const id of matched.values())reserved.add(id)
  positions.forEach((p,i)=>{
-  let id=matched.get(i)
-  if(!id){
-   const fallback=inventory.operators.find(o=>(draft.mainPlan.facilities[p.roomId].type!=='trading'||!isUnsupportedTradeOperator(o.charId))&&o.matchesMaximumSkills&&!reserved.has(o.charId)&&!isShiftRunOperator(o.charId)&&o.name!=='菲亚梅塔'&&!ALL_ATOMIC_CORE_NAMES.has(o.name))
-   if(fallback){id=fallback.charId;reserved.add(id)}
-  }
-  if(id)draft.mainPlan.facilities[p.roomId].slots[p.slotIndex]!.replacements=[id]
+  const id=matched.get(i)
+  if(id){const slot=draft.mainPlan.facilities[p.roomId].slots[p.slotIndex]!;slot.replacements=[...slot.replacements.filter(isShiftRunOperator),id]}
  })
  const groupSizes=new Map<string,number>()
- for(const p of positions){const group=draft.mainPlan.facilities[p.roomId].slots[p.slotIndex]!.groupId??`${p.roomId}:${p.slotIndex}`;groupSizes.set(group,(groupSizes.get(group)??0)+1)}
- return {freeBeds:Object.values(draft.mainPlan.facilities).filter(r=>r.type==='dormitory').reduce((n,r)=>n+r.slots.filter(s=>s.occupant.kind==='free').length,0),minimumFreeBedsForNewGroup:Math.max(0,...groupSizes.values()),missingReplacementIds:positions.flatMap((p,i)=>matched.has(i)?[]:[p.operatorId])}
+ for(const p of ordinaryPositions){const group=draft.mainPlan.facilities[p.roomId].slots[p.slotIndex]!.groupId??`${p.roomId}:${p.slotIndex}`;groupSizes.set(group,(groupSizes.get(group)??0)+1)}
+ // Re-evaluate the complete relief teams after matching: a candidate can suppress its new peers.
+ improveBackups(draft,inventory,positions,[...excluded])
+ return {freeBeds:Object.values(draft.mainPlan.facilities).filter(r=>r.type==='dormitory').reduce((n,r)=>n+r.slots.filter(s=>s.occupant.kind==='free').length,0),minimumFreeBedsForNewGroup:Math.max(0,...groupSizes.values()),missingReplacementIds:ordinaryPositions.flatMap(p=>draft.mainPlan.facilities[p.roomId].slots[p.slotIndex]!.replacements.some(id=>!isShiftRunOperator(id))?[]:[p.operatorId])}
+}
+
+/** Coordinate improvement over actual relief teams, preserving special candidates and locked positions. */
+export function improveBackups(draft:RosterWorkspace,inventory:OperatorInventory,positions:{roomId:MowerRoomId;slotIndex:number}[],excludedOperatorIds:readonly string[]=[]):void {
+ const excluded=new Set(excludedOperatorIds.map(resolveId))
+ const roomTypes=new Map(Object.entries(CANDIDATE_FACILITY_TYPES).map(([game,type])=>[type,game]))
+ roomTypes.set('factory','WORKSHOP')
+ for(let pass=0;pass<2;pass++){
+  let changed=false
+  for(const p of positions){
+   const room=draft.mainPlan.facilities[p.roomId],slot=room.slots[p.slotIndex]!
+   if(room.type==='dormitory'||slot.occupant.kind!=='operator')continue
+   const index=slot.replacements.findIndex(id=>!isShiftRunOperator(id))
+   if(index<0)continue
+   const current=resolveId(slot.replacements[index]!)
+   if(excluded.has(current))continue
+   const reserved=new Set(Object.values(draft.mainPlan.facilities).flatMap(r=>r.slots.flatMap(s=>[...(s.occupant.kind==='operator'?[resolveId(s.occupant.operatorId)]:[]),...s.replacements.map(resolveId)])))
+   const pool=inventory.operators.filter(o=>o.matchesMaximumSkills&&!excluded.has(o.charId)&&!reserved.has(o.charId)&&!isShiftRunOperator(o.charId)&&o.name!=='菲亚梅塔'&&(room.type!=='trading'||!isUnsupportedTradeOperator(o.charId))&&o.skills.some(s=>s.roomType===roomTypes.get(room.type)))
+   const best=rankStaffingCandidates(draft,inventory,p,[current,...pool.map(o=>o.charId)],'backup')[0]
+   if(best&&best!==current){slot.replacements[index]=best;changed=true}
+   else if(!best&&(room.type==='manufacture'||room.type==='trading')){slot.replacements.splice(index,1);changed=true}
+  }
+  if(!changed)break
+ }
 }

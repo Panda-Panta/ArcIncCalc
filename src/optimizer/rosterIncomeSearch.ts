@@ -1,6 +1,7 @@
 import {runMultiStartSearch,type MultiStartValidation} from './multiStartSearch'
-import type {ControlMainNeighbor} from './controlNeighborhood'
-import type {ProductionMainNeighbor} from './primaryNeighborhood'
+import {generateControlMainNeighbors,type ControlMainNeighbor} from './controlNeighborhood'
+import {generateProductionMainNeighbors,type ProductionMainNeighbor} from './primaryNeighborhood'
+import {generatePrimaryBackupNeighbors,type PrimaryBackupNeighbor} from './primaryBackupNeighborhood'
 import type {IncomeObjective} from './productionObjective'
 import {compileOperatorInventory,type OwnedOperatorInput} from '../domain/operatorInventory'
 import type {SimulationAssumptions} from '../scheduler/types'
@@ -13,11 +14,13 @@ import {generateBackupNeighbors,type BackupNeighbor} from './backupNeighborhood'
 import {summarizeIncome,compareIncome,type IncomeCase,type IncomeComparison} from './incomeComparison'
 
 export type IncomeSearchMode='single-pass'|'hill-climb'|'multi-start'
-export type IncomeSearchMove=BackupNeighbor['move']|ControlMainNeighbor['move']|ProductionMainNeighbor['move']
+export type IncomeSearchMove=BackupNeighbor['move']|ControlMainNeighbor['move']|ProductionMainNeighbor['move']|PrimaryBackupNeighbor['move']
+type SearchNeighbor={workspace:RosterWorkspace;label:string;move:IncomeSearchMove}
 export interface IncomeSearchRequest {
  baseline:RosterWorkspace;draft?:RosterWorkspace;inventory:OwnedOperatorInput[]
  options?:ScheduleSimulationOptions;assumptions?:Partial<SimulationAssumptions>
  mode?:IncomeSearchMode;maxDepth?:number;searchSeed?:number;restarts?:number;includeControlMains?:boolean;includeProductionMains?:boolean
+ lockedPositions?:string[]
  objective?:IncomeObjective;maxCandidates?:number;seeds?:[number,number];steps?:[number,number];conditional?:boolean
 }
 export interface IncomeSearchEvaluation {
@@ -29,6 +32,7 @@ export interface IncomeSearchSettings {
  options:ScheduleSimulationOptions;assumptions:Partial<SimulationAssumptions>
  seeds:[number,number];steps:[number,number];objective:IncomeObjective;maxCandidates:number;mode:IncomeSearchMode;maxDepth:number
  searchSeed:number;restarts:number;includeControlMains:boolean;includeProductionMains:boolean
+ lockedPositions?:string[]
 }
 export interface IncomeSearchResult {
  validation?:MultiStartValidation
@@ -65,7 +69,9 @@ function normalize(request:IncomeSearchRequest):IncomeSearchSettings {
  // Validate every supplied numeric setting before any expensive simulation.
  const finite=(value:unknown):void=>{if(typeof value==='number'&&!Number.isFinite(value))throw new Error('比较设置必须包含有限数值');if(value&&typeof value==='object')Object.values(value).forEach(finite)}
  finite(options);finite(assumptions)
- return {options,assumptions,seeds:[...seeds],steps:[...steps],objective,maxCandidates,mode,maxDepth,searchSeed,restarts,includeControlMains,includeProductionMains}
+ const lockedPositions=request.lockedPositions??[]
+ if(!Array.isArray(lockedPositions)||lockedPositions.some(key=>typeof key!=='string'))throw new Error('锁定工位列表无效')
+ return {options,assumptions,seeds:[...seeds],steps:[...steps],objective,maxCandidates,mode,maxDepth,searchSeed,restarts,includeControlMains,includeProductionMains,lockedPositions:[...lockedPositions]}
 }
 
 /** Compatibility entry point: replacement-only neighborhood used by existing callers. */
@@ -79,7 +85,7 @@ function fingerprint(ws:RosterWorkspace):string {
  }))}))
  return JSON.stringify({facilities,conf:ws.mainPlan.conf,backupPlans:ws.compatibility.backupPlans})
 }
-interface Frontier {parent:IncomeSearchEvaluation;neighbors:BackupNeighbor[];index:number}
+interface Frontier {parent:IncomeSearchEvaluation;neighbors:SearchNeighbor[];index:number}
 
 /** Whole-candidate budget; every accepted step must improve both the original and its parent. */
 export function runRosterIncomeSearch(request:IncomeSearchRequest,onProgress?:(progress:IncomeSearchProgress)=>void):IncomeSearchResult {
@@ -96,7 +102,7 @@ export function runRosterIncomeSearch(request:IncomeSearchRequest,onProgress?:(p
  if(JSON.stringify(sameLayout(source))!==JSON.stringify(sameLayout(baseline)))throw new Error('收益比较须保持设施顺序、类型、等级与配方一致')
  const cache=new Map<string,IncomeCase[]>(),comparedEdges=new Set<string>(),frontiers:Frontier[]=[],depthBoundaries:IncomeSearchEvaluation[]=[]
  const accepted=(e:IncomeSearchEvaluation)=>e.comparison?.status==='improved'&&e.parentComparison?.status==='improved'
- const canTry=(parent:IncomeSearchEvaluation,neighbor:BackupNeighbor)=>{
+ const canTry=(parent:IncomeSearchEvaluation,neighbor:SearchNeighbor)=>{
   const key=fingerprint(neighbor.workspace)
   if(comparedEdges.has(parent.id+':'+parent.origin+':'+parent.conditional+':'+key))return false
   let ancestor:IncomeSearchEvaluation|undefined=parent
@@ -139,13 +145,30 @@ export function runRosterIncomeSearch(request:IncomeSearchRequest,onProgress?:(p
   notify(evaluation.label,evaluation)
   return isAccepted
  }
- const neighbors=(parent:IncomeSearchEvaluation)=>generateBackupNeighbors(parent.workspace,request.inventory,settings.maxCandidates+1)
+ const protectedIds=new Set<string>()
+ const protect=(value:unknown):void=>{if(typeof value==='string')protectedIds.add(resolveId(value));else if(value&&typeof value==='object')for(const [key,child] of Object.entries(value)){protectedIds.add(resolveId(key));protect(child)}}
+ protect(settings.assumptions)
+ const contextOptions=structuredClone(settings.options);delete contextOptions.operatorInventory;protect(contextOptions)
+ const neighbors=(parent:IncomeSearchEvaluation):SearchNeighbor[]=>{
+  const limit=settings.maxCandidates+1
+  const streams:SearchNeighbor[][]=[generateBackupNeighbors(parent.workspace,request.inventory,limit,{protectedIds:[...protectedIds],lockedPositions:settings.lockedPositions})]
+  if(settings.includeProductionMains||settings.includeControlMains)streams.unshift(generatePrimaryBackupNeighbors(parent.workspace,request.inventory,limit,{protectedIds:[...protectedIds],includeControl:settings.includeControlMains,includeProduction:settings.includeProductionMains,lockedPositions:settings.lockedPositions}))
+  if(settings.includeControlMains)streams.push(generateControlMainNeighbors(parent.workspace,request.inventory,limit,[...protectedIds],settings.lockedPositions))
+  if(settings.includeProductionMains)streams.push(generateProductionMainNeighbors(parent.workspace,request.inventory,limit,[...protectedIds],settings.lockedPositions))
+  const locked=new Set((settings.lockedPositions??[]).map(key=>key.replace(/:(\d+)$/,'_$1')))
+  const available:SearchNeighbor[]=[]
+  for(let index=0;streams.some(stream=>index<stream.length);index++)for(const stream of streams){
+   const neighbor=stream[index]
+   if(neighbor&&!neighbor.move.positions.some(key=>locked.has(key)))available.push(neighbor)
+  }
+  return available
+ }
  const addFrontier=(parent:IncomeSearchEvaluation,priority=false)=>{
   const available=neighbors(parent)
   const frontier={parent,neighbors:available,index:0}
   if(priority)frontiers.unshift(frontier);else frontiers.push(frontier)
  }
- const takeNext=():{parent:IncomeSearchEvaluation;neighbor:BackupNeighbor}|undefined=>{
+ const takeNext=():{parent:IncomeSearchEvaluation;neighbor:SearchNeighbor}|undefined=>{
   while(frontiers.length){
    const frontier=frontiers.shift()!
    while(frontier.index<frontier.neighbors.length){

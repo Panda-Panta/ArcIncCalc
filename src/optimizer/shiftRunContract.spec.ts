@@ -1,7 +1,11 @@
 import { calculate } from '../engine/calculate'
 import { createDefaultConfig, createRoom } from '../domain/defaults'
 import { simulateSchedule } from '../simulator/scheduleSimulation'
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { setTimeout as yieldToRunner } from 'node:timers/promises'
+
+// annotate flushes pending task updates and awaits the IPC acknowledgement.
+// A fixed delay cannot guarantee this before a long synchronous generation.
 import { OPERATORS } from '../domain/operators'
 import { compileOperatorInventory } from '../domain/operatorInventory'
 import { createDefaultWorkspace } from '../workbench/defaults'
@@ -15,15 +19,21 @@ import { runSmartRoster } from './smartRoster'
 
 const owned = OPERATORS.map(o => ({ operator: o.name, elitePhase: o.rarity < 3 ? 0 : o.rarity === 3 ? 1 : 2, level: o.rarity < 3 ? 30 : o.rarity === 3 ? 55 : o.rarity === 4 ? 70 : o.rarity === 5 ? 80 : 90 }))
 
+// Give progress RPC a turn between synchronous generation/simulation cases.
+beforeEach(() => yieldToRunner(5))
+afterEach(() => yieldToRunner(5))
+
 describe('shift-run branch contract', () => {
-  it('constructs ten distinct physically valid branches before simulation', () => {
+  it('constructs ten distinct physically valid branches before simulation', async ({ annotate }) => {
+    await annotate('同步计算前确认测试进度已送达')
     const candidates = generateMolecularCandidates(createDefaultWorkspace(), owned, compileOperatorInventory(owned), { seed: 20260919, branchCount: 10 })
     expect(candidates).toHaveLength(10)
     const fingerprints = candidates.map(c => JSON.stringify(Object.values(c.workspace.mainPlan.facilities).map(r => [r.roomId,r.slots.map(s => [s.occupant,s.replacements])])))
     expect(new Set(fingerprints).size).toBe(10)
     for (const candidate of candidates) expect(compileRosterSchedule(candidate.workspace).diagnostics.filter(d=>d.severity==='error')).toEqual([])
-  })
-  it('recognizes only Proviso and Tequila as dedicated runners', () => {
+  }, 180000)
+  it('recognizes only Proviso and Tequila as dedicated runners', async ({ annotate }) => {
+    await annotate('同步计算前确认测试进度已送达')
     expect(isShiftRunOperator(id('但书'))).toBe(true)
     expect(isShiftRunOperator(id('龙舌兰'))).toBe(true)
     expect(isShiftRunOperator(id('佩佩'))).toBe(false)
@@ -31,7 +41,8 @@ describe('shift-run branch contract', () => {
   it.each(['closure', 'pepe'] as const)('rejects %s order acquisition', mode => {
     expect(() => getOrderDistribution(3, 'normal', mode)).toThrow(/shift-run/)
   })
-  it('rejects other special captures even on an ordinary base order', () => {
+  it('rejects other special captures even on an ordinary base order', async ({ annotate }) => {
+    await annotate('同步计算前确认测试进度已送达')
     for (const capture of [{ uOfficial: true }, { closure: true }, { pepe: true }]) {
       expect(() => captureOrder(getOrderDistribution(1)[0]!, capture, 1)).toThrow(/shift-run/)
     }
@@ -45,7 +56,8 @@ describe('shift-run branch contract', () => {
       expect(compileRosterSchedule(ws).diagnostics).toEqual(expect.arrayContaining([expect.objectContaining({ code: 'UNSUPPORTED_SPECIAL_ORDER', severity: 'error' })]))
     }
   })
-  it.each([1, 2, 3])('generates executable runners plus ordinary backups at trade level %i', level => {
+  it.each([1, 2, 3])('generates executable runners plus ordinary backups at trade level %i', async level => {
+    await yieldToRunner(250)
     const ws = createDefaultWorkspace()
     const room = ws.mainPlan.facilities.room_3_1
     room.level = level
@@ -77,7 +89,8 @@ describe('shift-run branch contract', () => {
     workspace.mainPlan.facilities.factory.slots[0]!.occupant = { kind: 'operator', operatorId: id(name) }
     expect(compileRosterSchedule(workspace).diagnostics.some(d => d.code === 'UNSUPPORTED_SPECIAL_ORDER')).toBe(false)
   })
-  it.each([1, 2, 3])('executes generated level %i swaps, settlement and restoration', level => {
+  it.each([1, 2, 3])('executes generated level %i swaps, settlement and restoration', async level => {
+    await yieldToRunner(250)
     const workspace = createDefaultWorkspace()
     const room = workspace.mainPlan.facilities.room_3_1
     room.level = level
@@ -107,7 +120,8 @@ describe('shift-run branch contract', () => {
       expect(assigned.filter(x => x === id('龙舌兰')).length).toBeLessThanOrEqual(1)
     }
   })
-  it('accepts runners with the unlocked elite 0 reward skills', () => {
+  it('accepts runners with the unlocked elite 0 reward skills', async ({ annotate }) => {
+    await annotate('同步计算前确认测试进度已送达')
     const ws = createDefaultWorkspace()
     for (const room of Object.values(ws.mainPlan.facilities).filter(r => r.type === 'trading')) {
       room.slots.forEach((slot, i) => { slot.occupant = { kind: 'operator', operatorId: id(['芬', '克洛丝', '空爆'][i]!) } })
@@ -116,7 +130,8 @@ describe('shift-run branch contract', () => {
     expect(configureRunOrder(ws, inventory)).toBe(true)
     expect(ws.mainPlan.facilities.room_3_1.slots[0]!.replacements[0]).toBe(id('但书'))
   })
-  it('reports missing trained runners before evaluating ordinary-only candidates', () => {
+  it('reports missing trained runners before evaluating ordinary-only candidates', async ({ annotate }) => {
+    await annotate('同步计算前确认测试进度已送达')
     const result = runSmartRoster(createDefaultWorkspace(), owned.filter(o => o.operator !== '但书'), { enableDeepSearch: false })
     expect(result.status).toBe('blocked')
     expect(result.diagnostics.some(d => d.code === 'RUN_ORDER_OPERATOR_UNAVAILABLE')).toBe(true)

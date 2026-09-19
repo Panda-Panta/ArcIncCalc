@@ -157,15 +157,18 @@ export function placePendantOperator(
 ): { placed: boolean; roomId?: MowerRoomId; slotIndex?: number } {
   const charId = resolveId(operatorName)
   const facs = workspace.mainPlan.facilities
+  const reserved = new Set(Object.values(facs).flatMap(room => room.slots.flatMap(slot => [
+    ...(slot.occupant.kind === 'operator' ? [resolveId(slot.occupant.operatorId)] : []), ...slot.replacements.map(resolveId),
+  ])))
 
   // 1. Try factory (Workshop)
   const factory = facs.factory
   if (factory && factory.slots.length > 0 && factory.slots[0]!.occupant.kind !== 'operator') {
     const slot = factory.slots[0]!
     slot.occupant = { kind: 'operator', operatorId: charId }
-    slot.groupId = groupId
+    slot.groupId = null
     const backup = inventory?.operators.find(
-      (o) => o.matchesMaximumSkills && o.name !== operatorName && (o.name === '特克诺' || o.name === '年' || o.name === '锡兰'),
+      (o) => o.matchesMaximumSkills && !reserved.has(o.charId) && o.name !== operatorName && (o.name === '特克诺' || o.name === '年' || o.name === '锡兰'),
     )
     if (backup) {
       slot.replacements = [backup.charId]
@@ -180,9 +183,9 @@ export function placePendantOperator(
     if (emptySlotIdx !== -1) {
       const slot = train.slots[emptySlotIdx]!
       slot.occupant = { kind: 'operator', operatorId: charId }
-      slot.groupId = groupId
+      slot.groupId = null
       const backup = inventory?.operators.find(
-        (o) => o.matchesMaximumSkills && o.name !== operatorName && (o.name === '玛恩纳' || o.name === '艾丽妮' || o.name === '左乐'),
+        (o) => o.matchesMaximumSkills && !reserved.has(o.charId) && o.name !== operatorName && (o.name === '达利尔' || o.name === '艾丽妮' || o.name === '左乐'),
       )
       if (backup) {
         slot.replacements = [backup.charId]

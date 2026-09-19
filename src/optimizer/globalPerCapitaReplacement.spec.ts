@@ -23,7 +23,7 @@ describe('Global Per-Capita Replacement (Rule 6)', () => {
     ws.mainPlan.facilities.room_1_1.slots[0]!.groupId = '感知信息+鸿雪组'
 
     const result = runGlobalPerCapitaReplacement(ws, inventory, { powerCount: 2 })
-    expect(result.swappedCount).toBeGreaterThan(0)
+    expect(result.swappedCount, result.logs.join("\n")).toBeGreaterThan(0)
     const slot0 = result.workspace.mainPlan.facilities.room_1_1.slots[0]!
     expect(slot0.occupant.kind).toBe('operator')
     if (slot0.occupant.kind === 'operator') {
@@ -48,7 +48,7 @@ describe('Global Per-Capita Replacement (Rule 6)', () => {
     ws.mainPlan.facilities.room_2_1.slots[2]!.occupant = { kind: 'operator', operatorId: id('斑点') }
 
     const result = runGlobalPerCapitaReplacement(ws, inventory, { powerCount: 3 })
-    expect(result.swappedCount).toBeGreaterThan(0)
+    expect(result.swappedCount, result.logs.join("\n")).toBeGreaterThan(0)
 
     // Verify room_2_1 has been upgraded to a higher per-capita unit (e.g. aroma_waaifu 65% or vermeil_dionysus)
     const upgradedOps = result.workspace.mainPlan.facilities.room_2_1.slots.map((s) =>
