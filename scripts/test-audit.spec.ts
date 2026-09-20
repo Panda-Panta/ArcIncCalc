@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { importMowerJson } from '../src/workbench/compat/mowerJson'
 import { compileMainPlanToAppConfig } from '../src/workbench/adapter'
@@ -767,8 +767,9 @@ describeExternalAudit('Audit Test and Report Generator', () => {
     report += '1. **342二赤二粮.json**：Excel 工作簿中完全无同名排班区块，整套布局 9 间生产岗位在主班与替补班均为 UNAVAILABLE；\n'
     report += '2. **Excel 替补行包含公式占位说明**：如 `82算法`、`252钱书(4赤金)`、`经验1`、`加速赤金总计`、`CE6&LS6算法`、`（22贸）` 等，由于未给出具体进驻干员名字，无法通过算法真实重放，按规范严格标为 UNAVAILABLE，不污染其他房间。\n'
 
-    writeFileSync(join(process.cwd(), 'docs/reports/2026-09-09-mower-layout-efficiency-audit.md'), report, 'utf8')
-    console.log('Report written to docs/reports/2026-09-09-mower-layout-efficiency-audit.md')
+    mkdirSync(join(process.cwd(), 'scratch'), { recursive: true })
+    writeFileSync(join(process.cwd(), 'scratch/2026-09-09-mower-layout-efficiency-audit.md'), report, 'utf8')
+    console.log('Report written to scratch/2026-09-09-mower-layout-efficiency-audit.md')
     console.log(`Statistics: Total Rooms: ${actualTotalRooms}`)
     console.log(`Main: ${mainPassCount} PASS, ${mainFailCount} FAIL, ${mainUnavailCount} UNAVAILABLE`)
     console.log(`Rep:  ${repPassCount} PASS, ${repFailCount} FAIL, ${repUnavailCount} UNAVAILABLE`)
