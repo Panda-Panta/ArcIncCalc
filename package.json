@@ -9,7 +9,7 @@
     "build:desktop": "npm run build && dotnet publish desktop/ArcIncCalc.Desktop.csproj -c Release -r win-x64 --self-contained true -o release/ArcIncCalc",
     "pack": "powershell -ExecutionPolicy Bypass -File scripts/pack-release.ps1",
     "sync:tools": "powershell -ExecutionPolicy Bypass -File scripts/sync-tools.ps1",
-    "audit:data": "node scripts/audit-riic-data.mjs \"C:/Users/Panda-Panta/Downloads/Compressed/ArknightsGameData-master/zh_CN/gamedata/excel\"",
+    "audit:data": "node scripts/audit-riic-data.mjs",
     "test": "vitest run",
     "typecheck": "vue-tsc -b",
     "diagnose:roster": "tsx scripts/diagnose_roster.ts",

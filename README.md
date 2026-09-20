@@ -79,7 +79,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-详细信息请参阅 [THIRD_PARTY_NOTICES.md](file:///D:/Project/Arknights/ArcIncCalc%20-%20Codex/THIRD_PARTY_NOTICES.md)。
+详细信息请参阅 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
 ## 本地运行
 
@@ -96,15 +96,15 @@ pnpm dev
 
 ## 更新干员数据
 
-GameData 更新后可重新生成规范化数据：
+GameData 更新后，在本项目根目录执行以下命令，重新生成规范化数据。请将 `<GameData目录>` 替换为你下载或克隆的 GameData 根目录，保留路径外的引号：
 
 ```powershell
-node scripts\import-gamedata.mjs "C:\Users\Panda-Panta\Downloads\Compressed\ArknightsGameData-master\zh_CN\gamedata\excel"
+node scripts/import-gamedata.mjs "<GameData目录>/zh_CN/gamedata/excel"
 ```
 
 当前统一按每名干员已解锁的最高阶段基建技能计算。技能引擎采用“通用解析器 + 专项规则处理器”，因此新加入的普通百分比技能通常可直接识别，复杂状态、库存、心情和跨设施联动则逐条纳入专项规则。界面中的“手动效率修正”可临时覆盖尚未量化的效果。
 
-`pnpm audit:data` 会逐一核对所有设施类型的最高阶段技能槽，包括控制中枢、宿舍、办公室、制造站、贸易站、会客室、发电站、训练室和加工站；任何档案或技能槽缺失都会以非零状态退出。
+`pnpm audit:data "<GameData目录>/zh_CN/gamedata/excel"` 会逐一核对所有设施类型的最高阶段技能槽，包括控制中枢、宿舍、办公室、制造站、贸易站、会客室、发电站、训练室和加工站；任何档案或技能槽缺失都会以非零状态退出。
 
 数据口径：PRTS 的 427 个正式战斗形态包含阿米娅的近卫、医疗两个职业转换形态；GameData 中三种阿米娅形态共用 `char_002_amiya` 的一份基建档案，因此有效基建档案为 425 份。导入器会排除没有 `building_data` 记录、无法常驻玩家基建的集成战略及卫戍协议专属角色。
 
@@ -113,6 +113,6 @@ node scripts\import-gamedata.mjs "C:\Users\Panda-Panta\Downloads\Compressed\Arkn
 ```powershell
 pnpm typecheck
 pnpm test
-pnpm audit:data
+pnpm audit:data "<GameData目录>/zh_CN/gamedata/excel"
 pnpm build
 ```
