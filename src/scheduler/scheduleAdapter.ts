@@ -3,10 +3,10 @@ import { resolveOperatorCharId } from '../workbench/compat/mowerJson'
 import type { CompiledSchedule } from './types'
 import type { RuntimeBed, RuntimeConfig, RuntimePosition } from './rosterRuntime'
 
-const SHIFT_RUN_OPERATOR_NAMES = new Set(['但书', '龙舌兰', '佩佩'])
+const SHIFT_RUN_OPERATOR_NAMES = new Set(['但书', '龙舌兰'])
 
 /**
- * Returns true if an operator is a shift-run dedicated operator (Proviso, Tequila, Pepe).
+ * Returns true if an operator is a shift-run dedicated operator (Proviso, Tequila).
  */
 export function isShiftRunOperator(operatorId: string): boolean {
   const charId = resolveOperatorCharId(operatorId)
@@ -19,7 +19,7 @@ export function isShiftRunOperator(operatorId: string): boolean {
  *
  * Rules:
  * 1. General candidate lists (RuntimePosition.candidates) strictly EXCLUDE shift-run dedicated operators
- *    (Proviso, Tequila, Pepe).
+ *    (Proviso, Tequila).
  * 2. schedule.runOrderPolicies retains its exact original order.
  * 3. RuntimeConfig.excludedCandidates includes all shift-run dedicated candidates.
  * 4. Fiammetta swap policy is mapped to runtime fiammetta config.
@@ -54,7 +54,7 @@ export function compiledScheduleToRuntimeConfig(schedule: CompiledSchedule): Run
       const isDormKeeper = slot.role === 'dorm-keeper'
       const isFiammetta = slot.role === 'fiammetta'
 
-      // General candidates must exclude shift-run operators (Proviso, Tequila, Pepe)
+      // General candidates must exclude shift-run operators (Proviso, Tequila)
       let candidates: string[]
       if (isDormKeeper || isFiammetta) {
         candidates = []

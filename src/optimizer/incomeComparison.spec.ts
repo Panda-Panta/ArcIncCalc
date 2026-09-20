@@ -63,3 +63,11 @@ it('excludes exhausted staffing and scheduler blockage even if production comple
  const d=report();d.diagnostics.push({code:'group-blocked',message:'insufficient beds'})
  expect(summarizeIncome(d).eligible).toBe(false)
 })
+
+it('accepts the documented ideal model but keeps natural and ideal scenarios separate',()=>{
+ const ideal=report(),summary=summarizeIncome(ideal)
+ expect(summary.eligible).toBe(true)
+ expect(summary.assumptions.some(d=>d.code==='IDEAL_RUN_ORDER_ASSUMPTIONS')).toBe(true)
+ const natural=report();natural.inputs.options.production!.runOrderMode='natural'
+ expect(summarizeIncome(natural).context).not.toBe(summary.context)
+})

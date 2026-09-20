@@ -75,9 +75,9 @@ describe('SmartRosterConfigModal.vue', () => {
   it('emits confirm with modified parameters and persists to localStorage', async () => {
     const wrapper = mountModal({ open: true })
 
-    await wrapper.find<HTMLInputElement>('[data-test="trials-input"]').setValue(8)
+    expect(wrapper.find('[data-test="trials-input"]').attributes('disabled')).toBeDefined()
     await wrapper.find<HTMLInputElement>('[data-test="max-evals-input"]').setValue(5000)
-    await wrapper.find<HTMLInputElement>('[data-test="topk-input"]').setValue(4)
+    expect(wrapper.find('[data-test="topk-input"]').attributes('disabled')).toBeDefined()
     await wrapper.find<HTMLInputElement>('[data-test="sample-hours-input"]').setValue(48)
     await wrapper.find<HTMLInputElement>('[data-test="enable-deep-search"]').setValue(false)
     await wrapper.find<HTMLSelectElement>('[data-test="drone-target-select"]').setValue('trading')
@@ -88,9 +88,9 @@ describe('SmartRosterConfigModal.vue', () => {
     expect(wrapper.emitted('confirm')).toBeTruthy()
     const emittedConfig = wrapper.emitted('confirm')![0]![0] as SmartRosterConfig
     expect(emittedConfig).toEqual({
-      trials: 8,
+      trials: 10,
       maxStaticEvals: 5000,
-      simulationTopK: 4,
+      simulationTopK: 10,
       simulationSampleHours: 48,
       simulationWarmupHours: 24,
       enableDeepSearch: false,
@@ -99,7 +99,7 @@ describe('SmartRosterConfigModal.vue', () => {
     })
 
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY_SMART_ROSTER) || '{}')
-    expect(stored.trials).toBe(8)
+    expect(stored.trials).toBe(10)
     expect(stored.simulationSampleHours).toBe(48)
     expect(stored.enableDeepSearch).toBe(false)
   })
@@ -123,7 +123,7 @@ describe('SmartRosterConfigModal.vue', () => {
       initialSeed: -1,
     })
 
-    expect(wrapper.find<HTMLInputElement>('[data-test="trials-input"]').element.value).toBe('2')
+    expect(wrapper.find<HTMLInputElement>('[data-test="trials-input"]').element.value).toBe('10')
 
     await wrapper.find('[data-test="reset-btn"]').trigger('click')
 

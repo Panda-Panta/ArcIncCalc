@@ -24,7 +24,7 @@ function fixture(){
 function position(key:string){const index=Number(key.slice(key.lastIndexOf('_')+1));return {roomId:key.slice(0,key.lastIndexOf('_')) as MowerRoomId,index}}
 describe('protected production main neighborhood',()=>{
  it('changes one occupied production seat, round robins facilities and preserves every other field',()=>{
-  const w=fixture(),before=structuredClone(w),results=generateProductionMainNeighbors(w,owned(['斑点','梓兰','格雷伊']),4)
+  const w=fixture(),before=structuredClone(w),results=generateProductionMainNeighbors(w,owned(['阿罗玛','海蒂','格雷伊']),4)
   expect(results).toHaveLength(4)
   expect(results.map(n=>n.move.positions)).toEqual([['room_1_1_0'],['room_1_2_0'],['room_1_3_0'],['room_3_1_0']])
   for(const n of results){
@@ -38,7 +38,7 @@ describe('protected production main neighborhood',()=>{
  })
  it('requires an owned maximum-stage facility skill and uses the actual layout type',()=>{
   const w=fixture()
-  const results=generateProductionMainNeighbors(w,[...owned(['梓兰','阿米娅']),{operator:'斑点',elitePhase:0,level:1}])
+  const results=generateProductionMainNeighbors(w,[...owned(['海蒂','阿米娅']),{operator:'斑点',elitePhase:0,level:1}])
   expect(results.map(n=>n.move.positions)).toEqual([['room_3_1_0']])
   w.mainPlan.facilities.room_3_1.type='manufacture';w.mainPlan.facilities.room_3_1.product='exp'
   expect(generateProductionMainNeighbors(w,owned(['梓兰']))).toEqual([])

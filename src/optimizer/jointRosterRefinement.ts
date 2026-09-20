@@ -6,7 +6,7 @@ import {resolveOperatorCharId as id} from '../workbench/compat/mowerJson'
 import type {RosterWorkspace} from '../workbench/model'
 import {hasOpaqueStrategy,buildBackupSnapshot} from './backupEfficiency'
 import {estimateFixedDuty,type FixedDutyEstimate} from './fixedDuty'
-import {validateScheduleInventory} from './inventoryAdmission'
+import {validateCatalogScheduleInventory as validateScheduleInventory} from './inventoryAdmission'
 import {validatePhysicalRoster} from './rosterDraft'
 
 export interface JointRosterChange {kind:'main-backup-swap'|'main-room-swap'|'main-replacement';positions:string[];before:string[];after:string[];beforeRanking:number;afterRanking:number}

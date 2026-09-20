@@ -1,3 +1,4 @@
+import { inventoryOperatorRecords, operatorFor, hasOperatorSkill } from '../domain/operatorContext'
 import {createProductionTimeline,type ProductionOptions,type ProductionReport,type ProductionFrame} from './productionTimeline'
 import {createDefaultConfig,createRoom} from '../domain/defaults'
 import {OPERATOR_MAP} from '../domain/operators'
@@ -96,8 +97,10 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
  const diagnostic=(code:string,message:string)=>{if(!report.diagnostics.some(d=>d.code===code&&d.message===message))report.diagnostics.push({code,message})}
  for(const d of schedule.diagnostics)diagnostic(d.code,d.message)
  if(schedule.diagnostics.some(d=>d.severity==='error'||d.code==='UNKNOWN_OPERATOR'))return report
- if(options.operatorInventory!==undefined){
-  const admission=validateScheduleInventory(schedule,compileOperatorInventory(options.operatorInventory),options.efficiencyResources)
+ const inventory=options.operatorInventory===undefined?undefined:compileOperatorInventory(options.operatorInventory)
+ const operatorRecords=inventory?inventoryOperatorRecords(inventory):undefined
+ if(inventory){
+  const admission=validateScheduleInventory(schedule,inventory,options.efficiencyResources)
   for(const d of admission.diagnostics)diagnostic(d.code,d.message)
   if(!admission.valid)return report
  }
@@ -107,7 +110,14 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
  diagnostic('TIME_INTEGRATION_MODEL',`使用${warmupModel==='hourly'?'整小时':'连续'}暖机，最大步长 ${maxStepHours} h；复制取整等非线性效率采用区间中点数值积分，可缩小步长检查敏感性`)
  diagnostic('SINGLE_RECOVERY_TARGET_ASSUMPTION','单体恢复目标为显式模拟策略；多个合格目标时默认槽位顺序，并非已确认的游戏随机目标规则')
  let state:RuntimeState
- try{state=createRosterRuntime(compiledScheduleToRuntimeConfig(schedule))}catch(error){diagnostic('INVALID_RUNTIME',String(error));return report}
+ try{
+  const runtimeConfig=compiledScheduleToRuntimeConfig(schedule)
+  // Ideal runners are virtual order modifiers. Keep explicit primary/idle placements,
+  // but do not register virtual candidates as extra dorm residents or morale workers.
+  if(options.production&&(options.production.runOrderMode??'ideal')==='ideal')runtimeConfig.runOrderPolicies=[]
+  if(runtimeConfig.fiammetta&&!hasOperatorSkill({operatorRecords},runtimeConfig.fiammetta.operatorId,'dorm_exchangeAp[000]'))runtimeConfig.fiammetta=undefined
+  state=createRosterRuntime(runtimeConfig)
+ }catch(error){diagnostic('INVALID_RUNTIME',String(error));return report}
  const total=warmupHours+sampleHours,initial={...state.morale}
  const entered=new Map<string,{room:string;time:number}>()
  const refreshSessions=(newEvents:RuntimeEvent[]=[])=>{
@@ -136,7 +146,7 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
   if(state.bedOccupants!==trackedBeds){state.bedOccupants=trackedBeds=trackRateMap(state.bedOccupants);rateRevision++}
   if(cachedRevision===rateRevision&&cachedTime===state.time)return
   cachedRevision=rateRevision;cachedTime=state.time
-  const c=projectScheduleState(schedule,state);Object.assign(c.efficiencyResources,options.efficiencyResources)
+  const c=projectScheduleState(schedule,state);c.operatorRecords=operatorRecords;Object.assign(c.efficiencyResources,options.efficiencyResources)
   const snapshot=currentMoraleRates(c)
   for(const message of snapshot.unquantified)diagnostic('UNQUANTIFIED_WORK_RATE',message)
   let work=snapshot.rates,atBoundary=false
@@ -152,7 +162,7 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
   for(const [index,room] of dorms.entries()){
    const ids=c.facilityOperatorIds.dormitories[index]??[],targets=new Map<string,string>()
    for(const id of ids){
-    const skill=OPERATOR_MAP.get(id)?.skills.find(s=>s.roomType==='DORMITORY'&&s.description.includes('某个干员'))
+    const skill=operatorFor(c,id)?.skills.find(s=>s.roomType==='DORMITORY'&&s.description.includes('某个干员'))
     const target=options.recoveryTargetByProvider?.[id]??ids.find(other=>(morale.get(other)??24)<24-EPS&&(!skill?.description.includes('除自身以外')||other!==id))
     if(target)targets.set(id,target)
    }
@@ -200,7 +210,7 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
   refreshSessions(events);cachedRevision=-1
  }
  const frameAt=(offset:number):ProductionFrame=>{
-  const c=projectScheduleState(schedule,state);Object.assign(c.efficiencyResources,options.efficiencyResources)
+  const c=projectScheduleState(schedule,state);c.operatorRecords=operatorRecords;Object.assign(c.efficiencyResources,options.efficiencyResources)
   for(const id of Object.keys(c.operatorMorale))c.operatorMorale[id]=Math.max(0,Math.min(24,c.operatorMorale[id]!+moraleDerivative(state,id,rates)*offset))
   c.zeroMoraleOperatorIds=state.config.positions.filter(p=>!p.dormitory&&(c.operatorMorale[state.occupants[p.id]!]??0)<=0).map(p=>state.occupants[p.id]!)
   const morale=new Map(Object.entries(c.operatorMorale)),active=new Set(Object.keys(state.morale).filter(id=>!c.zeroMoraleOperatorIds.includes(id)))
@@ -219,7 +229,7 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
   let action=production?.isRosterLocked()?Infinity:nextRosterActionHours(state,rates)
   if(action<=EPS){settle();production?.settle(()=>frameAt(0));action=production?.isRosterLocked()?Infinity:nextRosterActionHours(state,rates);if(action<=EPS){diagnostic('SIMULATION_SAME_TIME_ACTION','同刻调度未能稳定，结果未完成');break}}
   let dt=Math.min(maxStepHours,total-state.time,nextRosterEventHours(state,rates,!production?.isRosterLocked()),state.time<warmupHours-EPS?warmupHours-state.time:Infinity)
-  for(const [id,s] of entered)for(const boundary of getTemporalSkillBoundaries(id)){const delay=boundary+s.time-state.time;if(delay>EPS)dt=Math.min(dt,delay)}
+  for(const [id,s] of entered)for(const boundary of getTemporalSkillBoundaries(id,{operatorRecords})){const delay=boundary+s.time-state.time;if(delay>EPS)dt=Math.min(dt,delay)}
   const frames=new Map<number,ProductionFrame>()
   const frame=(offset:number)=>{let value=frames.get(offset);if(!value){value=frameAt(offset);frames.set(offset,value)}return value}
   if(production)dt=production.nextStep(dt,frame)

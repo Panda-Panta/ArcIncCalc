@@ -62,6 +62,8 @@ export interface FacilityOperatorAssignments {
 }
 
 export interface AppConfig {
+  /** Ephemeral, actual unlocked skill snapshots for this calculation only. */
+  operatorRecords?: Readonly<Record<string, import('./operators').OperatorRecord>>
   schemaVersion: 7
   planName: string
   hours: number

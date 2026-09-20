@@ -73,3 +73,18 @@ describe('runCalculationBridge engine options', () => {
     expect(result.report?.power.sufficient).toBe(true)
   })
 })
+
+it('does not convert an incomplete simulation into a successful zero output report',()=>{
+ const r=runCalculationBridge(createDefaultWorkspace(),{engine:'simulation',simulationOptions:{sampleHours:24,maxEvents:1,production:{outputMode:'potential'}}})
+ expect(r.success).toBe(false)
+ expect(r.report).toBeNull()
+ expect(r.simulationReport?.success).toBe(false)
+ expect(r.error).toContain('未完成')
+})
+
+it('enables production when calculation callers supply only simulation timing options', () => {
+  const r = runCalculationBridge(createDefaultWorkspace(), { engine: 'simulation', simulationOptions: { sampleHours: 24 } })
+  expect(r.success).toBe(true)
+  expect(r.simulationReport?.production?.success).toBe(true)
+  expect(r.report?.summary?.orderLmd).toBeGreaterThan(0)
+})

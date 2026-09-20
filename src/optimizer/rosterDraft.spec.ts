@@ -77,7 +77,7 @@ describe('typed candidate layout and roster drafts',()=>{
  })
  it('assigns unique ordinary backups and an atomic new target group without stealing primary staff',()=>{
   const ws=createDefaultWorkspace();ws.mainPlan.facilities.dormitory_1.slots.slice(0,3).forEach(s=>s.occupant={kind:'free'})
-  const r=generateRosterDraft(ws,owned(['砾','阿罗玛','槐琥','芬','调香师','红豆','但书']),['manu-gold-waai-fu-copy'])
+  const r=generateRosterDraft(ws,owned(['砾','阿罗玛','槐琥','雪猎','梅尔','淬羽赫默','但书']),['manu-gold-waai-fu-copy'])
   expect(r.status).toBe('draft')
   const slots=r.workspace!.mainPlan.facilities[r.placements[0]!.roomId].slots
   const replacements=slots.flatMap(s=>s.replacements)
@@ -124,7 +124,7 @@ it('protects keyed room identity and empty slots carrying unknown metadata',()=>
 
 it('executes a generated main/backup team through real morale and production events',()=>{
  const ws=createDefaultWorkspace();ws.mainPlan.facilities.dormitory_1.slots.slice(0,3).forEach(s=>s.occupant={kind:'free'})
- const inventory=owned(['砾','阿罗玛','槐琥','芬','调香师','红豆'])
+ const inventory=owned(['砾','阿罗玛','槐琥','雪猎','梅尔','淬羽赫默'])
  const draft=generateRosterDraft(ws,inventory,['manu-gold-waai-fu-copy'])
  const report=simulateSchedule(compileRosterSchedule(draft.workspace!),{sampleHours:48,warmupHours:24,maxStepHours:.25,operatorInventory:inventory,production:{droneTarget:'none'}})
  expect(report.success).toBe(true)

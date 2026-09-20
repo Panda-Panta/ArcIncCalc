@@ -1,4 +1,4 @@
-import { OPERATOR_MAP } from '../domain/operators'
+import { operatorFor, type OperatorContext } from '../domain/operatorContext'
 /** Continuous/hourly are explicit modelling choices: tooltips do not establish sub-hour ticks. */
 export interface TimeContext { workHoursByOperator: ReadonlyMap<string, number>; warmupModel?: 'continuous' | 'hourly' }
 const CURVES: Record<string, readonly [number,number,number]> = {
@@ -18,9 +18,9 @@ export function temporalSkillBonus(buffId:string, operatorId:string, context?:Ti
  const hours=context.warmupModel==='hourly'?Math.floor(value):value
  return Math.min(cap,initial+slope*hours)
 }
-export function getTemporalSkillBoundaries(operatorId:string):number[] {
+export function getTemporalSkillBoundaries(operatorId:string,context:OperatorContext={}):number[] {
  const events=new Set<number>()
- for(const skill of OPERATOR_MAP.get(operatorId)?.skills??[]) {
+ for(const skill of operatorFor(context,operatorId)?.skills??[]) {
   if(skill.buffId==='manu_prod_cost_min[001]')events.add(12)
   const curve=CURVES[skill.buffId]
   if(curve)for(let hour=1;hour<=(curve[2]-curve[0])/curve[1];hour++)events.add(hour)

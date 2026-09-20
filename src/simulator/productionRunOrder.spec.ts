@@ -14,11 +14,11 @@ function base(primary='芬', replacements=['但书'], second=false){
  const s=compileRosterSchedule(w);s.rooms=s.rooms.filter(r=>r.roomId==='room_1_1'||second&&r.roomId==='room_1_2');s.restPools=[]
  return s
 }
-const options:ScheduleSimulationOptions={sampleHours:2,recordSegments:true,production:{droneTarget:'none',initialResources:{gold:100},collectionIntervalHours:0}}
+const options:ScheduleSimulationOptions={sampleHours:2,recordSegments:true,production:{runOrderMode:'natural',droneTarget:'none',initialResources:{gold:100},collectionIntervalHours:0}}
 const selected=(r:ReturnType<typeof simulateSchedule>,type:string)=>r.production!.events.filter(e=>e.type===type)
 
 describe('natural Mower run-order integration: independently calculated fixtures',()=>{
- it('defaults to natural completion with a 15 second insertion lead and no drone spending',()=>{
+ it('supports explicit natural completion with a 15 second insertion lead and no drone spending',()=>{
   const r=simulateSchedule(base(),options)
   expect(r.success).toBe(true);expect(r.production!.success).toBe(true)
   expect(r.production!.assumptions.runOrderMode).toBe('natural');expect(r.production!.assumptions.runOrderLeadSeconds).toBe(15)

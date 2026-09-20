@@ -24,7 +24,7 @@ describe('protected control main neighborhood',()=>{
   expect(results).toHaveLength(4)
   expect(results.map(n=>n.move.positions)).toEqual([['central_0'],['central_1'],['central_0'],['central_1']])
   expect(results.map(n=>n.workspace.mainPlan.facilities.central.slots[Number(n.move.positions[0]!.split('_')[1])]!.occupant))
-   .toEqual(['诗怀雅','诗怀雅','凯尔希','凯尔希'].map(operator=>({kind:'operator',operatorId:id(operator)})))
+   .toEqual(['凯尔希','凯尔希','诗怀雅','诗怀雅'].map(operator=>({kind:'operator',operatorId:id(operator)})))
   for(const n of results){
    expect(n.move.kind).toBe('control-main')
    expect(validatePhysicalRoster(n.workspace)).toEqual([])

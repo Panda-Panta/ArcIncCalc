@@ -27,12 +27,13 @@
         <div class="field-row">
           <div class="field-item">
             <label for="trials-input">
-              <span>候选尝试轮数 (Trials)</span>
-              <small class="field-tip">独立随机抽样主班方案数 (1–10)</small>
+              <span>有效分支数</span>
+              <small class="field-tip">先生成 10 套不同且通过布局校验的方案</small>
             </label>
             <input
               id="trials-input"
-              v-model.number="form.trials"
+              :value="10"
+              disabled
               type="number"
               min="1"
               max="10"
@@ -67,12 +68,13 @@
         <div class="field-row">
           <div class="field-item">
             <label for="topk-input">
-              <span>仿真验证方案数 (Top-K)</span>
-              <small class="field-tip">进入多日高精度仿真的优质候选数 (1–16)</small>
+              <span>进入仿真的分支数</span>
+              <small class="field-tip">全部 10 套进入模拟，不截取前几套</small>
             </label>
             <input
               id="topk-input"
-              v-model.number="form.simulationTopK"
+              :value="10"
+              disabled
               type="number"
               min="1"
               max="16"
@@ -213,9 +215,9 @@ export interface SmartRosterConfig {
 export const STORAGE_KEY_SMART_ROSTER = 'arcinc-smart-roster-options-v1'
 
 export const DEFAULT_CONFIG: SmartRosterConfig = {
-  trials: 5,
+  trials: 10,
   maxStaticEvals: 3000,
-  simulationTopK: 8,
+  simulationTopK: 10,
   simulationSampleHours: 72,
   simulationWarmupHours: 24,
   enableDeepSearch: true,
@@ -258,9 +260,9 @@ const loadPersistedConfig = (): SmartRosterConfig => {
     if (raw) {
       const parsed = JSON.parse(raw)
       return {
-        trials: Math.max(1, Math.min(10, Number(parsed.trials) || DEFAULT_CONFIG.trials)),
+        trials: 10,
         maxStaticEvals: Math.max(500, Math.min(10000, Number(parsed.maxStaticEvals) || DEFAULT_CONFIG.maxStaticEvals)),
-        simulationTopK: Math.max(1, Math.min(16, Number(parsed.simulationTopK) || DEFAULT_CONFIG.simulationTopK)),
+        simulationTopK: 10,
         simulationSampleHours: Math.max(24, Math.min(168, Number(parsed.simulationSampleHours) || DEFAULT_CONFIG.simulationSampleHours)),
         simulationWarmupHours: Math.max(6, Math.min(48, Number(parsed.simulationWarmupHours) || DEFAULT_CONFIG.simulationWarmupHours)),
         enableDeepSearch: parsed.enableDeepSearch !== undefined ? Boolean(parsed.enableDeepSearch) : DEFAULT_CONFIG.enableDeepSearch,
@@ -319,9 +321,9 @@ const handleReset = () => {
 const handleConfirm = () => {
   // Sanitize numeric ranges
   const config: SmartRosterConfig = {
-    trials: Math.max(1, Math.min(10, Math.floor(form.value.trials) || 1)),
+    trials: 10,
     maxStaticEvals: Math.max(500, Math.min(10000, Math.floor(form.value.maxStaticEvals) || 500)),
-    simulationTopK: Math.max(1, Math.min(16, Math.floor(form.value.simulationTopK) || 1)),
+    simulationTopK: 10,
     simulationSampleHours: Math.max(24, Math.min(168, Math.floor(form.value.simulationSampleHours) || 24)),
     simulationWarmupHours: Math.max(6, Math.min(48, Math.floor(form.value.simulationWarmupHours) || 6)),
     enableDeepSearch: Boolean(form.value.enableDeepSearch),

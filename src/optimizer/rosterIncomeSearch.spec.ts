@@ -16,7 +16,7 @@ function simple(){
 }
 describe('bounded ordinary backup income search',()=>{
  it('changes only one ordinary replacement and preserves main groups and the source',()=>{
-  const w=simple(),before=structuredClone(w),result=ordinaryBackupNeighbors(w,owned(['砾','芬','调香师','红豆']),2)
+  const w=simple(),before=structuredClone(w),result=ordinaryBackupNeighbors(w,owned(['砾','芬','调香师','雪猎']),2)
   expect(result).toHaveLength(2);expect(w).toEqual(before)
   for(const neighbor of result){
    const rebuilt=structuredClone(neighbor.workspace)
@@ -34,9 +34,9 @@ describe('bounded ordinary backup income search',()=>{
   delete w.mainPlan.facilities.room_1_1.slots[0]!.metadata
   w.mainPlan.facilities.dormitory_1.slots[1]!.occupant={kind:'operator',operatorId:id('菲亚梅塔')}
   w.mainPlan.facilities.dormitory_1.slots[1]!.replacements=['调香师']
-  const neighbors=ordinaryBackupNeighbors(w,owned(['砾','芬','调香师','红豆','菲亚梅塔']),2)
+  const neighbors=ordinaryBackupNeighbors(w,owned(['砾','芬','调香师','雪猎','菲亚梅塔']),2)
   expect(neighbors).toHaveLength(1)
-  expect(neighbors[0]!.workspace.mainPlan.facilities.room_1_1.slots[0]!.replacements).toEqual([id('红豆')])
+  expect(neighbors[0]!.workspace.mainPlan.facilities.room_1_1.slots[0]!.replacements).toEqual([id('雪猎')])
  })
  it('adds candidates only when owned at maximum skill stage and with the room skill',()=>{
   const w=simple();w.mainPlan.facilities.room_1_1.slots[0]!.replacements=[]
@@ -49,7 +49,7 @@ describe('bounded ordinary backup income search',()=>{
  })
  it('completes four cases per budgeted candidate, inherits UI seeds/steps and retains the original',()=>{
   const baseline=simple(),before=structuredClone(baseline),progress:IncomeSearchProgress[]=[]
-  const result=runRosterIncomeSearch({baseline,inventory:owned(['砾','芬','调香师','红豆']),maxCandidates:2,options:{sampleHours:1,warmupHours:0,maxStepHours:.5,production:{seed:9,droneTarget:'none'}}},p=>progress.push(p))
+  const result=runRosterIncomeSearch({baseline,inventory:owned(['砾','芬','调香师','雪猎']),maxCandidates:2,options:{sampleHours:1,warmupHours:0,maxStepHours:.5,production:{seed:9,droneTarget:'none'}}},p=>progress.push(p))
   expect(result.evaluatedCandidates).toBe(2);expect(result.budgetExhausted).toBe(true)
   expect(result.settings.seeds).toEqual([9,10]);expect(result.settings.steps).toEqual([.5,.25]);expect(result.settings.assumptions.idleOperators).toEqual([])
   expect(result.baseline.cases).toHaveLength(4);expect(result.candidates[1]!.cases).toHaveLength(4)
@@ -86,7 +86,7 @@ describe('bounded ordinary backup income search',()=>{
   draft.mainPlan.facilities.room_1_1.slots[0]!.occupant={kind:'operator',operatorId:id('调香师')}
   const spy=vi.spyOn(incomeComparison,'compareIncome')
   try{
-   const r=runRosterIncomeSearch({baseline,draft,conditional:true,inventory:owned(['砾','芬','调香师','红豆']),maxCandidates:4,options:{sampleHours:1,warmupHours:0,maxStepHours:.01}})
+   const r=runRosterIncomeSearch({baseline,draft,conditional:true,inventory:owned(['砾','芬','调香师','雪猎']),maxCandidates:4,options:{sampleHours:1,warmupHours:0,maxStepHours:.01}})
    expect(r.candidates.map(c=>c.label)).toEqual(['原排班','组合草案',expect.not.stringContaining('草案'),expect.stringContaining('草案：')])
    expect(spy.mock.calls.map(args=>args[3])).toEqual([true,false,true,true])
    expect(new Set(r.candidates.map(c=>JSON.stringify(c.workspace.mainPlan))).size).toBe(4)

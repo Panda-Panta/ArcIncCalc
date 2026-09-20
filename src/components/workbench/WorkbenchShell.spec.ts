@@ -63,6 +63,7 @@ import { compileMainPlanToAppConfig } from '../../workbench/adapter'
 import { createDefaultConfig } from '../../domain/defaults'
 import { calculate } from '../../engine/calculate'
 import { EDITION } from '../../domain/edition'
+import { OPERATORS } from '../../domain/operators'
 
 describe('WorkbenchShell.vue and App primary entry integration', () => {
   let pinia: Pinia
@@ -419,6 +420,28 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
     expect(wrapper.find('[data-test="metric-lmd"]').text()).toBe(initialLmd)
   }, 15000)
 
+  it('calculates with unlocked low-stage skills and clears stale results on a real failure', async () => {
+    localStorage.setItem('arcinc-operator-inventory-v1', JSON.stringify({ schemaVersion: 1, enabled: true, text: '夜烟,0,1' }))
+    const store = useRosterWorkbenchStore()
+    const ws = createDefaultWorkspace()
+    ws.mainPlan.facilities.room_1_1.slots[0]!.occupant = { kind: 'operator', operatorId: 'char_141_nights' }
+    store.loadWorkspace(ws)
+    const wrapper = mountWithPinia(WorkbenchShell)
+    wrapper.vm.handleCalculate()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.vm.calculationReport).not.toBeNull()
+    expect(wrapper.vm.simulationReport?.success).toBe(true)
+    expect(wrapper.find('[data-test="metric-gold"]').exists()).toBe(true)
+    localStorage.setItem('arcinc-operator-inventory-v1', JSON.stringify({ schemaVersion: 1, enabled: true, text: '芬,0,1' }))
+    wrapper.vm.handleCalculate()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.vm.calculationReport).toBeNull()
+    expect(wrapper.vm.simulationReport?.success).toBe(false)
+    expect(wrapper.find('[data-test="metric-gold"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="results-panel"]').text()).toContain('夜烟')
+    expect(wrapper.vm.simulationReport?.diagnostics.some(d => d.code === 'INVENTORY_OPERATOR_NOT_OWNED')).toBe(true)
+  }, 15000)
+
   // 11. File imports immediately update all views, and reset clears stale calculation state
   it('updates all views immediately on file import and clears stale calculation state on reset', async () => {
     const wrapper = mountWithPinia(WorkbenchShell)
@@ -540,8 +563,8 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
   })
 
   // 15. One-click smart roster generation with preserved user-locked operators
-  const FULL_TEST_OPS = [
-    '能天使,2,90', '德克萨斯,2,80', '拉普兰德,2,80', '巫恋,2,80', '龙舌兰,2,80', '柏喙,2,80',
+  const INSUFFICIENT_TEST_OPS = [
+    '但书,2,80', '能天使,2,90', '德克萨斯,2,80', '拉普兰德,2,80', '巫恋,2,80', '龙舌兰,2,80', '柏喙,2,80',
     '砾,2,70', '芬,1,55', '克洛丝,1,55', '伊芙利特,2,90', '白面鸮,2,80', '红豆,1,55',
     '斑点,1,55', '卡达,2,70', '远山,1,60', '梅,2,70', '流星,1,60', '杰克,1,60',
     '夜烟,1,60', '深海色,1,60', '古米,1,60', '蛇屠箱,1,60', '调香师,1,60', '清流,2,70',
@@ -552,7 +575,25 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
     '地灵,1,60', '桃金娘,2,70', '极境,2,80', '红,2,80', '食铁兽,2,80', '雷蛇,2,80',
   ]
 
-  it('triggers smart roster generation, keeps user placed operators, and updates store', async () => {
+  // Success fixtures need enough eligible ordinary backups in every facility.
+  const FULL_TEST_OPS = OPERATORS.map(o =>
+    `${o.name},${o.rarity < 3 ? 0 : o.rarity === 3 ? 1 : 2},${o.rarity < 3 ? 30 : o.rarity === 3 ? 55 : o.rarity === 4 ? 70 : o.rarity === 5 ? 80 : 90}`,
+  )
+
+  it('keeps the workspace unchanged when ordinary backups cannot be completed', async ({ annotate }) => {
+    await annotate('同步排班前确认测试进度已送达')
+    localStorage.setItem('arcinc-operator-inventory-v1', JSON.stringify({ enabled: true, text: INSUFFICIENT_TEST_OPS.join('\n') }))
+    const vm = mountWithPinia(WorkbenchShell).vm as any
+    const original = JSON.stringify(vm.store.workspace)
+    vm.handleConfirmSmartRosterConfig({ seed: 42, branchCount: 1, enableDeepSearch: false })
+    await flushPromises()
+    expect(vm.replaceStatusMessage).toContain('未成功')
+    expect(vm.replaceStatusMessage).toContain('未启动模拟')
+    expect(JSON.stringify(vm.store.workspace)).toBe(original)
+  }, 60000)
+
+  it('triggers smart roster generation, keeps user placed operators, and updates store', async ({ annotate }) => {
+    await annotate('同步排班前确认测试进度已送达')
     localStorage.setItem(
       'arcinc-operator-inventory-v1',
       JSON.stringify({
@@ -615,7 +656,8 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
   })
 
   // 20. Smart roster config modal interaction and execution
-  it('opens smart roster config modal and executes auto generate with custom config', async () => {
+  it('runs a custom configuration successfully with ideal run orders', async ({ annotate }) => {
+    await annotate('同步排班前确认测试进度已送达')
     localStorage.setItem(
       'arcinc-operator-inventory-v1',
       JSON.stringify({ enabled: true, text: FULL_TEST_OPS.join('\n') })
@@ -624,6 +666,7 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
     const wrapper = mountWithPinia(WorkbenchShell)
     const vm = wrapper.vm as any
 
+    const originalWorkspace = JSON.stringify(vm.store.workspace)
     vm.smartRosterConfigModalOpen = true
     expect(vm.smartRosterConfigModalOpen).toBe(true)
 
@@ -641,5 +684,6 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
 
     expect(vm.smartRosterConfigModalOpen).toBe(false)
     expect(vm.replaceStatusMessage).toContain('排班成功')
+    expect(JSON.stringify(vm.store.workspace)).not.toBe(originalWorkspace)
   }, 60000)
 })

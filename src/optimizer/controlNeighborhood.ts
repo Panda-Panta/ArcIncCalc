@@ -4,6 +4,7 @@ import {isShiftRunOperator} from '../scheduler/scheduleAdapter'
 import {resolveOperatorCharId as resolveId} from '../workbench/compat/mowerJson'
 import type {RosterWorkspace} from '../workbench/model'
 import {validatePhysicalRoster} from './rosterDraft'
+import {rankStaffingCandidates} from './staffingQuality'
 
 export interface ControlMainNeighbor {
  label:string;workspace:RosterWorkspace
@@ -23,12 +24,13 @@ function physical(workspace:RosterWorkspace):boolean {
 }
 
 /** One occupied control slot per candidate. Selection does not assert an income gain. */
-export function generateControlMainNeighbors(workspace:RosterWorkspace,entries:OwnedOperatorInput[],limit=20,protectedIds:string[]=[]):ControlMainNeighbor[] {
+export function generateControlMainNeighbors(workspace:RosterWorkspace,entries:OwnedOperatorInput[],limit=20,protectedIds:string[]=[],lockedPositions:readonly string[]=[]):ControlMainNeighbor[] {
  if(!Number.isSafeInteger(limit)||limit<0||limit>21)throw new Error('邻域预算须为 0–21 的整数')
  if(!Array.isArray(protectedIds)||protectedIds.some(id=>typeof id!=='string'))throw new Error('受保护干员须为代号或 ID 数组')
  const inventory=compileOperatorInventory(entries)
  if(!inventory.valid)throw new Error('无效的干员库')
  if(limit===0||!physical(workspace))return []
+ const locked=new Set(lockedPositions.map(key=>key.replace(/:(\d+)$/,'_$1')))
  const reserved=new Set<string>(),protectedSet=new Set<string>()
  // Unknown metadata is opaque: reserve any explicit reference, including object keys.
  const protect=(value:unknown):void=>{
@@ -48,19 +50,23 @@ export function generateControlMainNeighbors(workspace:RosterWorkspace,entries:O
  }
  const slots=workspace.mainPlan.facilities.central.slots
  const positions=slots.flatMap((slot,index)=>{
+  if(locked.has(`central_${index}`))return []
   if(slot.occupant.kind!=='operator'||special(slot.occupant.operatorId)||protectedSet.has(canonical(slot.occupant.operatorId)))return []
   if(slot.metadata&&Object.keys(slot.metadata).length)return []
   if(slot.replacements.some(id=>special(id)||protectedSet.has(canonical(id))))return []
   return [index]
  })
  const pool=inventory.operators.filter(o=>o.matchesMaximumSkills&&o.skills.some(s=>s.roomType==='CONTROL')&&!reserved.has(o.charId)&&!special(o.charId))
+ const ranked=positions.map(index=>({index,ids:rankStaffingCandidates(workspace,inventory,{roomId:'central',slotIndex:index},pool.map(o=>o.charId),'main')}))
  const results:ControlMainNeighbor[]=[]
- // Advancing all positions for each inventory entry fairly interleaves their streams.
- for(const operator of pool)for(const index of positions){
+ for(let offset=0;offset<pool.length;offset++)for(const position of ranked){
+  const id=position.ids[offset]
+  if(!id)continue
+  const index=position.index
   const copy=structuredClone(workspace)
-  copy.mainPlan.facilities.central.slots[index]!.occupant={kind:'operator',operatorId:operator.charId}
+  copy.mainPlan.facilities.central.slots[index]!.occupant={kind:'operator',operatorId:id}
   if(!physical(copy))continue
-  results.push({label:`中枢第 ${index+1} 位主班 → ${operator.name}`,workspace:copy,move:{kind:'control-main',positions:[`central_${index}`]}})
+  results.push({label:`中枢第 ${index+1} 位主班 → ${name(id)}`,workspace:copy,move:{kind:'control-main',positions:[`central_${index}`]}})
   if(results.length===limit)return results
  }
  return results

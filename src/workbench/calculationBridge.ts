@@ -1,3 +1,5 @@
+import { inventoryOperatorRecords } from '../domain/operatorContext'
+import { compileOperatorInventory } from '../domain/operatorInventory'
 import type { AppConfig, CalculationReport, SummaryOutput } from '../domain/types'
 import { createDefaultConfig } from '../domain/defaults'
 import { calculate } from '../engine/calculate'
@@ -56,10 +58,9 @@ export function simulationReportToCalculationReport(
   const netGoldCount = goldCount - goldConsumed
 
   // Tequila virtual gold (within sample period)
-  const tequilaOrders = sampleOrderEvents.filter(
-    e => e.order?.kind === 'tequila'
-  ).length
-  const virtualGoldCount = tequilaOrders / days
+  const tequilaBonusLmd = sampleOrderEvents.filter(e => e.order?.kind === 'tequila')
+    .reduce((sum, e) => sum + Math.max(0, e.order!.lmdReward - e.order!.goldCost * 500), 0)
+  const virtualGoldCount = tequilaBonusLmd / 500 / days
   const virtualGoldValue = virtualGoldCount * 500
 
   // 82 score: exp + 0.8 * (goldValue + virtualGoldValue) + 0.2 * orderLmd
@@ -71,6 +72,7 @@ export function simulationReportToCalculationReport(
   const drones = (inflows?.drone ?? 0) / days
 
   const compiledConfig = compileMainPlanToAppConfig(workspace.mainPlan, workspace, baseConfig)
+  if(simReport.inputs.options.operatorInventory)compiledConfig.operatorRecords=inventoryOperatorRecords(compileOperatorInventory(simReport.inputs.options.operatorInventory))
   const legacyReport = calculate(compiledConfig)
 
   const summary: SummaryOutput = {
@@ -153,19 +155,22 @@ export function runCalculationBridge(
   if (engine === 'simulation') {
     const simBridge = runScheduleSimulationBridge(
       cleanWorkspace,
-      options.simulationOptions ?? {
+      options.simulationOptions ? {
+        ...options.simulationOptions,
+        production: options.simulationOptions.production ?? { outputMode: 'potential', runOrderMode: 'ideal', droneTarget: 'gold' },
+      } : {
         warmupHours: 72,
         sampleHours: 168,
         warmupModel: 'hourly',
         production: {
           outputMode: 'potential',
-          runOrderMode: 'drone',
+          runOrderMode: 'ideal',
           droneTarget: 'gold',
         },
       },
     )
 
-    if (simBridge.report) {
+    if (simBridge.report?.success && simBridge.report.production?.success) {
       const report = simulationReportToCalculationReport(
         cleanWorkspace,
         simBridge.report,
@@ -185,7 +190,8 @@ export function runCalculationBridge(
       report: null,
       validation,
       engine: 'simulation',
-      error: simBridge.error ?? '动态模拟执行失败',
+      simulationReport: simBridge.report,
+      error: simBridge.error ?? ('动态模拟未完成：' + (simBridge.report?.diagnostics.map(d => d.message).join('；') || '未取得完整生产报告')),
     }
   }
 
@@ -203,5 +209,3 @@ export function runCalculationBridge(
     engine: 'legacy',
   }
 }
-
-

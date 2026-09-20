@@ -1,3 +1,4 @@
+import { operatorFor, hasOperatorSkill } from '../domain/operatorContext'
 import { matchesRiicFaction as isFaction, isRiicAlter as isAlter } from '../domain/riicIdentity'
 import { OPERATOR_MAP, type OperatorRecord, type OperatorSkill } from '../domain/operators'
 import type { AppConfig, OperatorMoraleResult, OutputRoom, RoomType } from '../domain/types'
@@ -63,24 +64,24 @@ const CUSTOM_MOOD_SKILLS = new Set([
   '“未完的故事”', '羁绊相生', '成效优先', '英雄的骄傲·β',
 ])
 
-function selected(ids: string[]) {
-  return ids.map((id) => OPERATOR_MAP.get(id)).filter((item): item is OperatorRecord => Boolean(item))
+function selected(config: AppConfig, ids: string[]) {
+  return ids.map((id) => operatorFor(config, id)).filter((item): item is OperatorRecord => Boolean(item))
 }
 
 function assignments(config: AppConfig): Assignment[] {
   const result: Assignment[] = []
-  const controlPeers = selected(config.controlOperatorIds)
+  const controlPeers = selected(config, config.controlOperatorIds)
   for (const operator of controlPeers) {
     result.push({ operator, roomId: '控制中枢', roomType: 'control', peers: controlPeers })
   }
   for (const room of config.rooms) {
-    const peers = selected(room.operatorIds)
+    const peers = selected(config, room.operatorIds)
     for (const operator of peers) {
       result.push({ operator, roomId: room.id, roomType: room.type, room, peers })
     }
   }
   for (const roomType of ['office', 'reception'] as const) {
-    const peers = selected(config.facilityOperatorIds[roomType])
+    const peers = selected(config, config.facilityOperatorIds[roomType])
     for (const operator of peers) result.push({ operator, roomId: roomType, roomType, peers })
   }
   return result
@@ -257,7 +258,7 @@ function computeRates(
   applyCountRecovery('char_206_gnosis', (operator) => isFaction(operator, 'kjerag', 'karlan'), 0.05, '灵知·幕后指挥')
   applyCountRecovery('char_197_poca', (operator) => isFaction(operator, 'student'), 0.05, '早露·学生会会长')
 
-  if (activeIds.has('char_226_hmau')) {
+  if (activeIds.has('char_226_hmau') && hasOperatorSkill(config,'char_226_hmau','control_mp_cost&faction2[000]')) {
     const leeOperators = activeControl.filter((item) => isFaction(item.operator, 'lee'))
     if (leeOperators.length) {
       addAll(activeControl, -leeOperators.length * 0.2, `吽·坚毅随和：全员 -${(leeOperators.length * 0.2).toFixed(2)}/h`)
@@ -274,7 +275,7 @@ function computeRates(
 
   const theresa = activeControl.find((item) => item.operator.charId === 'char_4134_cetsyr')
   const amiya = activeControl.find((item) => item.operator.name === '阿米娅')
-  if (theresa && amiya) {
+  if (theresa && amiya && hasOperatorSkill(config,theresa.operator.charId,'control_mp_cost_double[001]')) {
     add(theresa, -0.1, '魔王·“未完的故事”：与阿米娅同驻，-0.1/h')
     add(amiya, -0.1, '魔王·“未完的故事”：与魔王同驻，-0.1/h')
   }
@@ -294,17 +295,17 @@ function computeRates(
   }
   const mutsumi = activeControl.find((item) => item.operator.charId === 'char_4183_mortis')
   if (mutsumi) {
-    if (sakiko) {
+    if (sakiko && hasOperatorSkill(config,mutsumi.operator.charId,'control_mp_cost_reset[000]')) {
       add(mutsumi, 0, '若叶睦·互为半身：与丰川祥子同驻，消除自身技能消耗')
     } else {
       const delta = Math.floor(resourceValues.enthusiasm / 8) * 0.01
       if (delta) add(mutsumi, delta, `若叶睦·演技的怪物：热情值 ${resourceValues.enthusiasm}，+${delta.toFixed(2)}/h`)
     }
   }
-  if (sakiko && activeControl.some((item) => item.operator.charId === 'char_4184_dolris')) {
+  if (sakiko && activeControl.some((item) => item.operator.charId === 'char_4184_dolris' && hasOperatorSkill(config,item.operator.charId,'control_dorm_rec2[000]'))) {
     add(sakiko, -0.1, '三角初华·羁绊相生：丰川祥子 -0.1/h')
   }
-  if (sakiko && activeControl.some((item) => item.operator.charId === 'char_4185_amoris')) {
+  if (sakiko && activeControl.some((item) => item.operator.charId === 'char_4185_amoris' && hasOperatorSkill(config,item.operator.charId,'control_mp&meet_spd[000]'))) {
     add(sakiko, 0.05, '祐天寺若麦·成效优先：丰川祥子 +0.05/h')
   }
 
@@ -331,21 +332,21 @@ function computeRates(
     )
   }
 
-  const mlynarActive = activeControl.some(item => item.operator.charId === 'char_4064_mlynar')
+  const mlynarActive = activeControl.some(item => item.operator.charId === 'char_4064_mlynar' && hasOperatorSkill(config,item.operator.charId,'control_mp_lonely[000]'))
   const mlynarExpansion = mlynarActive ? activeControl.reduce((count, item) => count + item.operator.skills.filter(
     skill => skill.roomType === 'CONTROL' && MLYNAR_EXTENDED_SKILLS.has(skill.name),
   ).length, 0) * .05 : 0
 
   let otherFacilityRecovery = 0
   let otherFacilityLabel = ''
-  if (activeControl.some((item) => item.operator.charId === 'char_1035_wisdel')) {
+  if (activeControl.some((item) => item.operator.charId === 'char_1035_wisdel' && hasOperatorSkill(config,item.operator.charId,'control_mp_expand_double[000]'))) {
     const value = activeControl.some((item) => item.operator.charId === 'char_4134_cetsyr') ? 0.2 : 0.1
     if (value > otherFacilityRecovery) {
       otherFacilityRecovery = value
       otherFacilityLabel = `维什戴尔·巴别塔之帜${value === 0.2 ? '（魔王联动）' : ''}`
     }
   }
-  if (activeControl.some((item) => item.operator.charId === 'char_2024_chyue')) {
+  if (activeControl.some((item) => item.operator.charId === 'char_2024_chyue' && hasOperatorSkill(config,item.operator.charId,'control_mp_bd_cost_expand[000]'))) {
     const value = 0.05 + Math.floor(resourceValues.fireworks / 20) * 0.05
     if (value > otherFacilityRecovery) {
       otherFacilityRecovery = value

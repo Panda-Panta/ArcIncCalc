@@ -7,7 +7,7 @@ import {isShiftRunOperator} from '../scheduler/scheduleAdapter'
 import {resolveOperatorCharId as resolveId} from '../workbench/compat/mowerJson'
 import type {RosterWorkspace,MowerRoomId} from '../workbench/model'
 import {validatePhysicalRoster} from './rosterDraft'
-import {validateScheduleInventory} from './inventoryAdmission'
+import {validateCatalogScheduleInventory as validateScheduleInventory} from './inventoryAdmission'
 
 export interface InventorySeedContext {
  assumptions?:Partial<SimulationAssumptions>

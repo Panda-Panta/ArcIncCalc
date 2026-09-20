@@ -1,0 +1,137 @@
+import { inventoryOperatorRecords } from '../domain/operatorContext'
+import type { OperatorInventory } from '../domain/operatorInventory'
+import type { AppConfig } from '../domain/types'
+import { currentMoraleRates } from '../engine/morale'
+import { isShiftRunOperator } from '../scheduler/scheduleAdapter'
+import { resolveOperatorCharId as resolveId } from '../workbench/compat/mowerJson'
+import { MOWER_OUTPUT_ROOM_IDS, type MowerRoomId, type MowerSlot, type RosterWorkspace } from '../workbench/model'
+import { projectControlOutput } from './controlImpact'
+import { projectRosterConfig } from './rosterProjection'
+import { isSelfOnlyProductionFallback, productionRoomId, productionSingletonNames, singletonTheory } from './productionSingletons'
+
+export interface StaffingPosition { roomId: MowerRoomId; slotIndex: number }
+type Quality = { output: number; power: number; consumption: number }
+type StaffingContext = { config: AppConfig; insertionIndex: number }
+const key = (roomId: string, index: number, slot: MowerSlot) => slot.groupId?.trim() || `${roomId}:${index}`
+const ordinaryBackup = (slot: MowerSlot) => slot.replacements.map(resolveId).find(id => !isShiftRunOperator(id))
+
+/** Planning snapshots only. They rank proposals; completed simulations decide income gains. */
+function assignmentContexts(workspace: RosterWorkspace, position: StaffingPosition, role: 'main' | 'backup', theoretical = false): StaffingContext[] {
+  const room = workspace.mainPlan.facilities[position.roomId]
+  const target = key(position.roomId, position.slotIndex, room.slots[position.slotIndex]!)
+  const peers = [...new Set(room.slots.map((slot, index) => key(room.roomId, index, slot)))].filter(group => group !== target)
+  const allGroups = Object.values(workspace.mainPlan.facilities).filter(r => r.type !== 'dormitory')
+    .flatMap(r => r.slots.map((slot, index) => key(r.roomId, index, slot)))
+  const scenarios: Set<string>[] = []
+  // Enumerate local mixed shifts, plus all other groups resting for cross-room dependencies.
+  for (let mask = 0; mask < (theoretical ? 1 : 2 ** peers.length); mask++) {
+    scenarios.push(new Set([...peers.filter((_, i) => mask & (1 << i)), ...(role === 'backup' ? [target] : [])]))
+  }
+  if (!theoretical) scenarios.push(new Set(allGroups.filter(group => role === 'backup' || group !== target)))
+  const seen = new Set<string>()
+  return scenarios.flatMap(resting => {
+    const snapshot = structuredClone(workspace)
+    for (const r of Object.values(snapshot.mainPlan.facilities)) {
+      if (r.type === 'dormitory') continue
+      r.slots.forEach((slot, index) => {
+        if (slot.occupant.kind !== 'operator' || !resting.has(key(r.roomId, index, slot))) return
+        const primary = resolveId(slot.occupant.operatorId)
+        if (snapshot.mainPlan.conf.workaholic?.some(id => resolveId(id) === primary)) return
+        const backup = ordinaryBackup(slot)
+        // The entire group leaves together. A not-yet-assigned backup is an
+        // empty planning seat, not permission to retain the outgoing main's skills.
+        slot.occupant = backup ? { kind: 'operator', operatorId: backup } : { kind: 'empty' }
+      })
+    }
+    // Candidate is inserted below. Removing this slot makes every candidate's marginal comparable.
+    snapshot.mainPlan.facilities[position.roomId].slots[position.slotIndex]!.occupant = { kind: 'empty' }
+    const occupants = Object.values(snapshot.mainPlan.facilities).flatMap(r => r.slots.flatMap(s => s.occupant.kind === 'operator' ? [resolveId(s.occupant.operatorId)] : []))
+    if (new Set(occupants).size !== occupants.length) return []
+    const fingerprint = JSON.stringify(Object.values(snapshot.mainPlan.facilities).map(r => r.slots.map(s => s.occupant)))
+    if (seen.has(fingerprint)) return []
+    seen.add(fingerprint)
+    const insertionIndex = snapshot.mainPlan.facilities[position.roomId].slots.slice(0, position.slotIndex)
+      .filter(slot => slot.occupant.kind === 'operator').length
+    return [{ config: projectRosterConfig(snapshot), insertionIndex }]
+  })
+}
+
+function insertOperator(config: AppConfig, workspace: RosterWorkspace, position: StaffingPosition, insertionIndex: number, id: string) {
+  const type = workspace.mainPlan.facilities[position.roomId].type
+  // The adapter preserves the fixed output-room order but renames its rooms B1..B9.
+  // Look up that ID, not the index in the filtered projection or the Mower room ID.
+  if (['manufacture', 'trading', 'power'].includes(type)) {
+    const outputIndex = MOWER_OUTPUT_ROOM_IDS.findIndex(roomId => roomId === position.roomId)
+    const room = config.rooms.find(r => r.id === `B${outputIndex + 1}`)
+    if (outputIndex < 0 || !room) throw new Error(`候选工位无法映射到计算设施：${position.roomId}`)
+    room.operatorIds.splice(insertionIndex, 0, id)
+    room.operatorCount = room.operatorIds.length
+    if (room.type === 'power') room.powerStaffed = true
+    return
+  }
+  if (type === 'central') { config.controlOperatorIds.splice(insertionIndex, 0, id); return }
+  const auxiliary = { contact: 'office', meeting: 'reception', factory: 'workshop', train: 'training' } as const
+  if (type in auxiliary) config.facilityOperatorIds[auxiliary[type as keyof typeof auxiliary]].splice(insertionIndex, 0, id)
+  if (type === 'train') config.efficiencyResources.trainingOperatorIds = [...config.facilityOperatorIds.training]
+}
+
+function quality(config: AppConfig): Quality {
+  // A short relief shift cannot be assumed to have completed 5/10/12 hours of warm-up.
+  const present = [...config.controlOperatorIds, ...config.rooms.flatMap(r => r.operatorIds)]
+  const projection = projectControlOutput(config, { timeContext: { workHoursByOperator: new Map(present.map(id => [id, 0])) } })
+  const consumption = Object.values(currentMoraleRates(config).rates).reduce((sum, rate) => sum + rate, 0)
+  return { output: projection.daily.score, power: projection.powerBonusPercent, consumption }
+}
+
+/** Actual conditional skills and global dependencies replace inventory-order backup selection. */
+export function rankStaffingCandidates(
+  workspace: RosterWorkspace, inventory: OperatorInventory, position: StaffingPosition,
+  candidates: readonly string[], role: 'main' | 'backup',
+  options: { completingReliefTeam?: boolean } = {},
+): string[] {
+  const type = workspace.mainPlan.facilities[position.roomId].type
+  const production = type === 'manufacture' || type === 'trading'
+  if (!production && candidates.length < 2) return [...candidates]
+  const records = inventoryOperatorRecords(inventory)
+  const contexts = assignmentContexts(workspace, position, role, production)
+  if (production) {
+    // The first snapshot is the relevant main/relief team. Ordinary production
+    // candidates are ordered by their own theoretical skill, not whole-base gain.
+    const context = contexts[0]
+    if (!context) return []
+    const allowed = new Set(productionSingletonNames(workspace, position.roomId).map(resolveId))
+    const owned = new Set(inventory.operators.filter(o => o.matchesMaximumSkills).map(o => o.charId))
+    return [...new Set(candidates.map(resolveId))].filter(id => owned.has(id) &&
+      (allowed.has(id) || isSelfOnlyProductionFallback(records[id]?.skills ?? [], type))).flatMap(id => {
+      const config: AppConfig = structuredClone(context.config)
+      config.operatorRecords = records
+      insertOperator(config, workspace, position, context.insertionIndex, id)
+      let efficiency = singletonTheory(config, position.roomId, id)
+      // Initial matching constructs a complete relief team. Do not eliminate
+      // count-based 吉星 just because her future colleagues are not assigned yet.
+      // improveBackups re-evaluates the resulting team with actual occupants.
+      if (role === 'backup' && options.completingReliefTeam && records[id]?.skills.some(s => s.buffId === 'trade_ord_spd&share[002]')) {
+        const room = config.rooms.find(r => r.id === productionRoomId(position.roomId))!
+        const cleared = room.operatorIds.some(other => records[other]?.skills.some(s => s.buffId === 'trade_ord_vodfox[000]'))
+        if (!cleared) efficiency = Math.max(0, workspace.mainPlan.facilities[position.roomId].slots.filter(s => s.occupant.kind === 'operator').length - 1) * 20
+      }
+      return efficiency !== undefined && efficiency > 0 ? [{ id, efficiency, preferred: allowed.has(id) }] : []
+    }).sort((a, b) => Number(b.preferred) - Number(a.preferred) || b.efficiency - a.efficiency).map(item => item.id)
+  }
+  if (!contexts.length) return [...candidates]
+  const baselines = contexts.map(({ config }) => { config.operatorRecords = records; return quality(config) })
+  const ranked = [...new Set(candidates.map(resolveId))].map(id => {
+    const deltas = contexts.map(({ config: context, insertionIndex }, index) => {
+      const config: AppConfig = structuredClone({ ...context, operatorRecords: undefined })
+      config.operatorRecords = records
+      insertOperator(config, workspace, position, insertionIndex, id)
+      const value = quality(config), baseline = baselines[index]!
+      return { output: value.output - baseline.output, power: value.power - baseline.power, consumption: value.consumption - baseline.consumption }
+    })
+    return { id, worst: Math.min(...deltas.map(d => d.output)), mean: deltas.reduce((n, d) => n + d.output, 0) / deltas.length,
+      power: deltas.reduce((n, d) => n + d.power, 0) / deltas.length, consumption: deltas.reduce((n, d) => n + d.consumption, 0) / deltas.length }
+  })
+  // Avoid gains that rely on another group always being on duty. Morale is a tie-break, not a made-up duty ratio.
+  ranked.sort((a, b) => b.worst - a.worst || b.mean - a.mean || b.power - a.power || a.consumption - b.consumption)
+  return ranked.map(r => r.id)
+}

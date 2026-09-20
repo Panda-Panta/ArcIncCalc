@@ -4,6 +4,8 @@ import {isShiftRunOperator} from '../scheduler/scheduleAdapter'
 import {resolveOperatorCharId as resolveId} from '../workbench/compat/mowerJson'
 import type {RosterWorkspace} from '../workbench/model'
 import {validatePhysicalRoster} from './rosterDraft'
+import {rankStaffingCandidates} from './staffingQuality'
+import {applySingletonWorkPolicy,productionTeamTheory} from './productionSingletons'
 
 export interface ProductionMainNeighbor {
  label:string;workspace:RosterWorkspace
@@ -24,12 +26,13 @@ function physical(workspace:RosterWorkspace):boolean {
 }
 
 /** Single occupied production-seat moves, not full combination replacement or an income claim. */
-export function generateProductionMainNeighbors(workspace:RosterWorkspace,entries:OwnedOperatorInput[],limit=20,protectedIds:string[]=[]):ProductionMainNeighbor[] {
+export function generateProductionMainNeighbors(workspace:RosterWorkspace,entries:OwnedOperatorInput[],limit=20,protectedIds:string[]=[],lockedPositions:readonly string[]=[]):ProductionMainNeighbor[] {
  if(!Number.isSafeInteger(limit)||limit<0||limit>21)throw new Error('邻域预算须为 0–21 的整数')
  if(!Array.isArray(protectedIds)||protectedIds.some(id=>typeof id!=='string'))throw new Error('受保护干员须为代号或 ID 数组')
  const inventory=compileOperatorInventory(entries)
  if(!inventory.valid)throw new Error('无效的干员库')
  if(limit===0||!physical(workspace))return []
+ const locked=new Set(lockedPositions.map(key=>key.replace(/:(\d+)$/,'_$1')))
  const reserved=new Set<string>(),protectedSet=new Set<string>()
  const protect=(value:unknown):void=>{
   if(typeof value==='string'){
@@ -52,12 +55,16 @@ export function generateProductionMainNeighbors(workspace:RosterWorkspace,entrie
   if(room.type!=='manufacture'&&room.type!=='trading'&&room.type!=='power')return []
   const roomType=roomTypes[room.type]
   return room.slots.flatMap((slot,index)=>{
+   if(locked.has(`${room.roomId}_${index}`))return []
    if(slot.occupant.kind!=='operator'||special(slot.occupant.operatorId)||protectedSet.has(canonical(slot.occupant.operatorId)))return []
    if(slot.metadata&&Object.keys(slot.metadata).length)return []
-   if(slot.replacements.some(id=>special(id)||protectedSet.has(canonical(id))))return []
+   if(slot.groupId&&!slot.groupId.includes('散件')&&rooms.some(r=>r.slots.some(s=>s!==slot&&s.groupId===slot.groupId)))return []
+   if(slot.replacements.some(id=>name(id)==='菲亚梅塔'||protectedSet.has(canonical(id))))return []
    // A member placed solely for a named/passive link must not be replaced by this neighborhood.
    if(!OPERATOR_MAP.get(canonical(slot.occupant.operatorId))?.skills.some(s=>s.roomType===roomType))return []
-   return [{roomId:room.roomId,index,pool:unused.filter(o=>o.skills.some(s=>s.roomType===roomType))}]
+   const pool=unused.filter(o=>o.skills.some(s=>s.roomType===roomType))
+   const ranked=rankStaffingCandidates(workspace,inventory,{roomId:room.roomId,slotIndex:index},pool.map(o=>o.charId),'main')
+   return [{roomId:room.roomId,index,pool:ranked.map(id=>pool.find(o=>o.charId===id)!)}]
   })
  })
  const results:ProductionMainNeighbor[]=[]
@@ -67,6 +74,11 @@ export function generateProductionMainNeighbors(workspace:RosterWorkspace,entrie
   if(!operator)continue
   const copy=structuredClone(workspace)
   copy.mainPlan.facilities[position.roomId].slots[position.index]!.occupant={kind:'operator',operatorId:operator.charId}
+  applySingletonWorkPolicy(copy,position.roomId,position.index)
+  if(copy.mainPlan.facilities[position.roomId].type!=='power'){
+   const before=productionTeamTheory(workspace,inventory,position.roomId),after=productionTeamTheory(copy,inventory,position.roomId)
+   if(before===undefined||after===undefined||after<=before)continue
+  }
   if(!physical(copy))continue
   results.push({label:`${position.roomId} 第 ${position.index+1} 位主班 → ${operator.name}`,workspace:copy,move:{kind:'production-main',positions:[`${position.roomId}_${position.index}`]}})
   if(results.length===limit)return results

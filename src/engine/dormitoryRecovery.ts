@@ -1,8 +1,8 @@
+import { operatorFor } from '../domain/operatorContext'
 import { isWanderingMedic, isLaiosSquad } from './supportRecovery'
 import { hasRiicTag } from '../domain/riicTags'
 import { buildRiicGlobalContext } from './globalContext'
 import { matchesRiicFaction, matchesRiicIdentity } from '../domain/riicIdentity'
-import { OPERATOR_MAP } from '../domain/operators'
 import type { AppConfig } from '../domain/types'
 export interface DormitoryRecoveryResult { rates:Map<string,number>; details:Map<string,string[]>; unquantified:string[] }
 /** Actual-room rates; unspecified atmosphere is zero and explicitly diagnosed. Targets are policy input, not a lowest-morale rule. */
@@ -12,13 +12,13 @@ export function evaluateDormitoryRecovery(config:AppConfig,roomIndex:number,mora
  if(!level)return {rates,details,unquantified:['宿舍等级缺失']}
  if(atmosphere===undefined)unquantified.push('宿舍氛围未指定；当前仅计等级基础，不代表满氛围')
  const base=1.5+level*.1+Math.min(level*1000,Math.max(0,atmosphere??0))*.0004
- const operators=(config.facilityOperatorIds.dormitories[roomIndex]??[]).map(id=>OPERATOR_MAP.get(id)).filter(o=>o!==undefined)
+ const operators=(config.facilityOperatorIds.dormitories[roomIndex]??[]).map(id=>operatorFor(config, id)).filter(o=>o!==undefined)
  // Match runtime endpoint tolerance without moving directional skill thresholds (18/20).
  const mood=(id:string)=>{const value=moraleValues.get(id)??config.operatorMorale[id]??24;return value<=24&&value>=24-1e-8?24:value}
  const global=buildRiicGlobalContext(config,undefined,new Map(moraleValues))
  const centralEffects:{value:number;eliteOnly:boolean;label:string}[]=[]
  for (const id of config.controlOperatorIds) {
-  const provider=OPERATOR_MAP.get(id)
+  const provider=operatorFor(config, id)
   if (!provider || (moraleValues.get(id)??config.operatorMorale[id]??24)<=0 || config.zeroMoraleOperatorIds.includes(id)) continue
   for (const skill of provider.skills.filter(s=>s.roomType==='CONTROL'&&/所有宿舍|宿舍内所有干员|宿舍内.*精英干员/.test(s.description))) {
    if(/^control_dorm_rec(?:2)?\[/.test(skill.buffId))centralEffects.push({value:.05,eliteOnly:false,label:provider.name+'·'+skill.name})

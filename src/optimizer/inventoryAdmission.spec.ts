@@ -27,15 +27,15 @@ describe('inventory admission before scoring', () => {
     const admission=validateScheduleInventory(schedule,compileOperatorInventory([]))
     expect(admission.diagnostics.map(d=>d.operatorName).sort()).toEqual(['砾','清流','芬','但书','菲亚梅塔','温蒂','Lancet-2'].sort())
   })
-  it('stops low-stage scoring before any production and retains legacy behavior when omitted', () => {
+  it('uses unlocked low-stage skills and retains maximum behavior when inventory is omitted', () => {
     const ws=createDefaultWorkspace()
     ws.mainPlan.facilities.room_1_1.slots=[{occupant:{kind:'operator',operatorId:'砾'},groupId:null,replacements:[]}]
     const schedule=compileRosterSchedule(ws)
     const low=simulateSchedule(schedule,{sampleHours:1,operatorInventory:[{operator:'砾',elitePhase:0,level:1}],production:{}})
-    expect(low.success).toBe(false)
-    expect(low.elapsedHours).toBe(0)
-    expect(low.production).toBeUndefined()
-    expect(low.diagnostics.some(d=>d.code==='INVENTORY_SKILL_STAGE_UNSUPPORTED')).toBe(true)
+    expect(low.success).toBe(true)
+    expect(low.elapsedHours).toBe(1)
+    expect(low.production).toBeDefined()
+    expect(low.diagnostics.some(d=>d.code==='INVENTORY_SKILL_STAGE_UNSUPPORTED')).toBe(false)
     const high=simulateSchedule(schedule,{sampleHours:1,operatorInventory:[{operator:'砾',elitePhase:1,level:1}]})
     expect(high.success).toBe(true)
     expect(high.rooms).toEqual(simulateSchedule(schedule,{sampleHours:1}).rooms)
@@ -52,12 +52,12 @@ it('checks personnel override inputs and ignores unrelated morale metadata', () 
   expect(low.diagnostics.filter(d=>d.code==='INVENTORY_OPERATOR_NOT_OWNED')).toHaveLength(1)
 })
 
-it.each(['但书','杜林'])('rejects low-stage %s even when all main staff are ready',name=>{
+it.each(['但书','杜林'])('simulates low-stage %s with their actual unlocked skills',name=>{
  const ws=createDefaultWorkspace()
  ws.mainPlan.facilities.room_3_1.slots=[{occupant:{kind:'operator',operatorId:'芬'},groupId:null,replacements:name==='但书'?['但书']:[]}]
  const schedule=compileRosterSchedule(ws,name==='杜林'?{idleOperators:['杜林']}:{})
  const r=simulateSchedule(schedule,{sampleHours:1,operatorInventory:[{operator:'芬',elitePhase:1,level:1},{operator:name,elitePhase:0,level:29}],production:{}})
- expect(r.success).toBe(false)
- expect(r.elapsedHours).toBe(0)
- expect(r.diagnostics.some(d=>d.code==='INVENTORY_SKILL_STAGE_UNSUPPORTED'&&d.message.includes(name))).toBe(true)
+ expect(r.success).toBe(true)
+ expect(r.elapsedHours).toBe(1)
+ expect(r.diagnostics.some(d=>d.code==='INVENTORY_SKILL_STAGE_UNSUPPORTED')).toBe(false)
 })

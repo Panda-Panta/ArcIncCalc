@@ -27,7 +27,7 @@ export function admitCombinationCandidates(inventory: OperatorInventory): Candid
 }
 
 export interface ScheduleInventoryDiagnostic {code:string;message:string;operatorName?:string}
-/** Gate the existing maximum-skill engine; never replace the global operator map. */
+/** Validate ownership and input stages; skill selection belongs to each simulation. */
 export function validateScheduleInventory(schedule: CompiledSchedule, inventory: OperatorInventory, resources?: Partial<EfficiencyResources>) {
   const diagnostics: ScheduleInventoryDiagnostic[] = inventory.diagnostics.map(d=>({code:'INVENTORY_INVALID',message:d.message}))
   const runtime=compiledScheduleToRuntimeConfig(schedule)
@@ -42,7 +42,18 @@ export function validateScheduleInventory(schedule: CompiledSchedule, inventory:
   for(const id of references){
     const name=OPERATOR_MAP.get(id)?.name??id, operator=owned.get(id)
     if(!operator)diagnostics.push({code:'INVENTORY_OPERATOR_NOT_OWNED',operatorName:name,message:`${name}：参与排班或联动，但未录入干员库`})
-    else if(!operator.matchesMaximumSkills)diagnostics.push({code:'INVENTORY_SKILL_STAGE_UNSUPPORTED',operatorName:name,message:`${name}：实际已解锁技能与当前最高技能模型不同，暂不能评分（精英 ${operator.elitePhase}，等级 ${operator.level}）`})
   }
   return {valid:inventory.valid&&diagnostics.length===0,diagnostics,participantIds:[...references]}
+}
+
+/** Static catalog projections still require their maximum-skill template evidence. */
+export function validateCatalogScheduleInventory(schedule: CompiledSchedule, inventory: OperatorInventory, resources?: Partial<EfficiencyResources>) {
+  const admission = validateScheduleInventory(schedule, inventory, resources)
+  for (const operator of inventory.operators) {
+    if (admission.participantIds.includes(operator.charId) && !operator.matchesMaximumSkills) {
+      admission.diagnostics.push({ code: 'INVENTORY_SKILL_STAGE_UNSUPPORTED', operatorName: operator.name,
+        message: operator.name + '：静态组合模板仅支持最高技能快照；实际练度请使用动态模拟' })
+    }
+  }
+  return { ...admission, valid: admission.valid && admission.diagnostics.length === 0 }
 }

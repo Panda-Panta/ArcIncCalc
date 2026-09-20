@@ -5,6 +5,7 @@ import {validateScheduleInventory} from './inventoryAdmission'
 import {generateBackupNeighbors} from './backupNeighborhood'
 import {generateControlMainNeighbors} from './controlNeighborhood'
 import {generateProductionMainNeighbors} from './primaryNeighborhood'
+import {generatePrimaryBackupNeighbors} from './primaryBackupNeighborhood'
 import {seededSearchOrder} from './dailyTarget'
 import {summarizeIncome,compareIncome,type IncomeCase,type IncomeComparison} from './incomeComparison'
 import {runScheduleSimulationBridge} from '../workbench/scheduleSimulationBridge'
@@ -68,11 +69,13 @@ export function runMultiStartSearch(request:IncomeSearchRequest,settings:IncomeS
   // Change enumeration order only; restore original facility order in each returned candidate.
   const copy=structuredClone(parent.workspace),keys=Object.keys(copy.mainPlan.facilities)
   copy.mainPlan.facilities=Object.fromEntries(seededSearchOrder(Object.entries(copy.mainPlan.facilities),nextSeed())) as typeof copy.mainPlan.facilities
-  const available:Neighbor[]=[...generateBackupNeighbors(copy,inventory.filter(o=>!protectedIds.has(resolveId(o.operator))),21)]
-  if(settings.includeControlMains)available.push(...generateControlMainNeighbors(copy,inventory,21,[...protectedIds]))
-  if(settings.includeProductionMains)available.push(...generateProductionMainNeighbors(copy,inventory,21,[...protectedIds]))
+  const available:Neighbor[]=[...generateBackupNeighbors(copy,inventory,21,{protectedIds:[...protectedIds],lockedPositions:settings.lockedPositions})]
+  if(settings.includeControlMains)available.push(...generateControlMainNeighbors(copy,inventory,21,[...protectedIds],settings.lockedPositions))
+  if(settings.includeProductionMains)available.push(...generateProductionMainNeighbors(copy,inventory,21,[...protectedIds],settings.lockedPositions))
+  if(settings.includeProductionMains||settings.includeControlMains)available.push(...generatePrimaryBackupNeighbors(copy,inventory,21,{protectedIds:[...protectedIds],includeControl:settings.includeControlMains,includeProduction:settings.includeProductionMains,lockedPositions:settings.lockedPositions}))
   for(const n of available)n.workspace.mainPlan.facilities=Object.fromEntries(keys.map(key=>[key,n.workspace.mainPlan.facilities[key as keyof typeof copy.mainPlan.facilities]])) as typeof copy.mainPlan.facilities
-  return seededSearchOrder(available,nextSeed())
+  const locked=new Set((settings.lockedPositions??[]).map(key=>key.replace(/:(\d+)$/,'_$1')))
+  return seededSearchOrder(available.filter(n=>!n.move.positions.some(key=>locked.has(key))),nextSeed())
  }
  const starts=Array.from({length:settings.restarts},(_,index)=>({index,parent:index%2&&draft?draft:baseline,depth:0,done:false}))
  while(result.evaluatedCandidates<settings.maxCandidates&&starts.some(s=>!s.done)){

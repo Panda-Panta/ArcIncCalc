@@ -1,3 +1,5 @@
+import { operatorFor, hasOperatorSkill } from '../domain/operatorContext'
+import { isUnsupportedTradeOperator } from '../domain/shiftRunPolicy'
 import { temporalSkillBonus, type TimeContext } from './timeDependentSkills'
 import { evaluateHighestPhaseJaye } from './jayeRules'
 import { matchesRiicIdentity } from '../domain/riicIdentity'
@@ -61,8 +63,8 @@ const STABLE_MANUFACTURE_BONUS: Record<string, number> = {
   'manu_prod_cost_min[001]': 10,
 }
 
-function selectedOperators(ids: string[]): OperatorRecord[] {
-  return ids.map((id) => OPERATOR_MAP.get(id)).filter((item): item is OperatorRecord => Boolean(item))
+function selectedOperators(config: AppConfig, ids: string[]): OperatorRecord[] {
+  return ids.map((id) => operatorFor(config, id)).filter((item): item is OperatorRecord => Boolean(item))
 }
 
 function activeInContext(id: string, config: AppConfig, activeOperatorIds?: Set<string>): boolean {
@@ -249,13 +251,15 @@ function inferQuality(operators: OperatorRecord[], fallback: QualityRule): Quali
 }
 
 function inferSpecialOrder(operators: OperatorRecord[], fallback: SpecialOrder): SpecialOrder {
+  const forbidden = operators.find(o => isUnsupportedTradeOperator(o.charId))
+  if (forbidden) return forbidden.name === '佩佩' ? 'pepe' : forbidden.name === '可露希尔' ? 'closure' : 'uofficial'
   if (fallback === 'shiftRun') return fallback
   const names = new Set(operators.map((operator) => operator.name))
   if (names.has('佩佩')) return 'pepe'
   if (names.has('可露希尔')) return 'closure'
   if (names.has('U-Official')) return 'uofficial'
-  if (names.has('但书')) return 'provisoBeta'
-  if (names.has('龙舌兰')) return 'tequilaBeta'
+  if (names.has('但书')) return operators.some(o=>o.skills.some(s=>s.buffId==='trade_ord_against[010]'))?'provisoBeta':'provisoAlpha'
+  if (names.has('龙舌兰')) return operators.some(o=>o.skills.some(s=>s.buffId==='trade_ord_long[010]'))?'tequilaBeta':'tequilaAlpha'
   return fallback
 }
 
@@ -274,7 +278,7 @@ function controlGlobalBonus(
   activeOperatorIds?: Set<string>,
   context?: RiicGlobalContext,
 ): ControlGlobalBonusResult {
-  const controlOperators = selectedOperators(
+  const controlOperators = selectedOperators(config,
     config.controlOperatorIds.filter((id) => activeInContext(id, config, activeOperatorIds)),
   )
   let bonus = 0
@@ -311,7 +315,7 @@ function controlGlobalBonus(
       unquantifiedSkills.push(...staticManufacture.unquantifiedSkills)
     }
 
-    if (controlOperators.some((operator) => operator.charId === 'char_1034_jesca2')) {
+    if (controlOperators.some((operator) => operator.charId === 'char_1034_jesca2' && hasOperatorSkill(config,operator.charId,'control_bd_spd[000]'))) {
       const blacksteelOps = roomOperators.filter((operator) => matchesRiicIdentity(operator, 'groupId', 'blacksteel'))
       if (blacksteelOps.length) {
         const value = blacksteelOps.length * 5
@@ -329,7 +333,7 @@ function controlGlobalBonus(
       controlOperators.some((operator) => operator.charId === 'char_4182_oblvns') &&
       room.product === 'gold'
     ) {
-      const sakikoBonus = 1 + Math.floor(enthusiasm / 20)
+      const sakikoBonus = (hasOperatorSkill(config,'char_4182_oblvns','control_prod_bd_spd[010]')?1:.5) * (1 + Math.floor(enthusiasm / 20))
       bonus += sakikoBonus
       details.push(`丰川祥子·丰富工作经验：贵金属生产力 +${sakikoBonus}%（热情值 ${enthusiasm}）`)
       roomBonuses.push({
@@ -357,7 +361,7 @@ function controlGlobalBonus(
       }
     }
 
-    if (controlOperators.some((operator) => operator.charId === 'char_4098_vvana')) {
+    if (controlOperators.some((operator) => operator.charId === 'char_4098_vvana' && hasOperatorSkill(config,operator.charId,'control_prod_fraction[000]'))) {
       const knightOps = roomOperators.filter((operator) => hasRiicTag(operator, 'knight'))
       if (knightOps.length) {
         const value = knightOps.length * 7
@@ -371,7 +375,11 @@ function controlGlobalBonus(
       }
     }
 
-    if (controlOperators.some((operator) => operator.name === '歌蕾蒂娅') &&
+    if (controlOperators.some(operator => hasOperatorSkill(config, operator.charId, 'control_mp_aegir2[000]'))) {
+      unquantifiedSkills.push('歌蕾蒂娅·集群狩猎初级技能尚未量化；未套用精英2联动')
+    }
+
+    if (controlOperators.some((operator) => operator.name === '歌蕾蒂娅' && hasOperatorSkill(config,operator.charId,'control_mp_aegir2[010]')) &&
       !roomOperators.some(operator => operator.skills.some(isAutomationSkill))) {
       // cc.c.abyssal2_2 and 2_3: manufacturing presence only, 90% per-room cap;
       // automation wins, and the grant must not be copied by Waai Fu.
@@ -398,7 +406,7 @@ function controlGlobalBonus(
       }
     }
 
-    if (controlOperators.some((operator) => operator.name === '焰尾')) {
+    if (controlOperators.some((operator) => operator.name === '焰尾' && hasOperatorSkill(config,operator.charId,'control_mp_psk[000]'))) {
       const pinusOps = roomOperators.filter((operator) => matchesRiicIdentity(operator, 'groupId', 'pinus'))
       if (pinusOps.length) {
         const val = room.product === 'exp' ? 10 : room.product === 'gold' ? -10 : 0
@@ -447,7 +455,7 @@ function controlGlobalBonus(
         detail: '同类取最高',
       })
     }
-    if (controlOperators.some(operator => operator.name === '戴菲恩')) {
+    if (controlOperators.some(operator => operator.name === '戴菲恩' && hasOperatorSkill(config,operator.charId,'control_tra_limit&spd[010]'))) {
       for (const op of roomOperators.filter(operator => matchesRiicIdentity(operator, 'groupId', 'glasgow'))) {
         bonus += 10
         const list = operatorBonuses.get(op.charId) ?? []
@@ -461,7 +469,7 @@ function controlGlobalBonus(
       roomBonuses.push({ source: '凛御银灰·商业版图', value: 10 })
       details.push('凛御银灰·商业版图：本贸易站3名谢拉格干员 +10%')
     }
-    if (controlOperators.some((operator) => operator.charId === 'char_4186_tmoris')) {
+    if (controlOperators.some((operator) => operator.charId === 'char_4186_tmoris' && hasOperatorSkill(config,operator.charId,'control_tra_limit&spd2[000]'))) {
       const siracusaOps = roomOperators.filter((operator) => matchesRiicIdentity(operator, 'nationId', 'siracusa'))
       if (siracusaOps.length) {
         const value = siracusaOps.length * 5
@@ -474,7 +482,7 @@ function controlGlobalBonus(
         }
       }
     }
-    if (controlOperators.some((operator) => operator.charId === 'char_206_gnosis')) {
+    if (controlOperators.some((operator) => operator.charId === 'char_206_gnosis' && hasOperatorSkill(config,operator.charId,'control_tra_limit&spd[000]'))) {
       const kjeragOps = roomOperators.filter((operator) => matchesRiicIdentity(operator, 'nationId', 'kjerag'))
       if (kjeragOps.length) {
         bonus -= kjeragOps.length * 15
@@ -500,7 +508,7 @@ export function evaluateManufacturingCapacity(
   preparedContext?: RiicGlobalContext,
 ): number {
   if (room.type !== 'manufacture') return 0
-  const activeOperators = selectedOperators(room.operatorIds).filter((operator) => activeInContext(operator.charId, config, activeOperatorIds))
+  const activeOperators = selectedOperators(config, room.operatorIds).filter((operator) => activeInContext(operator.charId, config, activeOperatorIds))
   const globalContext = preparedContext ?? buildRiicGlobalContext(config, activeOperatorIds, moraleValues)
   const classCounts = roomClassCounts(activeOperators)
   return activeOperators
@@ -518,7 +526,7 @@ export function evaluateOperators(
   preparedContext?: RiicGlobalContext,
   timeContext?: TimeContext,
 ): OperatorEfficiencyResult {
-  const operators = selectedOperators(room.operatorIds)
+  const operators = selectedOperators(config, room.operatorIds)
   const activeOperators = operators.filter(
     (operator) => activeInContext(operator.charId, config, activeOperatorIds),
   )
@@ -554,7 +562,7 @@ export function evaluateOperators(
     0,
     goldProductionLines - globalContext.physicalGoldProductionLines - globalContext.durinGoldProductionLines,
   )
-  const controlOps = selectedOperators(
+  const controlOps = selectedOperators(config,
     config.controlOperatorIds.filter((id) => activeInContext(id, config, activeOperatorIds)),
   )
   const gnosisInControl = controlOps.some((op) => op.charId === 'char_206_gnosis')
@@ -673,7 +681,7 @@ export function evaluateOperators(
         } else if (skill.buffId === 'manu_formula_spd_P[000]') {
           const gummyInTrading = config.rooms
             .filter((item) => item.type === 'trading')
-            .flatMap((item) => selectedOperators(item.operatorIds))
+            .flatMap((item) => selectedOperators(config, item.operatorIds))
             .some((item) => item.name === '古米')
           applied = room.product === 'exp' && gummyInTrading ? 35 : 0
         } else if (skill.buffId === 'manu_prod_spd_bd[201]') {
@@ -686,6 +694,11 @@ export function evaluateOperators(
           )
           applied = room.product === 'gold' ? count * 2 : 0
           facilityDetail = `Blacksteel operators ${count}`
+        } else if (skill.buffId === 'manu_constrLv[000]') {
+          // This supplies the robots already derived by the global context. It
+          // is not an additional productivity term and must not mark Minimalist unknown.
+          applied = 0
+          facilityDetail = `engineering robots ${globalContext.engineeringRobots}`
         } else if (skill.buffId === 'manu_prod_spd_bd[110]') {
           const robots = globalContext.engineeringRobots
           applied = Math.floor(robots / 8) * 5
@@ -771,7 +784,7 @@ export function evaluateOperators(
         } else if (skill.buffId === 'trade_ord_spd&meet[010]') {
           applied = Math.min(30, 15 + config.facilities.reception * 5)
         } else if (skill.buffId === 'trade_ord_par&per[001]') {
-          const workplaceNames = new Set(selectedOperators([
+          const workplaceNames = new Set(selectedOperators(config, [
             ...config.controlOperatorIds, ...config.rooms.flatMap(r => r.operatorIds),
             ...config.facilityOperatorIds.reception, ...config.facilityOperatorIds.workshop,
             ...config.facilityOperatorIds.office, ...config.facilityOperatorIds.training,
@@ -852,7 +865,7 @@ export function evaluateOperators(
         const powerRoomOperators = config.rooms
           .filter((item) => item.type === 'power')
           .flatMap((item) =>
-            selectedOperators(
+            selectedOperators(config,
               item.operatorIds.filter((id) => activeInContext(id, config, activeOperatorIds)),
             ),
           )
@@ -869,7 +882,7 @@ export function evaluateOperators(
           'char_4188_confes',
           'char_4227_gallus',
         ])
-        const aigisBonus = evaluateAigisPowerSkill(skill, selectedOperators(config.rooms.filter(r => r.type === 'manufacture').flatMap(r => r.operatorIds)))
+        const aigisBonus = evaluateAigisPowerSkill(skill, selectedOperators(config, config.rooms.filter(r => r.type === 'manufacture').flatMap(r => r.operatorIds)))
         if (aigisBonus !== null) {
           applied = aigisBonus
         } else if (skill.buffId === 'power_rec_spd&dorm&lv[000]') {
@@ -889,7 +902,7 @@ export function evaluateOperators(
         } else if (skill.buffId === 'power_rec_spd_ext&faction[000]') {
           applied = otherPowerOperators.some((item) => matchesRiicIdentity(item, 'nationId', 'laterano')) ? 5 : 0
         } else if (skill.buffId === 'power_rec_spd_P[000]') {
-          applied = selectedOperators(config.controlOperatorIds).some((item) => item.name === '凯尔希')
+          applied = selectedOperators(config, config.controlOperatorIds).some((item) => item.name === '凯尔希')
             ? 5
             : 0
         } else if (skill.buffId === 'power_rec_spd_ext&tag[000]') {

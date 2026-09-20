@@ -13,6 +13,8 @@ export default defineConfig({
       '.worktrees/**',
       '.antigravity-bridge/**',
       'dist/**',
+      'artifacts/**',
+      'scratch/**',
     ],
   },
 })

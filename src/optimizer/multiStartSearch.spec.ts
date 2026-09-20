@@ -5,6 +5,7 @@ import {resolveOperatorCharId as id} from '../workbench/compat/mowerJson'
 import {runRosterIncomeSearch} from './rosterIncomeSearch'
 import * as control from './controlNeighborhood'
 import * as backup from './backupNeighborhood'
+import * as primaryBackup from './primaryBackupNeighborhood'
 import * as bridge from '../workbench/scheduleSimulationBridge'
 import * as comparison from './incomeComparison'
 const owned=(names:string[])=>names.map(operator=>{const o=OPERATORS.find(o=>o.name===operator)!;return {operator,elitePhase:o.rarity<3?0:o.rarity===3?1:2,level:o.rarity<3?30:o.rarity===3?55:o.rarity===4?70:o.rarity===5?80:90}})
@@ -61,6 +62,7 @@ it('does not simulate empty extra restart copies when the budget is exhausted',(
 })
 
 it('continues a restart after a losing intermediate state',()=>{
+ vi.spyOn(primaryBackup,'generatePrimaryBackupNeighbors').mockReturnValue([])
  vi.spyOn(backup,'generateBackupNeighbors').mockReturnValue([])
  vi.spyOn(control,'generateControlMainNeighbors').mockImplementation(w=>{
   const slot=w.mainPlan.facilities.central.slots[0]!,current=slot.occupant.kind==='operator'?slot.occupant.operatorId:''

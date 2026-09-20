@@ -4,6 +4,28 @@ import { simulateMoraleTimeline } from '../simulator/moraleTimeline'
 
 const rates = { workRate: () => 1, recoveryRate: () => 2 }
 describe('event roster runtime', () => {
+  it('does not let a full-morale passive group member return a still-tired producer', () => {
+    const s = createRosterRuntime({ positions: [
+      { id: 'producer', roomId: 'manufacture', primary: 'A', candidates: ['B'], group: 'g', lowerLimit: 15 },
+      { id: 'pendant', roomId: 'factory', primary: 'P', candidates: ['Q'], group: 'g', lowerLimit: 15 },
+    ], beds: [{ id: 'a', roomId: 'd', vip: true }, { id: 'p', roomId: 'd', vip: false }],
+    initialMorale: { A: 15, P: 24 }, mowerPolicy: { restingThreshold: .65, powerPlantCount: 3, opeRestingPriority: [] } })
+    s.occupants = { producer: 'B', pendant: 'Q' }; s.bedOccupants = { a: 'A', p: 'P' }
+    settleRoster(s, { workRate: (_, room) => room === 'factory' ? 0 : 1, recoveryRate: () => 2 })
+    expect(s.occupants.producer).toBe('B')
+    expect(s.events.filter(e => e.type === 'shift-on')).toEqual([])
+  })
+  it('does not force an under-recovered group back to work when an exhausted group needs a bed', () => {
+    const s = createRosterRuntime({ positions: [
+      { id: 'tired', roomId: 'manufacture', primary: 'A', candidates: ['B'], lowerLimit: 15 },
+      { id: 'exhausted', roomId: 'manufacture2', primary: 'C', candidates: ['D'], exhaustRequired: true },
+    ], beds: [{ id: 'a', roomId: 'd', vip: true }], initialMorale: { A: 15, C: 0 },
+    mowerPolicy: { restingThreshold: .65, powerPlantCount: 3, opeRestingPriority: [] } })
+    s.occupants.tired = 'B'; s.bedOccupants.a = 'A'
+    settleRoster(s, rates)
+    expect(s.occupants).toEqual({ tired: 'B', exhausted: 'C' })
+    expect(s.bedOccupants.a).toBe('A')
+  })
   it('keeps recurring shifts when recovery and fatigue happen simultaneously', () => {
     const result = simulateMoraleTimeline({
       positions: [{ id: 'a', roomId: 'r', primary: 'A', candidates: ['B'] }],
