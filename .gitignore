@@ -13,3 +13,12 @@ desktop/obj/
 *.exe
 src_backup_*.zip
 training_data/
+
+# Local reports and development artifacts
+artifacts/
+__pycache__/
+*.py[cod]
+/CHANGELOG*.md
+/docs/*
+!/docs/用户说明书.md
+/一键排班算法实施计划.md

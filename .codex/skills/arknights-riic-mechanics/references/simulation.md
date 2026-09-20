@@ -67,4 +67,4 @@ Mower 排班 JSON 通常不表达本软件的 `droneTarget`。导入后若回退
 
 实际练度不同于最高技能不再触发 INVENTORY_SKILL_STAGE_UNSUPPORTED。未持有干员、非法练度和实际排班错误仍应阻断。静态组合目录的满技能证据校验与动态模拟准入分开，不能把静态模板的限制重新施加到动态模拟。
 
-理想跑单的但书、龙舌兰使用各自当前已解锁版本；低级技能可以跑单，但不得套用高级奖励。收益转换仅接受排班模拟和生产模拟均完成的报告；未完成报告保留日志并显示原因，不显示成功的零产出。证据与回归见 docs/verification/shift-run-contract.md 及 artifacts/skill-stage-fix/。
+理想跑单的但书、龙舌兰使用各自当前已解锁版本；低级技能可以跑单，但不得套用高级奖励。收益转换仅接受排班模拟和生产模拟均完成的报告；未完成报告保留日志并显示原因，不显示成功的零产出。实现见 src/simulator/productionTimeline.ts 与 src/scheduler/rosterRuntime.ts。
