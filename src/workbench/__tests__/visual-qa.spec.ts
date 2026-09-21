@@ -201,10 +201,11 @@ describe('WorkbenchShell Multi-Resolution Responsive QA', () => {
       expect(calcBtn.exists()).toBe(true)
       expect(calcBtn.attributes('disabled')).toBeUndefined()
 
-      // Calculation can be triggered
+      // The calculation action opens configuration before starting any work.
       await calcBtn.trigger('click')
       await wrapper.vm.$nextTick()
-      expect(wrapper.vm.calculationReport).not.toBeNull()
+      expect(wrapper.vm.calculationConfigOpen).toBe(true)
+      expect(wrapper.vm.calculationReport).toBeNull()
 
       // Fixed 980px map intact
       const baseMap = wrapper.findComponent(BaseMap)

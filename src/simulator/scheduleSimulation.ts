@@ -14,6 +14,9 @@ import type {CompiledSchedule} from '../scheduler/types'
 import {compiledScheduleToRuntimeConfig} from '../scheduler/scheduleAdapter'
 import {advanceRoster,createRosterRuntime,MORALE_EPSILON,nextRosterEventHours,nextRosterActionHours,settleRoster,moraleDerivative,type RuntimeState,type RuntimeRates,type RuntimeEvent} from '../scheduler/rosterRuntime'
 
+export interface ScheduleSimulationProgress {
+ phase:'warmup'|'sampling'; elapsedHours:number; totalHours:number; warmupHours:number
+}
 export interface ScheduleSimulationOptions {
  operatorInventory?:OwnedOperatorInput[]
  production?:ProductionOptions
@@ -83,7 +86,7 @@ export function projectScheduleState(schedule:CompiledSchedule,state:RuntimeStat
 }
 
 /** Integrates rates over actual joint rosters. This reports efficiency and duty, not order/resource settlement. */
-export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimulationOptions={}):ScheduleSimulationReport {
+export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimulationOptions={},onProgress?:(progress:ScheduleSimulationProgress)=>void):ScheduleSimulationReport {
  const sampleHours=options.sampleHours??336,warmupHours=options.warmupHours??0,maxStepHours=options.maxStepHours??.25,maxEvents=options.maxEvents??200000
  const values={sampleHours,warmupHours,maxStepHours,maxEvents}
  for(const key of numericKeys)if(!Number.isFinite(values[key]) || (key==='warmupHours'?values[key]<0:values[key]<=0))throw new Error(`Invalid ${key}`)
@@ -223,8 +226,17 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
  settle()
  const production=options.production?createProductionTimeline(schedule,state,options.production,warmupHours,diagnostic,()=>{refreshSessions();cachedRevision=-1}):undefined
  production?.settle(()=>frameAt(0))
- let steps=0
+ let steps=0,lastProgress=-1,lastPhase=''
+ const reportProgress=()=>{
+  if(!onProgress)return
+  const percent=Math.floor(state.time/total*100),phase=state.time<warmupHours-EPS?'warmup':'sampling'
+  if(percent!==lastProgress||phase!==lastPhase){
+   lastProgress=percent;lastPhase=phase
+   onProgress({phase,elapsedHours:state.time,totalHours:total,warmupHours})
+  }
+ }
  while(state.time<total-EPS){
+  reportProgress()
   if(steps++>=maxEvents){diagnostic('SIMULATION_EVENT_LIMIT',`达到 ${maxEvents} 个积分区间，结果未完成`);break}
   let action=production?.isRosterLocked()?Infinity:nextRosterActionHours(state,rates)
   if(action<=EPS){settle();production?.settle(()=>frameAt(0));action=production?.isRosterLocked()?Infinity:nextRosterActionHours(state,rates);if(action<=EPS){diagnostic('SIMULATION_SAME_TIME_ACTION','同刻调度未能稳定，结果未完成');break}}
@@ -273,5 +285,6 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
   if(report.success&&episodes.length&&episodes.every(e=>e.resolvedAt!==undefined))diagnostic('SHIFT_DEFERRED_RECOVERED',`${d.message}; ${episodes.length} 次延后均已由后续完整分组下班事件确认恢复`)
   else diagnostic(d.code,d.message)
  }
+ reportProgress()
  return report
 }

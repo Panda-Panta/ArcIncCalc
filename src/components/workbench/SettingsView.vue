@@ -10,7 +10,7 @@ export interface SimulationSettings {
   warmupDays: number
   step: number
   seed: number
-  droneTarget: 'gold' | 'exp' | 'trading'
+  droneTarget: 'gold' | 'exp' | 'trading' | 'none'
   droneTradingRoomId?: string
 }
 
@@ -122,6 +122,7 @@ function updateField<K extends keyof SimulationSettings>(key: K, val: Simulation
             <option value="gold">加速赤金制造</option>
             <option value="exp">加速作战记录制造</option>
             <option value="trading">加速贸易站</option>
+            <option value="none">不使用无人机加速</option>
           </select>
         </label>
 

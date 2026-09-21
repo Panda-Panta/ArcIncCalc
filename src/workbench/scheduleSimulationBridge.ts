@@ -1,6 +1,6 @@
 import { compileRosterSchedule } from '../scheduler/compileRosterSchedule'
 import type { SimulationAssumptions } from '../scheduler/types'
-import { simulateSchedule, type ScheduleSimulationOptions, type ScheduleSimulationReport } from '../simulator/scheduleSimulation'
+import { simulateSchedule, type ScheduleSimulationOptions, type ScheduleSimulationReport, type ScheduleSimulationProgress } from '../simulator/scheduleSimulation'
 import type { RosterWorkspace } from './model'
 import { validateRosterWorkspace } from './validate'
 
@@ -8,6 +8,7 @@ export function runScheduleSimulationBridge(
   workspace: RosterWorkspace,
   options: ScheduleSimulationOptions = {},
   assumptions: Partial<SimulationAssumptions> = {},
+  onProgress?: (progress: ScheduleSimulationProgress) => void,
 ): { report: ScheduleSimulationReport | null; error?: string } {
   const cleanWorkspace: RosterWorkspace = JSON.parse(JSON.stringify(workspace))
   const cleanOptions: ScheduleSimulationOptions = JSON.parse(JSON.stringify(options))
@@ -22,7 +23,7 @@ export function runScheduleSimulationBridge(
   }
 
   try {
-    const report = simulateSchedule(compileRosterSchedule(cleanWorkspace, cleanAssumptions), cleanOptions)
+    const report = simulateSchedule(compileRosterSchedule(cleanWorkspace, cleanAssumptions), cleanOptions, onProgress)
     if (cleanWorkspace.compatibility.backupPlans.length) {
       report.diagnostics.push({
         code: 'BACKUP_PLANS_NOT_EXECUTED',

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, provide, ref, toRaw, watch } from 'vue'
+import { computed, nextTick, onMounted, onBeforeUnmount, provide, ref, shallowRef, toRaw, watch } from 'vue'
 import { useRosterWorkbenchStore } from '../../workbench/store'
 import { validateRosterWorkspace, type ValidationResult } from '../../workbench/validate'
 import { EDITION } from '../../domain/edition'
@@ -7,7 +7,8 @@ import { GAME_DATA_VERSION, OPERATOR_PROFILE_COUNT } from '../../domain/operator
 import { migrateAppConfigToWorkspace } from '../../workbench/migrate'
 import type { MowerRoomId, RosterWorkspace } from '../../workbench/model'
 import type { AppConfig, CalculationReport } from '../../domain/types'
-import { runCalculationBridge } from '../../workbench/calculationBridge'
+import type { CalculationWorkerMessage, CalculationProgress } from '../../workbench/calculationWorker'
+import CalculationConfigModal, { type CalculationConfig } from './CalculationConfigModal.vue'
 import type { ScheduleSimulationReport } from '../../simulator/scheduleSimulation'
 import { runSmartRoster, type SmartRosterProgress, type SmartRosterResult } from '../../optimizer/smartRoster'
 import { parseOperatorInventory, type OwnedOperatorInput } from '../../domain/operatorInventory'
@@ -47,11 +48,48 @@ const defaultSimSettings: SimulationSettings = {
   droneTradingRoomId: '',
 }
 const simSettings = ref<SimulationSettings>({ ...defaultSimSettings })
-const simulationReport = ref<ScheduleSimulationReport | null>(null)
+const simulationReport = shallowRef<ScheduleSimulationReport | null>(null)
 const isCalculating = ref(false)
 const isGeneratingRoster = ref(false)
 const generationProgress = ref<SmartRosterProgress | null>(null)
 const activeRosterWorker = ref<Worker | null>(null)
+
+const calculationConfigOpen = ref(false)
+const calculationProgress = ref<CalculationProgress | null>(null)
+const calculationElapsed = ref(0)
+const calculationStatus = ref<string | null>(null)
+let calculationWorker: Worker | null = null
+let calculationTimer: ReturnType<typeof setInterval> | undefined
+const calculationTiming = computed(() => {
+  const seconds = Math.floor(calculationElapsed.value)
+  const elapsed = seconds < 60 ? `${seconds} 秒` : `${Math.floor(seconds / 60)} 分 ${seconds % 60} 秒`
+  const fraction = calculationProgress.value?.fraction ?? 0
+  if (fraction >= .99) return `已用 ${elapsed} · 即将完成`
+  if (seconds < 3 || fraction < .01) return `已用 ${elapsed} · 剩余时间估算中`
+  const remaining = Math.max(1, Math.ceil(seconds * (1 - fraction) / fraction))
+  return `已用 ${elapsed} · 约剩余 ${remaining < 60 ? `${remaining} 秒` : `${Math.ceil(remaining / 60)} 分钟`}`
+})
+
+function stopCalculation(): void {
+  const worker = calculationWorker
+  calculationWorker = null
+  worker?.terminate()
+  clearInterval(calculationTimer)
+  calculationTimer = undefined
+  isCalculating.value = false
+  calculationProgress.value = null
+}
+function handleAbortCalculation(): void {
+  stopCalculation()
+  calculationStatus.value = '已中止产出计算，可重新开始。'
+}
+watch(() => store.workspace, () => {
+  if (isCalculating.value) {
+    stopCalculation()
+    calculationStatus.value = '排班已变更，本次产出计算已中止，请重新计算。'
+  }
+}, { deep: true, flush: 'sync' })
+onBeforeUnmount(() => { stopCalculation(); activeRosterWorker.value?.terminate() })
 
 // Operator picker modal state
 const pickerOpen = ref(false)
@@ -76,7 +114,7 @@ const operatorInventory = ref<{
 })
 
 // Calculation report and error state
-const calculationReport = ref<CalculationReport | null>(null)
+const calculationReport = shallowRef<CalculationReport | null>(null)
 const calculationError = ref<string | null>(null)
 
 // Computed base map export DOM element for PlanToolbar JPG capture
@@ -329,15 +367,37 @@ function handleInventoryImported(entries: OwnedOperatorInput[], csvText: string)
 }
 
 function handleCalculate(): void {
+  if (isCalculating.value || isGeneratingRoster.value) return
   calculationError.value = null
-  calculationReport.value = null
-  simulationReport.value = null
   if (!validationResult.value.isValid) {
     calculationError.value = '排班存在阻断错误，请根据下方诊断信息修复后再计算。'
     return
   }
+  calculationConfigOpen.value = true
+}
 
+function handleConfirmCalculation(config: CalculationConfig): void {
+  calculationConfigOpen.value = false
+  if (isCalculating.value || isGeneratingRoster.value) return
+  simSettings.value = { ...simSettings.value, ...config }
+  executeCalculation()
+}
+
+function executeCalculation(): void {
+  if (isCalculating.value) return
+  calculationError.value = null
+  calculationStatus.value = null
+  if (!validationResult.value.isValid) {
+    calculationError.value = '排班存在阻断错误，请根据下方诊断信息修复后再计算。'
+    return
+  }
+  calculationReport.value = null
+  simulationReport.value = null
   isCalculating.value = true
+  calculationElapsed.value = 0
+  calculationProgress.value = { label: '正在准备计算…', fraction: 0 }
+  const started = performance.now()
+  calculationTimer = setInterval(() => { calculationElapsed.value = (performance.now() - started) / 1000 }, 1000)
   try {
     let inventoryEntries: OwnedOperatorInput[] | undefined = undefined
     if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
@@ -357,17 +417,17 @@ function handleCalculate(): void {
       }
     }
 
-    const bridgeResult = runCalculationBridge(store.workspace, {
-      engine: 'simulation',
+    const options = {
+      engine: 'simulation' as const,
       simulationOptions: {
-        warmupHours: typeof process !== 'undefined' && Boolean(process.env?.VITEST) ? 6 : simSettings.value.warmupDays * 24,
-        sampleHours: typeof process !== 'undefined' && Boolean(process.env?.VITEST) ? 18 : simSettings.value.sampleDays * 24,
+        warmupHours: simSettings.value.warmupDays * 24,
+        sampleHours: simSettings.value.sampleDays * 24,
         maxStepHours: simSettings.value.step,
-        warmupModel: 'hourly',
+        warmupModel: 'hourly' as const,
         operatorInventory: inventoryEntries,
         production: {
-          outputMode: 'potential',
-          runOrderMode: 'ideal',
+          outputMode: 'potential' as const,
+          runOrderMode: 'ideal' as const,
           seed: simSettings.value.seed < 0
             ? (typeof process !== 'undefined' && Boolean(process.env?.VITEST) ? 42 : Math.floor(Math.random() * 0xffffffff))
             : simSettings.value.seed,
@@ -375,23 +435,42 @@ function handleCalculate(): void {
           droneTradingRoomId: simSettings.value.droneTradingRoomId || undefined,
         },
       },
-    })
-
-    simulationReport.value = bridgeResult.simulationReport ?? null
-    if (bridgeResult.success && bridgeResult.report) {
-      calculationReport.value = bridgeResult.report
-      simulationReport.value = bridgeResult.simulationReport ?? null
-    } else {
-      calculationError.value = bridgeResult.error ?? '收益计算未成功完成'
     }
-  } catch (err: unknown) {
-    calculationError.value = err instanceof Error ? err.message : String(err)
-  } finally {
-    isCalculating.value = false
+
+    const worker = new Worker(new URL('../../workbench/calculationWorker.ts', import.meta.url), { type: 'module' })
+    calculationWorker = worker
+    worker.onmessage = (event: MessageEvent<CalculationWorkerMessage>) => {
+      if (calculationWorker !== worker) return
+      const message = event.data
+      if (message.type === 'progress') {
+        calculationProgress.value = message.progress
+      } else if (message.type === 'complete') {
+        const result = message.result
+        simulationReport.value = result.simulationReport ?? null
+        if (result.success && result.report) calculationReport.value = result.report
+        else calculationError.value = result.error ?? '收益计算未成功完成'
+        stopCalculation()
+      } else if (message.type === 'error') {
+        calculationError.value = message.error
+        stopCalculation()
+      }
+    }
+    const fail = (message: string) => {
+      if (calculationWorker !== worker) return
+      calculationError.value = message
+      stopCalculation()
+    }
+    worker.onerror = event => fail(`产出计算失败：${event.message || '后台任务执行失败'}`)
+    worker.onmessageerror = () => fail('产出计算报告传输失败，请重试。')
+    worker.postMessage(JSON.parse(JSON.stringify({ workspace: toRaw(store.workspace), options })))
+  } catch (error) {
+    calculationError.value = `无法启动后台计算：${error instanceof Error ? error.message : String(error)}`
+    stopCalculation()
   }
 }
 
 function handleAutoGenerate(explicitConfig?: SmartRosterConfig): void {
+  if (isCalculating.value || isGeneratingRoster.value) return
   replaceStatusMessage.value = null
   calculationError.value = null
 
@@ -487,7 +566,10 @@ function executeAutoGenerate(inventoryEntries: OwnedOperatorInput[], config?: Sm
       store.loadWorkspace(report.workspace)
       const scoreStr = report.score !== null ? `（82 预测：${report.score.toFixed(1)} 分/日）` : ''
       replaceStatusMessage.value = `一键排班成功！已保留当前建筑与已配置干员，并完成空位组队与动态仿真验证${scoreStr}。`
-      handleCalculate()
+      simSettings.value.droneTarget = runOptions.droneTarget
+      simSettings.value.droneTradingRoomId = ''
+      activeTab.value = 'workbench'
+      executeCalculation()
     } else {
       const msgs = report.diagnostics.map(d => d.message).join('；')
       replaceStatusMessage.value = `自动生成排班未成功：${msgs || '未能生成满足约束的方案'}`
@@ -583,6 +665,9 @@ defineExpose({
   replaceModalOpen,
   smartRosterConfigModalOpen,
   handleCalculate,
+  calculationConfigOpen,
+  handleConfirmCalculation,
+  handleAbortCalculation,
   handleAutoGenerate,
   handleAbortAutoGenerate,
   handleConfirmSmartRosterConfig,
@@ -678,6 +763,10 @@ defineExpose({
           :is-valid="validationResult.isValid"
           :is-generating-roster="isGeneratingRoster"
           :generation-progress="generationProgress"
+          :is-calculating="isCalculating"
+          :calculation-progress="calculationProgress"
+          :calculation-timing="calculationTiming"
+          @abort-calculation="handleAbortCalculation"
           theme="dark"
           @open-replace="handleOpenReplace"
           @calculate="handleCalculate"
@@ -690,6 +779,8 @@ defineExpose({
         />
       </div>
     </div>
+
+    <div v-if="calculationStatus" class="replace-status-banner" role="status">{{ calculationStatus }}</div>
 
     <!-- Main Content Flow -->
     <main class="workbench-main">
@@ -926,6 +1017,14 @@ defineExpose({
       @update:open="replaceModalOpen = $event"
       @close="replaceModalOpen = false"
       @replaced="handleGlobalReplaced"
+    />
+
+    <CalculationConfigModal
+      :open="calculationConfigOpen"
+      :workspace="store.workspace"
+      :initial="{ droneTarget: simSettings.droneTarget, droneTradingRoomId: simSettings.droneTradingRoomId || '' }"
+      @close="calculationConfigOpen = false"
+      @confirm="handleConfirmCalculation"
     />
 
     <SmartRosterConfigModal

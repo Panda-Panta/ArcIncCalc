@@ -8,7 +8,7 @@ import { compileMainPlanToAppConfig } from './adapter'
 import type { RosterWorkspace } from './model'
 import { validateRosterWorkspace, type ValidationResult } from './validate'
 import { runScheduleSimulationBridge } from './scheduleSimulationBridge'
-import type { ScheduleSimulationOptions, ScheduleSimulationReport } from '../simulator/scheduleSimulation'
+import type { ScheduleSimulationOptions, ScheduleSimulationReport, ScheduleSimulationProgress } from '../simulator/scheduleSimulation'
 
 export type CalculationEngineKind = 'legacy' | 'simulation' | 'event-v2'
 
@@ -107,6 +107,7 @@ export function simulationReportToCalculationReport(
 export function runCalculationBridge(
   workspace: RosterWorkspace,
   optionsOrBaseConfig?: CalculationBridgeOptions | AppConfig,
+  onProgress?: (progress: ScheduleSimulationProgress) => void,
 ): CalculationBridgeResult {
   const options: CalculationBridgeOptions = (optionsOrBaseConfig && 'schemaVersion' in optionsOrBaseConfig)
     ? { baseConfig: optionsOrBaseConfig, engine: 'legacy' }
@@ -168,6 +169,8 @@ export function runCalculationBridge(
           droneTarget: 'gold',
         },
       },
+      {},
+      onProgress,
     )
 
     if (simBridge.report?.success && simBridge.report.production?.success) {

@@ -9,6 +9,8 @@ import { runRosterIncomeSearch, type IncomeSearchResult } from './rosterIncomeSe
 import { validatePhysicalRoster } from './rosterDraft'
 import { generateMolecularCandidates } from './molecularSynthesis'
 import { runGlobalPerCapitaReplacement } from './globalPerCapitaReplacement'
+import { simulateCandidate, type CandidateSimulationJob, type CandidateSimulationResult } from './candidateSimulation'
+import { CandidateSimulationCache } from './candidateSimulationCache'
 
 export interface SmartRosterOptions {
   seed?: number
@@ -94,6 +96,58 @@ export function runSmartRoster(
   options: SmartRosterOptions = {},
   onProgress?: (p: SmartRosterProgress) => void,
 ): SmartRosterResult {
+  const run = smartRosterSteps(base, entries, options, onProgress)
+  let step = run.next()
+  while (!step.done) {
+    const completed = simulationProgress(step.value.length, onProgress)
+    step = run.next(step.value.map((job, index) => {
+      const result = simulateCandidate(job)
+      completed(result, index)
+      return result
+    }))
+  }
+  return step.value
+}
+
+function simulationProgress(total: number, onProgress?: (p: SmartRosterProgress) => void) {
+  let completed = 0, bestScore = 0
+  return (result: CandidateSimulationResult, _index: number) => {
+    completed++; bestScore = Math.max(bestScore, result.simScore)
+    onProgress?.({ phase: 'simulating', phaseProgress: completed / total,
+      currentTrial: completed, totalTrials: total, bestScore,
+      label: `阶段 2/2: 动态拟真进度 ${completed}/${total}（82分: ${result.simScore.toFixed(1)}）` })
+  }
+}
+
+export type CandidateBatchExecutor = (
+  jobs: CandidateSimulationJob[],
+  onComplete: (result: CandidateSimulationResult, index: number) => void,
+) => Promise<CandidateSimulationResult[]>
+
+export async function runSmartRosterParallel(
+  base: RosterWorkspace,
+  entries: readonly OwnedOperatorInput[],
+  options: SmartRosterOptions,
+  execute: CandidateBatchExecutor,
+  onProgress?: (p: SmartRosterProgress) => void,
+): Promise<SmartRosterResult> {
+  const run = smartRosterSteps(base, entries, options, onProgress)
+  let step = run.next()
+  while (!step.done) {
+    const jobs = step.value
+    const results = await execute(jobs, simulationProgress(jobs.length, onProgress))
+    if (results.length !== jobs.length) throw new Error('候选仿真返回数量不完整')
+    step = run.next(results)
+  }
+  return step.value
+}
+
+function* smartRosterSteps(
+  base: RosterWorkspace,
+  entries: readonly OwnedOperatorInput[],
+  options: SmartRosterOptions = {},
+  onProgress?: (p: SmartRosterProgress) => void,
+): Generator<CandidateSimulationJob[], SmartRosterResult, CandidateSimulationResult[]> {
   const result: SmartRosterResult = {
     status: 'blocked',
     workspace: null,
@@ -220,77 +274,39 @@ export function runSmartRoster(
     label: `阶段 2/2: 全量动态拟真评估（预热 1 天 + 采样 3 天，82 综合评分）...`,
   })
 
+  const cache = new CandidateSimulationCache()
+  const simulationJob = (workspace: RosterWorkspace): CandidateSimulationJob => ({
+    workspace,
+    options: {
+      warmupHours: options.simulationWarmupHours ?? 24,
+      sampleHours: options.simulationSampleHours ?? 72,
+      maxStepHours: 0.25,
+      production: {
+        outputMode: 'potential',
+        runOrderMode: 'ideal',
+        droneTarget,
+        seed,
+      },
+      operatorInventory: [...entries],
+    },
+    assumptions: {
+      restingThreshold: 0.65,
+      operationDurationHours: 0,
+    },
+  })
+  const jobs = simCandidates.map(candidate => simulationJob(candidate.workspace))
+  // Capture keys before dispatch; later policy/placement changes must not turn
+  // a report of the original input into a report of the modified workspace.
+  const inputKeys = jobs.map(job => cache.key(job))
+  const simulationResults = yield jobs
   for (let idx = 0; idx < simCandidates.length; idx++) {
     const candidate = simCandidates[idx]!
-    const simResponse = runScheduleSimulationBridge(
-      candidate.workspace,
-      {
-        warmupHours: options.simulationWarmupHours ?? 24,
-        sampleHours: options.simulationSampleHours ?? 72,
-        maxStepHours: 0.25,
-        production: {
-          outputMode: 'potential',
-          runOrderMode: 'ideal',
-          droneTarget,
-          seed,
-        },
-        operatorInventory: [...entries],
-      },
-      {
-        restingThreshold: 0.65,
-        operationDurationHours: 0,
-      }
-    )
-
-    if (simResponse.report?.success && simResponse.report.production?.success) {
-      const rep = simResponse.report
-      if (rep.production?.sample.completed && rep.observedHours > 0) {
-        const prodScore = scoreProduction(rep.production.sample.completed, rep.observedHours)
-        candidate.simScore = prodScore.total
-        candidate.staticScore = prodScore.total
-      } else {
-        candidate.simScore = 0
-        candidate.staticScore = 0
-      }
-
-      // Collect simulated data for operators with special mood skills
-      const specials: SpecialOperatorSimData[] = []
-      for (const op of rep.operators) {
-        if (hasConsumptionSkill(op.operatorId)) {
-          specials.push({
-            operatorId: op.operatorId,
-            operatorName: op.operatorName,
-            workFraction: op.workFraction,
-            workRestRatio: op.workRestRatio,
-            workHours: op.workHours,
-            restHours: op.restHours,
-            exhaustedHours: op.exhaustedHours,
-            finalMorale: op.finalMorale,
-          })
-        }
-      }
-      candidate.specialOperators = specials
-    } else {
-      candidate.simScore = 0
-      candidate.staticScore = 0
-      if (simResponse.error) {
-        candidate.diagnostics.push(simResponse.error)
-      }
-      if (simResponse.report?.diagnostics) {
-        for (const d of simResponse.report.diagnostics) {
-          candidate.diagnostics.push(`[${d.code}] ${d.message}`)
-        }
-      }
-    }
-
-    onProgress?.({
-      phase: 'simulating',
-      phaseProgress: (idx + 1) / simCandidates.length,
-      currentTrial: idx + 1,
-      totalTrials: simCandidates.length,
-      bestScore: Math.max(...simCandidates.map(c => c.simScore ?? 0)),
-      label: `阶段 2/2: 动态拟真进度 ${idx + 1}/${simCandidates.length}（82分: ${candidate.simScore?.toFixed(1) ?? '0.0'}）`,
-    })
+    const summary = simulationResults[idx]!
+    cache.remember(inputKeys[idx]!, summary)
+    candidate.simScore = summary.simScore
+    candidate.staticScore = summary.simScore
+    candidate.diagnostics.push(...summary.diagnostics)
+    if (summary.specialOperators) candidate.specialOperators = summary.specialOperators
   }
 
   simCandidates.sort((a, b) => (b.simScore ?? 0) - (a.simScore ?? 0))
@@ -337,28 +353,12 @@ export function runSmartRoster(
     baselineScore: finalScore,
     evaluator: (candidateWs) => {
       try {
-        const sim = runScheduleSimulationBridge(
-          candidateWs,
-          {
-            warmupHours: options.simulationWarmupHours ?? 24,
-            sampleHours: options.simulationSampleHours ?? 72,
-            maxStepHours: 0.25,
-            production: {
-              outputMode: 'potential',
-              runOrderMode: 'ideal',
-              droneTarget,
-              seed,
-            },
-            operatorInventory: [...entries],
-          },
-          {
-            restingThreshold: 0.65,
-            operationDurationHours: 0,
-          },
-        )
-        if (sim.report?.success && sim.report.production?.success && sim.report.observedHours > 0) {
-          return scoreProduction(sim.report.production.sample.completed, sim.report.observedHours).total
-        }
+        const job = simulationJob(candidateWs)
+        const cached = cache.get(job)
+        if (cached) return cached.simScore
+        const key = cache.key(job), summary = simulateCandidate(job)
+        cache.remember(key, summary)
+        if (summary.completed) return summary.simScore
       } catch {
         // simulation error
       }
@@ -453,26 +453,27 @@ export function runSmartRoster(
     result.diagnostics.push(...finalErrors)
     return result
   }
-  const finalSimulation = runScheduleSimulationBridge(finalWorkspace, {
-    warmupHours: options.simulationWarmupHours ?? 24,
-    sampleHours: options.simulationSampleHours ?? 72,
-    maxStepHours: 0.25,
-    operatorInventory: [...entries],
-    production: { outputMode: 'potential', runOrderMode: 'ideal', droneTarget, seed },
-  }, { restingThreshold: 0.65, operationDurationHours: 0 })
-  const verified = finalSimulation.report
-  if (!verified?.success || !verified.production?.success || verified.observedHours <= 0) {
-    result.workspace = finalWorkspace
-    result.diagnostics.push({ code: 'FINAL_ROSTER_SIMULATION_FAILED', message: finalSimulation.error ??
-      verified?.diagnostics.map(d => d.message).join('；') ?? '最终排班模拟未完成' })
-    return result
+  const finalJob = simulationJob(finalWorkspace)
+  const cachedFinal = cache.get(finalJob)
+  if (cachedFinal) {
+    finalScore = cachedFinal.simScore
+    result.specialOperators = cachedFinal.specialOperators ?? []
+  } else {
+    const finalSimulation = runScheduleSimulationBridge(finalJob.workspace, finalJob.options, finalJob.assumptions)
+    const verified = finalSimulation.report
+    if (!verified?.success || !verified.production?.success || verified.observedHours <= 0) {
+      result.workspace = finalWorkspace
+      result.diagnostics.push({ code: 'FINAL_ROSTER_SIMULATION_FAILED', message: finalSimulation.error ??
+        verified?.diagnostics.map(d => d.message).join('；') ?? '最终排班模拟未完成' })
+      return result
+    }
+    finalScore = scoreProduction(verified.production.sample.completed, verified.observedHours).total
+    result.specialOperators = verified.operators.filter(op => hasConsumptionSkill(op.operatorId)).map(op => ({
+      operatorId: op.operatorId, operatorName: op.operatorName, workFraction: op.workFraction,
+      workRestRatio: op.workRestRatio, workHours: op.workHours, restHours: op.restHours,
+      exhaustedHours: op.exhaustedHours, finalMorale: op.finalMorale,
+    }))
   }
-  finalScore = scoreProduction(verified.production.sample.completed, verified.observedHours).total
-  result.specialOperators = verified.operators.filter(op => hasConsumptionSkill(op.operatorId)).map(op => ({
-    operatorId: op.operatorId, operatorName: op.operatorName, workFraction: op.workFraction,
-    workRestRatio: op.workRestRatio, workHours: op.workHours, restHours: op.restHours,
-    exhaustedHours: op.exhaustedHours, finalMorale: op.finalMorale,
-  }))
 
   result.status = 'draft'
   result.workspace = finalWorkspace
