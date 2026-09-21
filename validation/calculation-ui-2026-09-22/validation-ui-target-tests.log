@@ -1,0 +1,71 @@
+
+ RUN  v3.2.7 D:/Project/Arknights/ArcIncCalc - Codex
+
+ ✓ src/simulator/potentialProduction.spec.ts (5 tests) 513ms
+ ✓ src/components/workbench/CalculationConfigModal.spec.ts (1 test) 229ms
+ ❯ src/components/workbench/SmartRosterConfigModal.spec.ts (6 tests | 2 failed) 466ms
+   ✓ SmartRosterConfigModal.vue > renders modal content when open is true 223ms
+   ✓ SmartRosterConfigModal.vue > does not render body when open is false 2ms
+   × SmartRosterConfigModal.vue > initializes with default config and props 59ms
+     → expected 'none' to be 'exp' // Object.is equality
+   × SmartRosterConfigModal.vue > emits confirm with modified parameters and persists to localStorage 103ms
+     → expected { trials: 10, …(8) } to deeply equal { trials: 10, …(7) }
+   ✓ SmartRosterConfigModal.vue > resets form when reset button is clicked 52ms
+   ✓ SmartRosterConfigModal.vue > emits close when cancel button is clicked 26ms
+ ✓ src/components/workbench/CalculationFlow.spec.ts (5 tests) 2195ms
+   ✓ asks for drone settings before launching a cancellable background calculation  774ms
+   ✓ cancels an active snapshot when the roster changes and reports worker failures without blocking fallback  399ms
+   ✓ estimates remaining time from real progress and resets timing on restart  410ms
+   ✓ shows a recoverable error when workers are unavailable instead of running on the UI thread  333ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/components/workbench/SmartRosterConfigModal.spec.ts > SmartRosterConfigModal.vue > initializes with default config and props
+AssertionError: expected 'none' to be 'exp' // Object.is equality
+
+Expected: "exp"
+Received: "none"
+
+ ❯ src/components/workbench/SmartRosterConfigModal.spec.ts:69:39
+     67| 
+     68|     const droneSelect = wrapper.find<HTMLSelectElement>('[data-test="d…
+     69|     expect(droneSelect.element.value).toBe('exp')
+       |                                       ^
+     70| 
+     71|     const seedInput = wrapper.find<HTMLInputElement>('[data-test="seed…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/components/workbench/SmartRosterConfigModal.spec.ts > SmartRosterConfigModal.vue > emits confirm with modified parameters and persists to localStorage
+AssertionError: expected { trials: 10, …(8) } to deeply equal { trials: 10, …(7) }
+
+- Expected
++ Received
+
+@@ -1,7 +1,8 @@
+  {
+-   "droneTarget": "trading",
++   "droneRoomId": undefined,
++   "droneTarget": "none",
+    "enableDeepSearch": false,
+    "maxStaticEvals": 5000,
+    "seed": 99999,
+    "simulationSampleHours": 48,
+    "simulationTopK": 10,
+
+ ❯ src/components/workbench/SmartRosterConfigModal.spec.ts:90:27
+     88|     expect(wrapper.emitted('confirm')).toBeTruthy()
+     89|     const emittedConfig = wrapper.emitted('confirm')![0]![0] as SmartR…
+     90|     expect(emittedConfig).toEqual({
+       |                           ^
+     91|       trials: 10,
+     92|       maxStaticEvals: 5000,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 3 passed (4)
+      Tests  2 failed | 15 passed (17)
+   Start at  03:27:44
+   Duration  9.22s (transform 2.16s, setup 0ms, collect 9.93s, tests 3.40s, environment 4.34s, prepare 812ms)
+

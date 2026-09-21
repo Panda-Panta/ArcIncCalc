@@ -406,21 +406,18 @@ function executeCalculation(): void {
   const started = performance.now()
   calculationTimer = setInterval(() => { calculationElapsed.value = (performance.now() - started) / 1000 }, 1000)
   try {
-    let inventoryEntries: OwnedOperatorInput[] | undefined = undefined
-    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-      const rawInv = localStorage.getItem('arcinc-operator-inventory-v1')
-      if (rawInv) {
-        try {
-          const parsedInv = JSON.parse(rawInv)
-          if (parsedInv.enabled && parsedInv.text) {
-            const compiled = parseOperatorInventory(parsedInv.text)
-            if (compiled.valid) {
-              inventoryEntries = compiled.entries
-            }
-          }
-        } catch {
-          // ignore
-        }
+    let inventoryEntries: OwnedOperatorInput[] | undefined
+    if (simSettings.value.useOperatorInventory !== false) {
+      let inventory = operatorInventory.value
+      const saved = localStorage.getItem('arcinc-operator-inventory-v1')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        const compiled = parseOperatorInventory(parsed.text ?? '')
+        inventory = { enabled: parsed.enabled ?? true, valid: compiled.valid, entries: compiled.entries }
+      }
+      if (inventory.enabled) {
+        if (!inventory.valid) throw new Error('当前干员库配置无效，请修正或取消使用干员库配置。')
+        inventoryEntries = JSON.parse(JSON.stringify(toRaw(inventory.entries)))
       }
     }
 
@@ -443,6 +440,7 @@ function executeCalculation(): void {
             ? (typeof process !== 'undefined' && Boolean(process.env?.VITEST) ? 42 : Math.floor(Math.random() * 0xffffffff))
             : simSettings.value.seed,
           droneTarget: simSettings.value.droneTarget,
+          droneRoomId: simSettings.value.droneRoomId || undefined,
           droneTradingRoomId: simSettings.value.droneTradingRoomId || undefined,
         },
       },
@@ -569,7 +567,8 @@ function executeAutoGenerate(inventoryEntries: OwnedOperatorInput[], config?: Sm
     simulationWarmupHours: config?.simulationWarmupHours ?? (isVitest ? 6 : 24),
     simulationSampleHours: config?.simulationSampleHours ?? (isVitest ? 18 : 72),
     enableDeepSearch: config?.enableDeepSearch ?? !isVitest,
-    droneTarget: config?.droneTarget ?? simSettings.value.droneTarget,
+    droneTarget: config?.droneTarget ?? 'none',
+    droneRoomId: config?.droneRoomId || undefined,
   }
 
   const onSmartRosterComplete = (report: SmartRosterResult): void => {
@@ -578,7 +577,9 @@ function executeAutoGenerate(inventoryEntries: OwnedOperatorInput[], config?: Sm
       const scoreStr = report.score !== null ? `（82 预测：${report.score.toFixed(1)} 分/日）` : ''
       replaceStatusMessage.value = `一键排班成功！已保留当前建筑与已配置干员，并完成空位组队与动态仿真验证${scoreStr}。`
       simSettings.value.droneTarget = runOptions.droneTarget
-      simSettings.value.droneTradingRoomId = ''
+      simSettings.value.droneRoomId = runOptions.droneRoomId
+      simSettings.value.droneTradingRoomId = runOptions.droneTarget === 'trading' ? runOptions.droneRoomId : ''
+      simSettings.value.useOperatorInventory = true
       activeTab.value = 'workbench'
       executeCalculation()
     } else {
@@ -1033,13 +1034,14 @@ defineExpose({
     <CalculationConfigModal
       :open="calculationConfigOpen"
       :workspace="store.workspace"
-      :initial="{ droneTarget: simSettings.droneTarget, droneTradingRoomId: simSettings.droneTradingRoomId || '' }"
+      :initial="{ ...simSettings, droneTradingRoomId: simSettings.droneTradingRoomId || '' }"
       @close="calculationConfigOpen = false"
       @confirm="handleConfirmCalculation"
     />
 
     <SmartRosterConfigModal
       :open="smartRosterConfigModalOpen"
+      :workspace="store.workspace"
       :initial-drone-target="simSettings.droneTarget"
       :initial-seed="simSettings.seed"
       @close="smartRosterConfigModalOpen = false"

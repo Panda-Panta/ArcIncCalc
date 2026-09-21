@@ -1,0 +1,764 @@
+
+ RUN  v3.2.7 D:/Project/Arknights/ArcIncCalc - Codex
+
+ ✓ src/components/workbench/BaseMap.spec.ts (14 tests) 655ms
+ ✓ src/components/workbench/RosterIncomeSearchPanel.spec.ts (28 tests) 1317ms
+ ✓ src/components/workbench/RiicSkillsBrowser.spec.ts (6 tests) 2827ms
+   ✓ RiicSkillsBrowser.vue > renders correctly with operator cards and header stats  460ms
+   ✓ RiicSkillsBrowser.vue > filters operators by operator name and pinyin abbreviation  320ms
+   ✓ RiicSkillsBrowser.vue > filters operators by skill keyword  399ms
+   ✓ RiicSkillsBrowser.vue > filters operators by facility tabs  580ms
+   ✓ RiicSkillsBrowser.vue > toggles synergy-only filter  598ms
+   ✓ RiicSkillsBrowser.vue > resets filters when reset button is clicked  464ms
+ ✓ src/components/workbench/ControlImpactPanel.spec.ts (3 tests) 343ms
+ ✓ src/components/workbench/RosterDraftPanel.spec.ts (10 tests) 916ms
+ ✓ src/workbench/fileHelpers.spec.ts (11 tests) 5292ms
+   ✓ fileHelpers.ts > Real Mower JPG Fixture Import > imports mower-252-sample.jpg and matches mower-252-3gold.json  1074ms
+   ✓ fileHelpers.ts > Generated Image Export & Decode Roundtrip > captures base-map element, encodes 16 QRs, and decodes back into identical workspace  1870ms
+   ✓ fileHelpers.ts > Cancellation and Error Handling > throws meaningful error on invalid image without QR codes  2307ms
+ ✓ src/components/workbench/CalculationConfigModal.spec.ts (1 test) 654ms
+   ✓ restores the saved target and drops a stale trading room when switching targets  652ms
+ ✓ src/components/workbench/SmartRosterConfigModal.spec.ts (6 tests) 1196ms
+   ✓ SmartRosterConfigModal.vue > renders modal content when open is true  562ms
+ ✓ src/components/workbench/ValidationPanel.spec.ts (4 tests) 137ms
+ ✓ src/components/workbench/OperatorImportModal.spec.ts (3 tests) 1082ms
+   ✓ OperatorImportModal.vue > renders modal when open is true  699ms
+stderr | VirtualConsole.forward (D:\Project\Arknights\ArcIncCalc - Codex\node_modules\.pnpm\jsdom@30.0.1\node_modules\jsdom\lib\jsdom\virtual-console.js:26:20)
+TypeError: global.removeEventListener is not a function
+    at D:\Project\Arknights\ArcIncCalc - Codex\node_modules\.pnpm\@juggle+resize-observer@3.4.0\node_modules\@juggle\resize-observer\lib\exports\resize-observer.umd.js:372:64
+    at Array.forEach (<anonymous>)
+    at Scheduler.stop (D:\Project\Arknights\ArcIncCalc - Codex\node_modules\.pnpm\@juggle+resize-observer@3.4.0\node_modules\@juggle\resize-observer\lib\exports\resize-observer.umd.js:372:24)
+    at Scheduler.schedule (D:\Project\Arknights\ArcIncCalc - Codex\node_modules\.pnpm\@juggle+resize-observer@3.4.0\node_modules\@juggle\resize-observer\lib\exports\resize-observer.umd.js:351:18)
+    at MutationObserver.Scheduler.listener (D:\Project\Arknights\ArcIncCalc - Codex\node_modules\.pnpm\@juggle+resize-observer@3.4.0\node_modules\@juggle\resize-observer\lib\exports\resize-observer.umd.js:317:56)
+    at MutationObserver.invokeTheCallbackFunction (D:\Project\Arknights\ArcIncCalc - Codex\node_modules\.pnpm\jsdom@30.0.1\node_modules\jsdom\lib\generated\idl\MutationCallback.js:19:26)
+    at notifyMutationObservers (D:\Project\Arknights\ArcIncCalc - Codex\node_modules\.pnpm\jsdom@30.0.1\node_modules\jsdom\lib\jsdom\living\helpers\mutation-observers.js:160:22)
+    at D:\Project\Arknights\ArcIncCalc - Codex\node_modules\.pnpm\jsdom@30.0.1\node_modules\jsdom\lib\jsdom\living\helpers\mutation-observers.js:133:5
+
+ ✓ src/components/workbench/OperatorInventoryPanel.spec.ts (7 tests) 755ms
+ ✓ src/components/workbench/PolicyEditor.spec.ts (6 tests) 2401ms
+   ✓ PolicyEditor.vue > exposes exactly ling_xi and the seven main-plan operator lists, and no forbidden fields  903ms
+   ✓ PolicyEditor.vue > toggles ling_xi mode (1, 2, 3) through Pinia store  374ms
+   ✓ PolicyEditor.vue > supports removing operators from a list via remove button  358ms
+   ✓ PolicyEditor.vue > preserves unknown conf metadata, envelope, and non-edited lists across edits  329ms
+ ✓ src/components/workbench/ScheduleSimulationPanel.spec.ts (12 tests) 1862ms
+   ✓ schedule simulation panel > runs in a worker, keeps defaults visible, and cancels stale work when roster changes  394ms
+   ✓ schedule simulation panel > surfaces worker failures rather than showing a completed estimate  305ms
+ ✓ src/components/workbench/OperatorSelectModal.spec.ts (13 tests) 3247ms
+   ✓ OperatorSelectModal.vue > renders modal with search bar and 45px avatar grid when open is true  670ms
+   ✓ OperatorSelectModal.vue > Store writeback & metadata preservation > appends operator to replacements in replacement mode and preserves occupant, groupId, and metadata  373ms
+   ✓ OperatorSelectModal.vue > Unknown avatar fallback (未知头像回退) > displays textual avatar fallback when operator image fails to load  321ms
+ ✓ src/components/workbench/GlobalReplaceModal.spec.ts (16 tests) 6687ms
+   ✓ GlobalReplaceModal.vue > Modal Rendering and Title > renders Naive card modal titled 一键替换干员 when visible or open is true  1038ms
+   ✓ GlobalReplaceModal.vue > Modal Rendering and Title > supports open prop in addition to visible prop  344ms
+   ✓ GlobalReplaceModal.vue > Source Filtering (only main primary slot assigned operators) > filters source choices to only operators currently assigned in main primary slots  301ms
+   ✓ GlobalReplaceModal.vue > Target Operator Search (Chinese / Full Pinyin / Initials / English) > searches target operators by full pinyin (e.g. yinhui / texas)  476ms
+   ✓ GlobalReplaceModal.vue > Target Operator Search (Chinese / Full Pinyin / Initials / English) > searches target operators by pinyin initials (e.g. yh / dks)  419ms
+   ✓ GlobalReplaceModal.vue > Target Operator Search (Chinese / Full Pinyin / Initials / English) > searches target operators by English appellation (e.g. SilverAsh / Texas)  389ms
+   ✓ GlobalReplaceModal.vue > Target Operator Search (Chinese / Full Pinyin / Initials / English) > allows selecting target operator by clicking search result card  373ms
+   ✓ GlobalReplaceModal.vue > Impact Summary and Explicit Source ➔ Target Display > computes exact impact counts across main slots, replacement entries, and conf policies  450ms
+   ✓ GlobalReplaceModal.vue > Validation and Disabled Confirm > disables confirm button when source or target is missing  427ms
+   ✓ GlobalReplaceModal.vue > Validation and Disabled Confirm > refuses and disables confirm button when source and target are the same operator  304ms
+   ✓ GlobalReplaceModal.vue > Cancel Behavior > makes no mutation to store on cancel and emits close and update:open events  412ms
+   ✓ GlobalReplaceModal.vue > Exact Global Mutation Across Main, Replacements, and Conf > transactionally mutates all primary slots, replacements, and conf policy lists on confirm  362ms
+   ✓ GlobalReplaceModal.vue > One Call and Useful Replaced Event Payload for WorkbenchShell > calls store.replaceOperatorGlobally exactly once and emits replaced payload  436ms
+   ✓ GlobalReplaceModal.vue > Metadata Preservation > preserves slot groupId, custom slot metadata, and custom conf fields through replacement  477ms
+ ✓ src/components/workbench/FacilityEditor.spec.ts (20 tests) 6302ms
+   ✓ FacilityEditor.vue and subcomponents > renders header controls and slots table when a room is selected  632ms
+   ✓ FacilityEditor.vue and subcomponents > allows selecting facility type for output rooms and shows text for non-output rooms  410ms
+   ✓ FacilityEditor.vue and subcomponents > computes level options with reasonable upper bound based on facility type  425ms
+   ✓ FacilityEditor.vue and subcomponents > atomically adjusts slots capacity when facility type changes (e.g. manufacture to power shrinks to 1)  420ms
+   ✓ FacilityEditor.vue and subcomponents > atomically adjusts slots capacity when level changes and truncates slots on downscaling  707ms
+   ✓ FacilityEditor.vue and subcomponents > renders product select for manufacture and trading with images, hidden for power  352ms
+   ✓ FacilityEditor.vue and subcomponents > fillWithFree only modifies empty slots in dormitory and preserves other slots  316ms
+   ✓ FacilityEditor.vue and subcomponents > train facility displays 协助位 for slot 0, 训练位 for slot 1, others display 干员：  306ms
+   ✓ FacilityEditor.vue and subcomponents > updates slot occupant placeholder select (empty, free, current)  318ms
+   ✓ FacilityEditor.vue and subcomponents > ReplacementList displays items, supports removal and drag reordering via store  420ms
+ ✓ src/components/workbench/PlanToolbar.spec.ts (20 tests) 7205ms
+   ✓ PlanToolbar.vue > JPG Export > captures provided baseMapElement, overlays 16 QRs, and downloads image named after plan name  872ms
+   ✓ PlanToolbar.vue > JPG Export > downloads image named after custom scheme name  831ms
+   ✓ PlanToolbar.vue > JPG Import > imports real Mower JPG fixture and updates store atomically  1656ms
+   ✓ PlanToolbar.vue > JPG Import > does not mutate store and shows error when JPG contains no QR codes  3423ms
+ ✓ src/components/workbench/CalculationFlow.spec.ts (5 tests) 9419ms
+   ✓ asks for drone settings before launching a cancellable background calculation  3937ms
+   ✓ cancels an active snapshot when the roster changes and reports worker failures without blocking fallback  1799ms
+   ✓ estimates remaining time from real progress and resets timing on restart  1174ms
+   ✓ shows a recoverable error when workers are unavailable instead of running on the UI thread  1257ms
+   ✓ can ignore the current inventory and forwards the exact manufacturing room  1250ms
+ ✓ src/workbench/__tests__/visual-qa.spec.ts (10 tests) 11712ms
+   ✓ WorkbenchShell Multi-Resolution Responsive QA > Viewport: 1920x1080 (Desktop Full HD) > renders unclipped full-page shell with reachable toolbar and centered 980px canvas  3742ms
+   ✓ WorkbenchShell Multi-Resolution Responsive QA > Viewport: 1366x768 (Standard Laptop) > maintains fixed 980px canvas without clipping and allows full toolbar interaction  2466ms
+   ✓ WorkbenchShell Multi-Resolution Responsive QA > Viewport: 720x900 (Narrow Viewport / Split Screen) > enables horizontal scroll container without squishing or distorting the 980px canvas  2112ms
+   ✓ WorkbenchShell Multi-Resolution Responsive QA > Viewport: 720x900 (Narrow Viewport / Split Screen) > ensures header plan-name input and primary actions remain reachable at 720x900  1205ms
+   ✓ WorkbenchShell Multi-Resolution Responsive QA > Viewport: 720x900 (Narrow Viewport / Split Screen) > verifies local scroll containment and responsive 720px measurement contract without page overflow  1088ms
+   ✓ WorkbenchShell Multi-Resolution Responsive QA > Deterministic DOM & Design Token Parity > verifies footer attribution notice strictly includes exact Mower MIT license and Nano copyright  1025ms
+ ✓ src/workbench/compat/mowerQrCodec.spec.ts (30 tests) 14289ms
+   ✓ Mower QR Codec > Decoding real mower JPG fixture > decodes mower-252-sample.jpg and deep equals mower-252-3gold.json  2266ms
+   ✓ Mower QR Codec > Decoding real mower JPG fixture > decodes mower-252-sample.jpg scaled down to 75% and deep equals mower-252-3gold.json  1410ms
+   ✓ Mower QR Codec > Decoding real mower JPG fixture > decodes mower-252-sample.jpg scaled down to 50% and deep equals mower-252-3gold.json  1184ms
+   ✓ Mower QR Codec > Self-generated RGBA roundtrip (light and dark themes) > roundtrips light theme RGBA image  801ms
+   ✓ Mower QR Codec > Self-generated RGBA roundtrip (light and dark themes) > roundtrips dark theme RGBA image  1447ms
+   ✓ Mower QR Codec > Self-generated RGBA roundtrip (light and dark themes) > remains decodable after JPEG lossy compression  2163ms
+   ✓ Mower QR Codec > Canvas export and decode functions > exports QR codes to canvas and decodes back via decode16QrFromCanvas  618ms
+   ✓ Mower QR Codec > Error handling > throws clear error when fewer than 16 QR codes are found  2336ms
+   ✓ Mower QR Codec > Bounded Loop Behavior and Termination > terminates scan with bounded attempts on blank or adversarial images  641ms
+   ✓ Mower QR Codec > Bounded Loop Behavior and Termination > stops scanning immediately when 16 QR codes are found, skipping global full scan  1230ms
+ ❯ src/workbench/compat/mowerBackupAudit.spec.ts (12 tests | 1 failed) 9501ms
+   ✓ supplied nine-backup Mower roster > imports nine plans and preserves main policies 9ms
+   ✓ supplied nine-backup Mower roster > preserves backup index 0 including all policies and tasks 2ms
+   ✓ supplied nine-backup Mower roster > preserves backup index 1 including all policies and tasks 1ms
+   ✓ supplied nine-backup Mower roster > preserves backup index 2 including all policies and tasks 2ms
+   ✓ supplied nine-backup Mower roster > preserves backup index 3 including all policies and tasks 2ms
+   ✓ supplied nine-backup Mower roster > preserves backup index 4 including all policies and tasks 2ms
+   ✓ supplied nine-backup Mower roster > preserves backup index 5 including all policies and tasks 1ms
+   ✓ supplied nine-backup Mower roster > preserves backup index 6 including all policies and tasks 2ms
+   ✓ supplied nine-backup Mower roster > preserves backup index 7 including all policies and tasks 1ms
+   ✓ supplied nine-backup Mower roster > preserves backup index 8 including all policies and tasks 1ms
+   ✓ supplied nine-backup Mower roster > starts from the unchanged main plan before evaluating triggers 7ms
+   × supplied nine-backup Mower roster > executes backups and produces a different 24-hour timeline 9468ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ✓ src/simulator/scheduleAdmission.spec.ts (5 tests) 5013ms
+   ✓ explicit scheduling admission evidence > accepts proven recovered deferral but rejects an unresolved shared-candidate conflict  1518ms
+   ✓ retains a later unresolved episode after the same group previously recovered  3166ms
+ ✓ src/optimizer/rosterDraft.spec.ts (15 tests) 9830ms
+   ✓ typed candidate layout and roster drafts > shares SEES support with its target team, with six unique main operators  1444ms
+   ✓ typed candidate layout and roster drafts > allows level 2 manufacture stations to produce exp without triggering RECIPE_LEVEL  644ms
+   ✓ typed candidate layout and roster drafts > distinguishes exhausted search budget, unknown IDs, missing ownership and deterministic reruns  516ms
+   ✓ executes a generated main/backup team through real morale and production events  6232ms
+ ✓ src/simulator/productionTimeline.spec.ts (8 tests) 14410ms
+   ✓ joint production event clock > crosses coincident roster and fractional manufacturing endpoints in the real 252 fixture  13279ms
+   ✓ joint production event clock > has repeatable seeded order draws and sample accounting  630ms
+ ✓ src/simulator/productionResources.spec.ts (10 tests) 4269ms
+   ✓ production resource contracts independent of the event controller > does not change ordinary Mower duty decisions when only passive production events are added  3867ms
+ ✓ src/simulator/potentialProduction.spec.ts (5 tests) 1957ms
+   ✓ unconstrained direct production accounting > continues completing orders with no gold, instead of filling a waiting queue  303ms
+   ✓ unconstrained direct production accounting > has identical direct output regardless of initial gold, materials or collection interval  915ms
+   ✓ unconstrained direct production accounting > accelerates trading post order completion when droneTarget is trading  443ms
+ ✓ src/scheduler/backupPlans.spec.ts (17 tests) 2322ms
+   ✓ Mower backup source contract > does not mutate a compiled schedule across repeated simulations  2123ms
+ ✓ src/optimizer/backupNeighborhood.spec.ts (14 tests) 2446ms
+   ✓ fair protected ordinary backup neighborhood > keeps bounded deterministic unique outputs and supports replace-only compatibility  520ms
+ ✓ src/optimizer/rosterHillClimb.spec.ts (9 tests) 3863ms
+   ✓ bounded multi-step candidate search > continues from a verified improvement, traces two steps, and never evaluates a duplicate  1303ms
+   ✓ bounded multi-step candidate search > honors depth independently of total candidate budget and reports the boundary  639ms
+   ✓ bounded multi-step candidate search > retains single-pass mode without expanding improved nodes  482ms
+   ✓ bounded multi-step candidate search > does not promote a second step that loses a resource relative to its parent  890ms
+   ✓ bounded multi-step candidate search > marks budget exhaustion while preserving a fully verified best path  544ms
+ ✓ src/optimizer/rosterSearchRoutes.spec.ts (3 tests) 2208ms
+   ✓ cached simulation with independent parent and provenance routes > reuses C after rejecting A→C and accepts the independent resource-safe B→C route  938ms
+   ✓ cached simulation with independent parent and provenance routes > keeps the same cached workspace eligible through a baseline route after a conditional draft  544ms
+   ✓ cached simulation with independent parent and provenance routes > counts cached route evaluation toward the path budget and never loops back through ancestors  724ms
+ ✓ src/test/goldenScenarios.spec.ts (2 tests) 2218ms
+   ✓ 252 Golden Scenarios and External Baselines > evaluates current calculation bridge against external reference without concealing discrepancy  2210ms
+ ✓ src/simulator/scheduleSimulation.spec.ts (14 tests) 1794ms
+   ✓ time-dependent Mower schedule simulation > does not mutate the compiled schedule and produces deterministic output  841ms
+ ✓ src/optimizer/incomeComparison.spec.ts (10 tests) 1641ms
+   ✓ actual net income comparison > requires four matched cases and preserves the baseline when gains reverse  438ms
+   ✓ actual net income comparison > keeps unverified conditions conditional and small discretization gains unconfirmed  427ms
+   ✓ actual net income comparison > does not compare different scenarios or duplicate case keys  311ms
+ ✓ src/workbench/compat/mowerJson.spec.ts (37 tests) 3141ms
+   ✓ Mower JSON Compatibility Layer > Real Mower Fixtures & Layouts > runs the real 252 2-gold fixture through the legacy calculation bridge  2914ms
+ ✓ src/workbench/calculationBridge.spec.ts (7 tests) 1282ms
+   ✓ runCalculationBridge engine options > runs simulation engine and returns converted report with 82 score  541ms
+   ✓ enables production when calculation callers supply only simulation timing options  704ms
+ ✓ src/optimizer/smartRosterParallel.spec.ts (7 tests) 1397ms
+   ✓ parallel smart roster preserves serial semantics > reuses the winning completed simulation when the final input is unchanged  354ms
+   ✓ parallel smart roster preserves serial semantics > isolates backup input in serial and parallel automatic generation  343ms
+ ✓ src/optimizer/backupEfficiency.spec.ts (15 tests) 1081ms
+ ✓ src/simulator/idealRunOrder.spec.ts (4 tests) 1039ms
+   ✓ ideal run-order product contract > converts base four-gold orders with Tequila and never stacks Proviso on them  448ms
+ ✓ src/optimizer/primaryNeighborhood.spec.ts (21 tests) 1032ms
+   ✓ protected production main neighborhood > is bounded, unique and repeatable without mutating inventory  598ms
+ ✓ src/optimizer/globalPerCapitaReplacement.spec.ts (2 tests) 693ms
+   ✓ Global Per-Capita Replacement (Rule 6) > swaps lower per-capita unit with available higher per-capita atomic unit  632ms
+ ✓ src/optimizer/jointRosterRefinement.spec.ts (8 tests) 384ms
+ ✓ src/optimizer/mowerLearnedCandidates.spec.ts (4 tests) 259ms
+ ✓ src/optimizer/controlNeighborhood.spec.ts (21 tests) 742ms
+   ✓ protected control main neighborhood > is bounded, deterministic and unique without mutating the input inventory  458ms
+ ✓ src/simulator/skillStages.spec.ts (4 tests) 345ms
+   ✓ actual unlocked skills per calculation > uses elite 0 Proviso and Tequila rewards in ideal run orders  326ms
+ ✓ src/optimizer/productionSingletons.spec.ts (18 tests) 609ms
+ ✓ src/engine/calculate.spec.ts (13 tests) 295ms
+ ✓ src/workbench/mowerReportMetrics.spec.ts (2 tests) 206ms
+ ✓ src/simulator/productionRunOrder.spec.ts (12 tests) 1464ms
+   ✓ natural Mower run-order integration: independently calculated fixtures > is insensitive to the outer numerical step for constant-efficiency natural swaps  310ms
+ ✓ src/optimizer/inventoryAdmission.spec.ts (7 tests) 273ms
+ ✓ src/optimizer/compositeObjective.spec.ts (3 tests) 417ms
+ ✓ src/workbench/calculationProgress.spec.ts (1 test) 209ms
+ ✓ src/optimizer/mainPlanOnly.spec.ts (2 tests) 34005ms
+   ✓ generates only main-plan candidates without mutating the source  33996ms
+ ✓ src/engine/operatorRules.spec.ts (48 tests) 197ms
+ ✓ src/workbench/operatorHelpers.spec.ts (15 tests) 68ms
+ ✓ src/optimizer/dailyTarget.spec.ts (3 tests) 248ms
+ ✓ src/optimizer/crossRoomTemplates.spec.ts (5 tests) 163ms
+ ✓ src/workbench/adapter.spec.ts (18 tests) 105ms
+ ✓ src/workbench/store.spec.ts (17 tests) 38ms
+ ✓ src/engine/morale.spec.ts (19 tests) 166ms
+ ✓ src/optimizer/controlImpact.spec.ts (17 tests) 47ms
+ ✓ src/optimizer/combinationPriority.spec.ts (8 tests) 48ms
+ ✓ src/optimizer/inventorySeed.spec.ts (19 tests) 109ms
+ ✓ src/optimizer/fixedDuty.spec.ts (6 tests) 43ms
+ ✓ src/optimizer/candidateSimulationPool.spec.ts (5 tests) 101ms
+ ✓ src/domain/operatorInventory.spec.ts (7 tests) 91ms
+ ✓ src/workbench/compat/base45.spec.ts (13 tests) 40ms
+ ✓ src/domain/operatorImport.spec.ts (13 tests) 39ms
+ ✓ src/optimizer/combinationCatalogAdditions.spec.ts (10 tests) 67ms
+ ✓ src/scheduler/mowerSourceContract.spec.ts (19 tests) 35ms
+ ✓ src/engine/jayeCoverageAudit.spec.ts (26 tests) 29ms
+ ✓ src/scheduler/rosterRuntime.spec.ts (15 tests) 30ms
+ ✓ src/engine/dormitoryRecovery.spec.ts (36 tests) 33ms
+ ✓ src/optimizer/combinationEfficiency.spec.ts (5 tests) 31ms
+ ✓ src/scheduler/scheduleAdapter.spec.ts (5 tests) 33ms
+ ✓ src/scheduler/compileRosterSchedule.spec.ts (5 tests) 24ms
+ ✓ src/scheduler/smartDormitoryPolicy.spec.ts (8 tests) 29ms
+ ✓ src/engine/timeDependentSkills.spec.ts (10 tests) 22ms
+ ✓ src/engine/orderRegression.spec.ts (4 tests) 25ms
+ ✓ src/workbench/__tests__/engine-protection.spec.ts (2 tests) 24ms
+ ✓ src/engine/orderCapacity.spec.ts (5 tests) 18ms
+ ✓ src/optimizer/combinationCandidates.spec.ts (7 tests) 20ms
+ ✓ src/rules/orderRules.spec.ts (7 tests) 11ms
+ ✓ src/workbench/validate.spec.ts (15 tests) 60ms
+ ✓ src/workbench/migrate.spec.ts (5 tests) 13ms
+ ✓ src/simulator/orderTimeline.spec.ts (5 tests) 12ms
+ ✓ src/workbench/levelInference.spec.ts (7 tests) 10ms
+ ✓ src/simulator/mowerRunOrder.spec.ts (2 tests) 12ms
+ ✓ src/optimizer/templateSampling.spec.ts (2 tests) 9ms
+ ✓ src/engine/currentRates.spec.ts (2 tests) 9ms
+ ✓ src/optimizer/candidateSimulationCache.spec.ts (4 tests) 10ms
+ ✓ src/simulator/manufacturingTimeline.spec.ts (7 tests) 10ms
+ ✓ src/domain/operators.spec.ts (4 tests) 10ms
+ ✓ src/simulator/resourceLedger.spec.ts (4 tests) 10ms
+ ✓ src/workbench/defaults.spec.ts (3 tests) 10ms
+ ✓ src/scheduler/mowerTiming.spec.ts (3 tests) 5ms
+ ✓ src/scheduler/fiammettaPolicy.spec.ts (1 test) 9ms
+ ✓ src/simulator/droneTimeline.spec.ts (2 tests) 6ms
+ ✓ src/engine/rosterEditor.spec.ts (3 tests) 6ms
+ ✓ src/scheduler/moraleEndpoints.spec.ts (2 tests) 6ms
+ ✓ src/domain/edition.spec.ts (1 test) 4ms
+ ↓ scripts/test-audit.spec.ts (1 test | 1 skipped)
+ ✓ src/optimizer/rosterIncomeSearch.spec.ts (23 tests) 50574ms
+   ✓ bounded ordinary backup income search > completes four cases per budgeted candidate, inherits UI seeds/steps and retains the original  685ms
+   ✓ bounded ordinary backup income search > evaluates the real 252 fixture under four common production scenarios without changing it  3769ms
+   ✓ bounded ordinary backup income search > alternates baseline and draft neighborhoods without leaking draft conditional status  7049ms
+   ✓ bounded ordinary backup income search > selects an actual EXP improvement over a full week of morale shifts without spending other resources  38278ms
+stdout | src/optimizer/roster252.spec.ts > 252 Layout Automatic Roster Generation (Trade 2+1, Manufacture 33332, Right Side Full, 2 Power) > generates a fully valid 252 roster with complete tracking and all rules satisfied
+=== 252 AUTO ROSTER TRACKING SUMMARY ===
+Score: 102133.3333333336
+Phases count: 8
+Phases: [
+  '[building] 阶段 1/2: 不可分割原子组合与多分支分子合成...',
+  '[building] 阶段 1/2: 分子合成候选生成 1/2 完成',
+  '[building] 阶段 1/2: 分子合成候选生成 2/2 完成',
+  '[simulating] 阶段 2/2: 全量动态拟真评估（预热 1 天 + 采样 3 天，82 综合评分）...',
+  '[simulating] 阶段 2/2: 动态拟真进度 1/2（82分: 102133.3）',
+  '[simulating] 阶段 2/2: 动态拟真进度 2/2（82分: 101066.7）',
+  '[searching] 阶段 3/3: 全局人均产出检测与优化置换...',
+  '[done] 一键智能排班已完成，最终 82 综合评分：102133.3 分/日'
+]
+Replacement logs: []
+[room_1_1] (manufacture lv3): 迷迭香, 阿罗玛, 槐琥 | 替补: 斑点 ; 夜烟 ; 铅踝
+[room_1_2] (manufacture lv3): 温蒂, 清流, 冬时 | 替补: 雪猎 ; 温米 ; 梅尔
+[room_1_3] (power lv3): 承曦格雷伊 | 替补: 澄闪
+[room_2_1] (manufacture lv3): 红云, 酒神, Miss.Christine | 替补: 淬羽赫默 ; 断罪者 ; 食铁兽
+[room_2_2] (manufacture lv3): 泡泡, 火神, 贝娜 | 替补: 裂响 ; 弑君者 ; 机械师
+[room_2_3] (power lv3): Lancet-2 | 替补: 
+[room_3_1] (trading lv2): 鸿雪, 图耶 | 替补: 但书,能天使 ; 赫德雷
+[room_3_2] (trading lv1): 黑键 | 替补: 但书,伺夜
+[room_3_3] (manufacture lv2): 苍苔, 引星棘刺 | 替补: 砾 ; 维伊
+[central] (central lv5): 森蚺, Mon3tr, 阿斯卡纶, 丰川祥子, 夕 | 替补: 若叶睦 ; 望 ; 阿米娅 ; 薇薇安娜 ; 八幡海铃
+[dormitory_1] (dormitory lv1): 桃金娘, 黑, free, free, free | 替补:  ;  ;  ;  ; 
+[dormitory_2] (dormitory lv1): 杜林, 琴柳, free, free, free | 替补:  ;  ;  ;  ; 
+[dormitory_3] (dormitory lv1): 斥罪, 闪灵, free, free, free | 替补:  ;  ;  ;  ; 
+[dormitory_4] (dormitory lv1): 菲亚梅塔, 纯烬艾雅法拉, 新约能天使, free, free | 替补: 阿罗玛,槐琥,红云 ;  ;  ;  ; 
+[meeting] (meeting lv3): 伊内丝, 晓歌 | 替补: 提丰 ; 远山
+[factory] (factory lv3): 至简 | 替补: 特克诺
+[contact] (contact lv3): 絮雨 | 替补: 林
+[train] (train lv3): 褐果, 火龙S黑角 | 替补: 艾丽妮 ; 鞭刃
+
+ ❯ src/optimizer/roster252.spec.ts (1 test | 1 failed) 76068ms
+   × 252 Layout Automatic Roster Generation (Trade 2+1, Manufacture 33332, Right Side Full, 2 Power) > generates a fully valid 252 roster with complete tracking and all rules satisfied 76066ms
+     → Test timed out in 60000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/optimizer/multiStartSearch.spec.ts (9 tests | 1 failed) 108547ms
+   ✓ validates independent random search parameters before simulating 7ms
+   × finds and independently revalidates a real control improvement without altering the layout or source 75368ms
+     → Test timed out in 60000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ✓ does not promote a one-day gain when completed-item granularity leaves a zero lower bound  3348ms
+   ✓ uses a shared distinct-plan budget and reproduces search candidates with a fixed seed  1776ms
+   ✓ does not protect the entire supplied inventory as external support, but does preserve an explicitly referenced operator 213ms
+   ✓ keeps the baseline when new-seed validation rejects the exploratory winner  27563ms
+   ✓ does not simulate empty extra restart copies when the budget is exhausted 74ms
+   ✓ continues a restart after a losing intermediate state 194ms
+   ✓ rejects an unavailable starting roster before spending any simulation budget 3ms
+ ✓ src/scheduler/backupPlans.long.spec.ts (3 tests) 122473ms
+   ✓ decodes the supplied image byte-for-data without losing any backup settings  2258ms
+   ✓ executes real backups and production continuously for 24 hours  22243ms
+   ✓ executes real backups and production continuously for 168 hours  97964ms
+ ❯ src/components/workbench/WorkbenchShell.spec.ts (23 tests | 1 failed) 133726ms
+   ✓ WorkbenchShell.vue and App primary entry integration > mounts App with only WorkbenchShell primary entry and no legacy dashboard/editor  2495ms
+   ✓ WorkbenchShell.vue and App primary entry integration > renders complete Mower main roster UI as primary full page with all required components  1890ms
+   ✓ WorkbenchShell.vue and App primary entry integration > holds and hands off the real BaseMap export DOM element to PlanToolbar  1539ms
+   ✓ WorkbenchShell.vue and App primary entry integration > focuses and updates FacilityEditor when a room is selected in BaseMap or store  1368ms
+   ✓ WorkbenchShell.vue and App primary entry integration > opens OperatorSelectModal in main mode and writes back selected operator to slot  1303ms
+   ✓ WorkbenchShell.vue and App primary entry integration > opens OperatorSelectModal in replacement mode and writes back added replacement  1262ms
+   ✓ WorkbenchShell.vue and App primary entry integration > handles validation focus event to select room and slot  1716ms
+   ✓ WorkbenchShell.vue and App primary entry integration > handles validation focus event for policy keys without throwing  1057ms
+   ✓ WorkbenchShell.vue and App primary entry integration > opens and closes GlobalReplaceModal and displays replaced status banner  1521ms
+   ✓ WorkbenchShell.vue and App primary entry integration > guards against invalid calculation when validation has critical errors  1087ms
+   ✓ WorkbenchShell.vue and App primary entry integration > demonstrates calculation bridge smoke equivalence with untouched calculate engine 22ms
+   ✓ WorkbenchShell.vue and App primary entry integration > displays compact results panel with actual report fields and refreshes on repeat calculation  2933ms
+   × WorkbenchShell.vue and App primary entry integration > calculates with unlocked low-stage skills and clears stale results on a real failure 3706ms
+     → expected { …(10) } to be null
+   ✓ WorkbenchShell.vue and App primary entry integration > updates all views immediately on file import and clears stale calculation state on reset  1667ms
+   ✓ WorkbenchShell.vue and App primary entry integration > preserves imported unknown fields and syncs workspace to localStorage  1450ms
+   ✓ WorkbenchShell.vue and App primary entry integration > upgrades untouched legacy 4-gold default workspace in localStorage to 2-gold and 2-exp  1064ms
+   ✓ WorkbenchShell.vue and App primary entry integration > wraps the fixed Mower board in a horizontal scroll container while keeping toolbar reachable  804ms
+   ✓ WorkbenchShell.vue and App primary entry integration > enforces removal of legacy body 1180px min-width and verifies local overflow containment  579ms
+   ✓ WorkbenchShell.vue and App primary entry integration > keeps the workspace unchanged when ordinary backups cannot be completed  21337ms
+   ✓ WorkbenchShell.vue and App primary entry integration > triggers smart roster generation, keeps user placed operators, and updates store  45148ms
+   ✓ WorkbenchShell.vue and App primary entry integration > aborts active roster generation worker and updates status message  672ms
+   ✓ WorkbenchShell.vue and App primary entry integration > switches between workbench and skills tab, displaying riic skills browser  740ms
+   ✓ WorkbenchShell.vue and App primary entry integration > runs a custom configuration successfully with ideal run orders  38361ms
+ ❯ src/optimizer/smartRoster.spec.ts (4 tests | 1 failed) 145411ms
+   × smartRoster generation with 3-phase optimization > builds complete 243 mains with backups and simulation validation 76334ms
+     → Test timed out in 60000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ✓ smartRoster generation with 3-phase optimization > preserves user-locked operators when starting from a partial layout  24051ms
+   ✓ smartRoster generation with 3-phase optimization > adapts to 252 layout with two-seat trading room  18266ms
+   ✓ smartRoster generation with 3-phase optimization > handles user inventory with unmaxed/low-level operators without simulation abort or unsupported diagnostics  26757ms
+ ✓ src/scheduler/mowerRosterDeterminism.spec.ts (1 test) 174961ms
+   ✓ keeps ideal-runner roster decisions independent of the order random seed  174958ms
+ ❯ src/optimizer/automaticRoster.spec.ts (9 tests | 1 failed) 205154ms
+   × bounded complete automatic roster drafts > builds complete 243 mains with unique backups and retains the source layout 37085ms
+     → Test timed out in 30000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ✓ bounded complete automatic roster drafts > uses actual dorm residents rather than Free beds in every static projection  26683ms
+   ✓ bounded complete automatic roster drafts > is repeatable and selects the highest complete pair ranking score among trials  72622ms
+   ✓ bounded complete automatic roster drafts > preserves a learned cross-room group and its chosen backups after filling and optimization  25260ms
+   ✓ bounded complete automatic roster drafts > adapts to a 252 layout with two-seat trade and keeps fixed auxiliary occupants and Free  12407ms
+   ✓ bounded complete automatic roster drafts > builds from a reduced owned roster without borrowing missing or locked high-efficiency staff  20103ms
+   ✓ bounded complete automatic roster drafts > never returns a half-filled draft for an insufficient inventory or state budget 77ms
+   ✓ bounded complete automatic roster drafts > protects occupied policies and generates a main-only draft without modifying imported backups  10884ms
+   ✓ bounded complete automatic roster drafts > rejects unsupported product, low-stage fixed support, and invalid options 31ms
+ ❯ src/optimizer/shiftRunContract.spec.ts (19 tests | 7 failed) 287043ms
+   × shift-run branch contract > constructs ten distinct physically valid branches before simulation 196320ms
+     → Test timed out in 180000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ✓ shift-run branch contract > recognizes only Proviso and Tequila as dedicated runners 31ms
+   ✓ shift-run branch contract > rejects closure order acquisition 31ms
+   ✓ shift-run branch contract > rejects pepe order acquisition 31ms
+   ✓ shift-run branch contract > rejects other special captures even on an ordinary base order 30ms
+   ✓ shift-run branch contract > blocks imported 佩佩 trading mains and backups 32ms
+   ✓ shift-run branch contract > blocks imported 可露希尔 trading mains and backups 30ms
+   ✓ shift-run branch contract > blocks imported U-Official trading mains and backups 30ms
+   × shift-run branch contract > generates executable runners plus ordinary backups at trade level 1 18565ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   × shift-run branch contract > generates executable runners plus ordinary backups at trade level 2 21277ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   × shift-run branch contract > generates executable runners plus ordinary backups at trade level 3 19885ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ✓ shift-run branch contract > cannot hide 佩佩 behind the default static shift-run flag 20ms
+   ✓ shift-run branch contract > cannot hide 可露希尔 behind the default static shift-run flag 32ms
+   ✓ shift-run branch contract > cannot hide U-Official behind the default static shift-run flag 31ms
+   × shift-run branch contract > executes generated level 1 swaps, settlement and restoration 10130ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   × shift-run branch contract > executes generated level 2 swaps, settlement and restoration 10231ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   × shift-run branch contract > executes generated level 3 swaps, settlement and restoration 10279ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ✓ shift-run branch contract > accepts runners with the unlocked elite 0 reward skills 24ms
+   ✓ shift-run branch contract > reports missing trained runners before evaluating ordinary-only candidates 30ms
+ ❯ src/optimizer/molecularSynthesis.spec.ts (4 tests | 1 failed) 293707ms
+   × Molecular Synthesis & Indivisible Atomic Units > strictly respects indivisible atomic core members 126509ms
+     → Test timed out in 120000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ✓ Molecular Synthesis & Indivisible Atomic Units > generates correct 2-power adaptive automation conf with Lancet-2 in workaholic  39401ms
+   ✓ Molecular Synthesis & Indivisible Atomic Units > configures Aroma and Waai Fu in exhaust_require and rest_in_full  89936ms
+   ✓ Molecular Synthesis & Indivisible Atomic Units > runs full smartRoster end-to-end with 82 dynamic simulation scoring  37859ms
+ ❯ src/optimizer/smartRosterBranches.spec.ts (3 tests | 1 failed) 318896ms
+   × complete branch admission before any simulation > ignores old trial and top-K truncation and simulates all ten distinct branches in ideal mode 197826ms
+     → Test timed out in 180000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ✓ complete branch admission before any simulation > does not rank a partial simulation even when its incomplete production is very high  121048ms
+   ✓ complete branch admission before any simulation > does not start simulation if the required set cannot be constructed 20ms
+ ✓ src/scheduler/mowerScreenshotParity.spec.ts (1 test) 356836ms
+   ✓ records steady-window scenarios against the supplied screenshot observations  356834ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 15 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/optimizer/automaticRoster.spec.ts > bounded complete automatic roster drafts > builds complete 243 mains with unique backups and retains the source layout
+Error: Test timed out in 30000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/optimizer/automaticRoster.spec.ts:22:2
+     20| 
+     21| describe('bounded complete automatic roster drafts',()=>{
+     22|  it('builds complete 243 mains with unique backups and retains the sou…
+       |  ^
+     23| 
+     24|    await annotate('同步计算前确认测试进度已送达')
+
+ ❯ src/optimizer/automaticRoster.spec.ts:24:10 notice
+   ↳ 同步计算前确认测试进度已送达
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/15]⎯
+
+ FAIL  src/optimizer/molecularSynthesis.spec.ts > Molecular Synthesis & Indivisible Atomic Units > strictly respects indivisible atomic core members
+Error: Test timed out in 120000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/optimizer/molecularSynthesis.spec.ts:26:3
+     24| 
+     25| describe('Molecular Synthesis & Indivisible Atomic Units', () => {
+     26|   it('strictly respects indivisible atomic core members', async ({ ann…
+       |   ^
+     27| 
+     28|     await annotate('同步计算前确认测试进度已送达')
+
+ ❯ src/optimizer/molecularSynthesis.spec.ts:28:11 notice
+   ↳ 同步计算前确认测试进度已送达
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/15]⎯
+
+ FAIL  src/optimizer/multiStartSearch.spec.ts > finds and independently revalidates a real control improvement without altering the layout or source
+Error: Test timed out in 60000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/optimizer/multiStartSearch.spec.ts:19:1
+     17|  expect(()=>runRosterIncomeSearch({...request(),mode:'hill-climb',maxC…
+     18| })
+     19| it('finds and independently revalidates a real control improvement wit…
+       | ^
+     20|  vi.spyOn(backup,'generateBackupNeighbors').mockReturnValue([])
+     21|  // A 2% factory bonus needs enough completed-item observations to bea…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/15]⎯
+
+ FAIL  src/optimizer/roster252.spec.ts > 252 Layout Automatic Roster Generation (Trade 2+1, Manufacture 33332, Right Side Full, 2 Power) > generates a fully valid 252 roster with complete tracking and all rules satisfied
+Error: Test timed out in 60000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/optimizer/roster252.spec.ts:16:3
+     14| 
+     15| describe('252 Layout Automatic Roster Generation (Trade 2+1, Manufactu…
+     16|   it('generates a fully valid 252 roster with complete tracking and al…
+       |   ^
+     17|     const ws = createDefaultWorkspace()
+     18| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/15]⎯
+
+ FAIL  src/optimizer/shiftRunContract.spec.ts > shift-run branch contract > constructs ten distinct physically valid branches before simulation
+Error: Test timed out in 180000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/optimizer/shiftRunContract.spec.ts:27:3
+     25| 
+     26| describe('shift-run branch contract', () => {
+     27|   it('constructs ten distinct physically valid branches before simulat…
+       |   ^
+     28|     await annotate('同步计算前确认测试进度已送达')
+     29|     const candidates = generateMolecularCandidates(createDefaultWorksp…
+
+ ❯ src/optimizer/shiftRunContract.spec.ts:28:11 notice
+   ↳ 同步计算前确认测试进度已送达
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/15]⎯
+
+ FAIL  src/optimizer/shiftRunContract.spec.ts > shift-run branch contract > generates executable runners plus ordinary backups at trade level 1
+ FAIL  src/optimizer/shiftRunContract.spec.ts > shift-run branch contract > generates executable runners plus ordinary backups at trade level 2
+ FAIL  src/optimizer/shiftRunContract.spec.ts > shift-run branch contract > generates executable runners plus ordinary backups at trade level 3
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/optimizer/shiftRunContract.spec.ts:59:20
+     57|     }
+     58|   })
+     59|   it.each([1, 2, 3])('generates executable runners plus ordinary backu…
+       |                    ^
+     60|     await yieldToRunner(250)
+     61|     const ws = createDefaultWorkspace()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/15]⎯
+
+ FAIL  src/optimizer/shiftRunContract.spec.ts > shift-run branch contract > executes generated level 1 swaps, settlement and restoration
+ FAIL  src/optimizer/shiftRunContract.spec.ts > shift-run branch contract > executes generated level 2 swaps, settlement and restoration
+ FAIL  src/optimizer/shiftRunContract.spec.ts > shift-run branch contract > executes generated level 3 swaps, settlement and restoration
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/optimizer/shiftRunContract.spec.ts:92:20
+     90|     expect(compileRosterSchedule(workspace).diagnostics.some(d => d.co…
+     91|   })
+     92|   it.each([1, 2, 3])('executes generated level %i swaps, settlement an…
+       |                    ^
+     93|     await yieldToRunner(250)
+     94|     const workspace = createDefaultWorkspace()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/15]⎯
+
+ FAIL  src/optimizer/smartRoster.spec.ts > smartRoster generation with 3-phase optimization > builds complete 243 mains with backups and simulation validation
+Error: Test timed out in 60000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/optimizer/smartRoster.spec.ts:29:3
+     27| 
+     28| describe('smartRoster generation with 3-phase optimization', () => {
+     29|   it('builds complete 243 mains with backups and simulation validation…
+       |   ^
+     30|     const base = createDefaultWorkspace()
+     31|     base.compatibility.importedPresentRooms = [...MOWER_OUTPUT_ROOM_ID…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/15]⎯
+
+ FAIL  src/optimizer/smartRosterBranches.spec.ts > complete branch admission before any simulation > ignores old trial and top-K truncation and simulates all ten distinct branches in ideal mode
+Error: Test timed out in 180000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/optimizer/smartRosterBranches.spec.ts:16:2
+     14| const owned=OPERATORS.map(o=>({operator:o.name,elitePhase:o.rarity<3?0…
+     15| describe('complete branch admission before any simulation',()=>{
+     16|  it('ignores old trial and top-K truncation and simulates all ten dist…
+       |  ^
+     17| 
+     18|    await annotate('同步计算前确认测试进度已送达')
+
+ ❯ src/optimizer/smartRosterBranches.spec.ts:18:10 notice
+   ↳ 同步计算前确认测试进度已送达
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/15]⎯
+
+ FAIL  src/components/workbench/WorkbenchShell.spec.ts > WorkbenchShell.vue and App primary entry integration > calculates with unlocked low-stage skills and clears stale results on a real failure
+AssertionError: expected { …(10) } to be null
+
+- Expected: 
+null
+
++ Received: 
+{
+  "drones": 240,
+  "efficiencyNotes": [
+    "按最高阶段技能计算；暖机技能使用稳定终值。",
+    "长期产出为近似值，尚未逐订单模拟品质暖机、领取与换班。",
+  ],
+  "layoutValid": false,
+  "manufacture": [
+    {
+      "buffDetails": [
+        "进驻基础：1 人，+1%",
+        "夜烟·金属工艺·α：+30%",
+        "计入心情耗尽后的时段平均：100.0%",
+      ],
+      "count": 20,
+      "droneExtra": 0,
+      "efficiency": 1,
+      "operatorNames": [
+        "夜烟",
+      ],
+      "product": "gold",
+      "roomId": "B1",
+      "unquantifiedSkills": [],
+      "value": 10000,
+    },
+    {
+      "buffDetails": [],
+      "count": 20,
+      "droneExtra": 0,
+      "efficiency": 1,
+      "operatorNames": [],
+      "product": "gold",
+      "roomId": "B2",
+      "unquantifiedSkills": [],
+      "value": 10000,
+    },
+    {
+      "buffDetails": [],
+      "count": 8,
+      "droneExtra": 0,
+      "efficiency": 1,
+      "operatorNames": [],
+      "product": "exp",
+      "roomId": "B4",
+      "unquantifiedSkills": [],
+      "value": 8000,
+    },
+    {
+      "buffDetails": [],
+      "count": 8,
+      "droneExtra": 0,
+      "efficiency": 1,
+      "operatorNames": [],
+      "product": "exp",
+      "roomId": "B5",
+      "unquantifiedSkills": [],
+      "value": 8000,
+    },
+  ],
+  "morale": [
+    {
+      "details": [
+        "基础消耗 1/h",
+        "控制中枢 0 人：-0.00/h",
+      ],
+      "ending": 0,
+      "exhaustedAt": 24,
+      "groupName": null,
+      "initial": 24,
+      "initialConsumptionPerHour": 1,
+      "leaveReason": "morale-exhausted",
+      "leftAt": 24,
+      "operatorId": "char_141_nights",
+      "operatorName": "夜烟",
+      "replacesOperatorId": null,
+      "role": "primary",
+      "roomId": "B1",
+      "startedAt": 0,
+    },
+  ],
+  "power": {
+    "consumption": 810,
+    "generation": 810,
+    "margin": 0,
+    "sufficient": true,
+  },
+  "roomShiftDetails": {
+    "B1": [],
+    "B2": [],
+    "B3": [],
+    "B4": [],
+    "B5": [],
+    "B6": [],
+    "B7": [],
+    "B8": [],
+    "B9": [],
+  },
+  "summary": {
+    "exp": 16000,
+    "fragments": 0,
+    "fragmentsConsumed": 0,
+    "goldConsumed": 41.333333333333336,
+    "goldCount": 58.666666666666664,
+    "goldValue": 29333.333333333332,
+    "netGoldCount": 17.33333333333333,
+    "netGoldValue": 8666.666666666664,
+    "orderLmd": 20666.666666666668,
+    "orundum": 0,
+    "totalEquivalentLmd": 45333.333333333336,
+    "totalScore82": 43600.00000000001,
+    "virtualGoldCount": 0,
+    "virtualGoldValue": 0,
+  },
+  "trading": [
+    {
+      "buffDetails": [
+        "跑单：订单生成前换入但书·β与龙舌兰·β，生成后恢复原班组",
+      ],
+      "droneExtraOrders": 0,
+      "efficiency": 1,
+      "fragmentsConsumed": 0,
+      "goldConsumed": 31.858407079646025,
+      "lmd": 16637.168141592923,
+      "operatorNames": [],
+      "orders": 7.079646017699116,
+      "orundum": 0,
+      "roomId": "B7",
+      "strategy": "gold",
+      "unquantifiedSkills": [],
+      "virtualGold": 1.4159292035398234,
+      "virtualGoldValue": 707.9646017699117,
+    },
+    {
+      "buffDetails": [
+        "跑单：订单生成前换入但书·β与龙舌兰·β，生成后恢复原班组",
+      ],
+      "droneExtraOrders": 0,
+      "efficiency": 1,
+      "fragmentsConsumed": 0,
+      "goldConsumed": 31.858407079646025,
+      "lmd": 16637.168141592923,
+      "operatorNames": [],
+      "orders": 7.079646017699116,
+      "orundum": 0,
+      "roomId": "B8",
+      "strategy": "gold",
+      "unquantifiedSkills": [],
+      "virtualGold": 1.4159292035398234,
+      "virtualGoldValue": 707.9646017699117,
+    },
+  ],
+  "validationMessages": [
+    "使用整小时暖机，最大步长 0.25 h；复制取整等非线性效率采用区间中点数值积分，可缩小步长检查敏感性",
+    "单体恢复目标为显式模拟策略；多个合格目标时默认槽位顺序，并非已确认的游戏随机目标规则",
+    "直观产出模式：忽略赤金、原料、收取和存仓约束，完成即计产出；账本为测算辅助，不代表实际到账。无人机仍按所选策略及实际生成量使用。",
+    "理想跑单：按常驻阵容正常获取订单；完成瞬间应用已配置的但书/龙舌兰效果。不临时进驻、不等待、不消耗跑单干员心情或无人机，忽略跑单干员占位冲突；普通排班与订单资源规则仍保留。",
+    "剩余无人机采用满仓时批量加速赤金、保留 20 架策略；此分配策略可调整，不代表用户 Mower 全局配置。",
+    "slot:room_1_1_0: insufficient available candidates or beds; original occupants retained",
+  ],
+}
+
+ ❯ src/components/workbench/WorkbenchShell.spec.ts:459:42
+    457|     if (wrapper.vm.calculationConfigOpen) wrapper.vm.handleConfirmCalc…
+    458|     await flushPromises()
+    459|     expect(wrapper.vm.calculationReport).toBeNull()
+       |                                          ^
+    460|     expect(wrapper.vm.simulationReport?.success).toBe(false)
+    461|     expect(wrapper.find('[data-test="metric-gold"]').exists()).toBe(fa…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/15]⎯
+
+ FAIL  src/workbench/compat/mowerBackupAudit.spec.ts > supplied nine-backup Mower roster > executes backups and produces a different 24-hour timeline
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/workbench/compat/mowerBackupAudit.spec.ts:31:3
+     29|     expect(compiledScheduleToRuntimeConfig(compileRosterSchedule(works…
+     30|   })
+     31|   it('executes backups and produces a different 24-hour timeline', () …
+       |   ^
+     32|     const workspace = importMowerJson(decoded)
+     33|     const options = { sampleHours: 24, warmupHours: 0, maxEvents: 1000…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/15]⎯
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 4 unhandled errors during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯⎯⎯ Unhandled Error ⎯⎯⎯⎯⎯⎯⎯
+Error: [vitest-worker]: Timeout calling "onTaskUpdate"
+ ❯ Object.onTimeoutError ../ArcIncCalc%20-%20Codex/node_modules/.pnpm/vitest@3.2.7_@types+node@26.4.0_jsdom@30.0.1_sass@1.104.0/node_modules/vitest/dist/chunks/rpc.-pEldfrD.js:53:10
+ ❯ Timeout._onTimeout ../ArcIncCalc%20-%20Codex/node_modules/.pnpm/vitest@3.2.7_@types+node@26.4.0_jsdom@30.0.1_sass@1.104.0/node_modules/vitest/dist/chunks/index.B521nVV-.js:59:62
+ ❯ listOnTimeout node:internal/timers:605:17
+ ❯ processTimers node:internal/timers:541:7
+
+
+⎯⎯⎯⎯⎯⎯ Unhandled Error ⎯⎯⎯⎯⎯⎯⎯
+Error: [vitest-worker]: Timeout calling "onTaskUpdate"
+ ❯ Object.onTimeoutError ../ArcIncCalc%20-%20Codex/node_modules/.pnpm/vitest@3.2.7_@types+node@26.4.0_jsdom@30.0.1_sass@1.104.0/node_modules/vitest/dist/chunks/rpc.-pEldfrD.js:53:10
+ ❯ Timeout._onTimeout ../ArcIncCalc%20-%20Codex/node_modules/.pnpm/vitest@3.2.7_@types+node@26.4.0_jsdom@30.0.1_sass@1.104.0/node_modules/vitest/dist/chunks/index.B521nVV-.js:59:62
+ ❯ listOnTimeout node:internal/timers:605:17
+ ❯ processTimers node:internal/timers:541:7
+
+
+⎯⎯⎯⎯⎯⎯ Unhandled Error ⎯⎯⎯⎯⎯⎯⎯
+Error: [vitest-worker]: Timeout calling "onTaskUpdate"
+ ❯ Object.onTimeoutError ../ArcIncCalc%20-%20Codex/node_modules/.pnpm/vitest@3.2.7_@types+node@26.4.0_jsdom@30.0.1_sass@1.104.0/node_modules/vitest/dist/chunks/rpc.-pEldfrD.js:53:10
+ ❯ Timeout._onTimeout ../ArcIncCalc%20-%20Codex/node_modules/.pnpm/vitest@3.2.7_@types+node@26.4.0_jsdom@30.0.1_sass@1.104.0/node_modules/vitest/dist/chunks/index.B521nVV-.js:59:62
+ ❯ listOnTimeout node:internal/timers:605:17
+ ❯ processTimers node:internal/timers:541:7
+
+
+⎯⎯⎯⎯⎯⎯ Unhandled Error ⎯⎯⎯⎯⎯⎯⎯
+Error: [vitest-worker]: Timeout calling "onTaskUpdate"
+ ❯ Object.onTimeoutError ../ArcIncCalc%20-%20Codex/node_modules/.pnpm/vitest@3.2.7_@types+node@26.4.0_jsdom@30.0.1_sass@1.104.0/node_modules/vitest/dist/chunks/rpc.-pEldfrD.js:53:10
+ ❯ Timeout._onTimeout ../ArcIncCalc%20-%20Codex/node_modules/.pnpm/vitest@3.2.7_@types+node@26.4.0_jsdom@30.0.1_sass@1.104.0/node_modules/vitest/dist/chunks/index.B521nVV-.js:59:62
+ ❯ listOnTimeout node:internal/timers:605:17
+ ❯ processTimers node:internal/timers:541:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  9 failed | 103 passed | 1 skipped (113)
+      Tests  15 failed | 1071 passed | 1 skipped (1087)
+     Errors  4 errors
+   Start at  03:28:43
+   Duration  370.66s (transform 42.96s, setup 0ms, collect 184.38s, tests 2464.18s, environment 67.16s, prepare 53.96s)
+

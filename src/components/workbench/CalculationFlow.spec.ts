@@ -101,3 +101,14 @@ it('shows a recoverable error when workers are unavailable instead of running on
   expect(wrapper.get('[data-test="calculation-error"]').text()).toContain('worker unavailable')
   expect(wrapper.get('[data-test="calc-btn"]').attributes('disabled')).toBeUndefined()
 })
+
+it('can ignore the current inventory and forwards the exact manufacturing room',()=>{
+ wrapper.vm.handleInventoryChange({enabled:true,valid:true,entries:[{operatorId:'芬',elite:0,level:1}]})
+ wrapper.vm.handleConfirmCalculation({droneTarget:'gold',droneTradingRoomId:'',droneRoomId:'room_1_2',useOperatorInventory:false})
+ const options=workers[0]!.postMessage.mock.calls[0]![0].options.simulationOptions
+ expect(options.operatorInventory).toBeUndefined()
+ expect(options.production.droneRoomId).toBe('room_1_2')
+ wrapper.vm.handleAbortCalculation()
+ wrapper.vm.handleConfirmCalculation({droneTarget:'none',droneTradingRoomId:'',useOperatorInventory:true})
+ expect(workers[1]!.postMessage.mock.calls[0]![0].options.simulationOptions.operatorInventory).toHaveLength(1)
+})

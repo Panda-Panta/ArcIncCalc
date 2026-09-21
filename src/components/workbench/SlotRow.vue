@@ -19,7 +19,8 @@
           ghost
           @click="onPickMain"
         >
-          {{ operatorButtonText }}
+          <img v-if="slot.occupant.kind === 'operator' && !avatarFailed" :src="`/avatar/${encodeURI(operatorButtonText)}.webp`" :alt="operatorButtonText" class="main-operator-avatar" @error="avatarFailed = true" />
+          <span>{{ operatorButtonText }}</span>
         </n-button>
       </div>
     </td>
@@ -59,7 +60,7 @@
  * Licensed under the MIT License
  */
 
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { NButton, NInput, NSelect } from 'naive-ui'
 import ReplacementList from './ReplacementList.vue'
 import { useRosterWorkbenchStore } from '../../workbench/store'
@@ -73,6 +74,8 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const avatarFailed = ref(false)
+watch(() => props.slot.occupant, () => { avatarFailed.value = false }, { deep: true })
 
 const emit = defineEmits<{
   (
@@ -148,3 +151,8 @@ function onPickReplacement(): void {
   emit('request-picker', { roomId: props.roomId, slotIndex: props.slotIndex, mode: 'replacement' })
 }
 </script>
+
+<style scoped>
+.main-operator-avatar { width: 32px; height: 32px; object-fit: cover; border-radius: 4px; margin-right: 6px; }
+.operator-pick-btn:has(.main-operator-avatar) { height: 40px; }
+</style>

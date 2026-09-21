@@ -24,6 +24,7 @@ export interface SmartRosterOptions {
   simulationSampleHours?: number
   enableDeepSearch?: boolean
   droneTarget?: 'gold' | 'exp' | 'trading' | 'none'
+  droneRoomId?: string
 }
 
 export interface SmartRosterProgress {
@@ -288,6 +289,7 @@ function* smartRosterSteps(
         outputMode: 'potential',
         runOrderMode: 'ideal',
         droneTarget,
+        droneRoomId: options.droneRoomId,
         seed,
       },
       operatorInventory: [...entries],
@@ -406,6 +408,7 @@ function* smartRosterSteps(
               outputMode: 'potential',
               runOrderMode: 'ideal',
               droneTarget,
+              droneRoomId: options.droneRoomId,
               seed,
             },
           },

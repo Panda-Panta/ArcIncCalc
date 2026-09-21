@@ -4,6 +4,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { createDefaultWorkspace } from '../../workbench/defaults'
 import SmartRosterConfigModal, {
   DEFAULT_CONFIG,
   STORAGE_KEY_SMART_ROSTER,
@@ -24,6 +25,7 @@ describe('SmartRosterConfigModal.vue', () => {
     return mount(SmartRosterConfigModal, {
       props: {
         open: true,
+        workspace: createDefaultWorkspace(),
         ...props,
       },
       attachTo: document.body,
@@ -66,7 +68,7 @@ describe('SmartRosterConfigModal.vue', () => {
     expect(Number(trialsInput.element.value)).toBe(DEFAULT_CONFIG.trials)
 
     const droneSelect = wrapper.find<HTMLSelectElement>('[data-test="drone-target-select"]')
-    expect(droneSelect.element.value).toBe('exp')
+    expect(droneSelect.element.value).toBe('room_2_1')
 
     const seedInput = wrapper.find<HTMLInputElement>('[data-test="seed-input"]')
     expect(Number(seedInput.element.value)).toBe(12345)
@@ -80,7 +82,7 @@ describe('SmartRosterConfigModal.vue', () => {
     expect(wrapper.find('[data-test="topk-input"]').attributes('disabled')).toBeDefined()
     await wrapper.find<HTMLInputElement>('[data-test="sample-hours-input"]').setValue(48)
     await wrapper.find<HTMLInputElement>('[data-test="enable-deep-search"]').setValue(false)
-    await wrapper.find<HTMLSelectElement>('[data-test="drone-target-select"]').setValue('trading')
+    await wrapper.find<HTMLSelectElement>('[data-test="drone-target-select"]').setValue('room_3_2')
     await wrapper.find<HTMLInputElement>('[data-test="seed-input"]').setValue(99999)
 
     await wrapper.find('[data-test="confirm-btn"]').trigger('click')
@@ -95,6 +97,7 @@ describe('SmartRosterConfigModal.vue', () => {
       simulationWarmupHours: 24,
       enableDeepSearch: false,
       droneTarget: 'trading',
+      droneRoomId: 'room_3_2',
       seed: 99999,
     })
 

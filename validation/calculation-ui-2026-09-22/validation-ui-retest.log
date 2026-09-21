@@ -1,0 +1,42 @@
+
+ RUN  v3.2.7 D:/Project/Arknights/ArcIncCalc - Codex
+
+ ✓ src/components/workbench/SmartRosterConfigModal.spec.ts (6 tests) 672ms
+   ✓ SmartRosterConfigModal.vue > renders modal content when open is true  325ms
+ ✓ src/components/workbench/CalculationFlow.spec.ts (5 tests) 3146ms
+   ✓ asks for drone settings before launching a cancellable background calculation  1058ms
+   ✓ cancels an active snapshot when the roster changes and reports worker failures without blocking fallback  481ms
+   ✓ estimates remaining time from real progress and resets timing on restart  672ms
+   ✓ shows a recoverable error when workers are unavailable instead of running on the UI thread  517ms
+   ✓ can ignore the current inventory and forwards the exact manufacturing room  416ms
+ ✓ src/components/workbench/CalculationConfigModal.spec.ts (2 tests) 381ms
+ ✓ src/simulator/potentialProduction.spec.ts (5 tests) 574ms
+ ✓ src/components/workbench/WorkbenchShell.spec.ts (23 tests) 71526ms
+   ✓ WorkbenchShell.vue and App primary entry integration > mounts App with only WorkbenchShell primary entry and no legacy dashboard/editor  938ms
+   ✓ WorkbenchShell.vue and App primary entry integration > renders complete Mower main roster UI as primary full page with all required components  574ms
+   ✓ WorkbenchShell.vue and App primary entry integration > holds and hands off the real BaseMap export DOM element to PlanToolbar  422ms
+   ✓ WorkbenchShell.vue and App primary entry integration > focuses and updates FacilityEditor when a room is selected in BaseMap or store  447ms
+   ✓ WorkbenchShell.vue and App primary entry integration > opens OperatorSelectModal in main mode and writes back selected operator to slot  515ms
+   ✓ WorkbenchShell.vue and App primary entry integration > opens OperatorSelectModal in replacement mode and writes back added replacement  480ms
+   ✓ WorkbenchShell.vue and App primary entry integration > handles validation focus event to select room and slot  503ms
+   ✓ WorkbenchShell.vue and App primary entry integration > handles validation focus event for policy keys without throwing  398ms
+   ✓ WorkbenchShell.vue and App primary entry integration > opens and closes GlobalReplaceModal and displays replaced status banner  685ms
+   ✓ WorkbenchShell.vue and App primary entry integration > guards against invalid calculation when validation has critical errors  459ms
+   ✓ WorkbenchShell.vue and App primary entry integration > displays compact results panel with actual report fields and refreshes on repeat calculation  1186ms
+   ✓ WorkbenchShell.vue and App primary entry integration > calculates with unlocked low-stage skills and clears stale results on a real failure  983ms
+   ✓ WorkbenchShell.vue and App primary entry integration > updates all views immediately on file import and clears stale calculation state on reset  956ms
+   ✓ WorkbenchShell.vue and App primary entry integration > preserves imported unknown fields and syncs workspace to localStorage  408ms
+   ✓ WorkbenchShell.vue and App primary entry integration > upgrades untouched legacy 4-gold default workspace in localStorage to 2-gold and 2-exp  421ms
+   ✓ WorkbenchShell.vue and App primary entry integration > wraps the fixed Mower board in a horizontal scroll container while keeping toolbar reachable  453ms
+   ✓ WorkbenchShell.vue and App primary entry integration > enforces removal of legacy body 1180px min-width and verifies local overflow containment  423ms
+   ✓ WorkbenchShell.vue and App primary entry integration > keeps the workspace unchanged when ordinary backups cannot be completed  9141ms
+   ✓ WorkbenchShell.vue and App primary entry integration > triggers smart roster generation, keeps user placed operators, and updates store  25466ms
+   ✓ WorkbenchShell.vue and App primary entry integration > aborts active roster generation worker and updates status message  338ms
+   ✓ WorkbenchShell.vue and App primary entry integration > switches between workbench and skills tab, displaying riic skills browser  413ms
+   ✓ WorkbenchShell.vue and App primary entry integration > runs a custom configuration successfully with ideal run orders  25897ms
+
+ Test Files  5 passed (5)
+      Tests  41 passed (41)
+   Start at  03:32:28
+   Duration  79.62s (transform 3.36s, setup 0ms, collect 15.51s, tests 76.30s, environment 5.68s, prepare 828ms)
+

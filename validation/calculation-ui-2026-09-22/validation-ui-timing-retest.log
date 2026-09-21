@@ -1,0 +1,16 @@
+
+ RUN  v3.2.7 D:/Project/Arknights/ArcIncCalc - Codex
+
+ ✓ src/optimizer/shiftRunContract.spec.ts (19 tests | 13 skipped) 49038ms
+   ✓ shift-run branch contract > generates executable runners plus ordinary backups at trade level 1  11144ms
+   ✓ shift-run branch contract > generates executable runners plus ordinary backups at trade level 2  10602ms
+   ✓ shift-run branch contract > generates executable runners plus ordinary backups at trade level 3  10573ms
+   ✓ shift-run branch contract > executes generated level 1 swaps, settlement and restoration  5217ms
+   ✓ shift-run branch contract > executes generated level 2 swaps, settlement and restoration  6140ms
+   ✓ shift-run branch contract > executes generated level 3 swaps, settlement and restoration  5362ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed | 13 skipped (19)
+   Start at  03:38:46
+   Duration  50.64s (transform 625ms, setup 0ms, collect 1.16s, tests 49.04s, environment 0ms, prepare 131ms)
+
