@@ -1,0 +1,29 @@
+{
+  "sourceDirectory": "C:/Users/Panda-Panta/Downloads/Mower Test",
+  "interpretation": "User confirmed these are long-term observations; raw observation timestamps are unavailable.",
+  "confirmedSettings": {"droneTarget":"exp","fiammettaFool":false,"restingThresholdRange":[0.65,0.7],"fiammettaTargets":["阿罗玛","砾","歌蕾蒂娅"],"extraIdleFillingRequired":false,"maxAutomaticWorkshopOperators":1},
+  "idealDuty": {"感知":0.79,"深海":0.62,"自动化":0.81,"红松":0.84,"苍苔棘刺":0.75},
+  "dailyColumns": ["date", "exp", "goldValue", "orderLmd", "tequilaGoldValue"],
+  "dailyRows": [
+    ["2025-12-29",23000,87000,75000,500],
+    ["2025-12-30",23000,87000,73000,2000],
+    ["2025-12-31",24000,86500,69000,2500],
+    ["2026-01-01",23000,87000,72500,2500],
+    ["2026-01-02",23000,87000,71500,1500],
+    ["2026-01-03",24000,86500,75000,1500],
+    ["2026-01-04",23000,88000,71500,2000],
+    ["2026-01-05",24000,86000,76000,1000]
+  ],
+  "sevenDayWindow": ["2025-12-30", "2026-01-05"],
+  "displayedSevenDayScoreWan": 10.89,
+  "orderMeanVisualRange": [2100,2200],
+  "orderMeanPrecision": "Approximate from unlabelled chart line; not an exact numeric oracle.",
+  "workPercent": {
+    "森蚺":81.5,"清流":80.67,"承曦格雷伊":80.81,"温蒂":80.81,"Lancet-2":100,
+    "焰尾":84.18,"薇薇安娜":84.09,"灰毫":83.91,"野鬃":83.98,"远牙":83.92,
+    "歌蕾蒂娅":61.95,"乌尔比安":79.23,"安哲拉":81.96,"幽灵鲨":81.82,"斯卡蒂":80.79,
+    "图耶":79.84,"黑键":80.14,"绮良":80.06,"鸿雪":80.05,"絮雨":80.01,"令":80.04,"槐琥":79.95,"迷迭香":79.97,
+    "褐果":100,"特克诺":100,"桃金娘":100,"夕":68.96,"苍苔":74.8,"引星棘刺":75.28,"阿罗玛":93.13,"菲亚梅塔":0,"斩业星熊":65.36
+  },
+  "workPercentDefinition": "Mower RecordPie.vue classifies each observed mood difference <= 0 as working, > 0 as resting. Fiammetta's pie is explicitly fixed at 0% working. This is not exact physical occupancy or productive duty."
+}

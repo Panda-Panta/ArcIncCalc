@@ -41,7 +41,7 @@ export function compileRosterSchedule(workspace: RosterWorkspace, options: Parti
   const rawConf = structuredClone(workspace.mainPlan.conf)
   const policies = structuredClone(rawConf) as MowerMainConf
   for (const key of LIST_POLICIES) policies[key] = (rawConf[key] ?? []).map(resolveOperatorCharId)
-  const knownPolicyKeys = new Set(['ling_xi', ...LIST_POLICIES])
+  const knownPolicyKeys = new Set(['ling_xi', 'free_blacklist', ...LIST_POLICIES])
   for (const key of Object.keys(rawConf)) if (!knownPolicyKeys.has(key)) diagnostics.push({ code: 'UNKNOWN_POLICY', severity: 'warning', path: `mainPlan.conf.${key}`, message: `保留但不执行未知策略 ${key}` })
 
   const operators: CompiledSchedule['operators'] = {}

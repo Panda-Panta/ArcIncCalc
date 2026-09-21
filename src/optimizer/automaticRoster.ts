@@ -1,3 +1,4 @@
+import { mainPlanOnly } from './mainPlanOnly'
 import {compileOperatorInventory,type OwnedOperatorInput} from '../domain/operatorInventory'
 import {compileRosterSchedule} from '../scheduler/compileRosterSchedule'
 import {isShiftRunOperator} from '../scheduler/scheduleAdapter'
@@ -35,6 +36,7 @@ function random(seed:number){let n=seed>>>0;return()=>{n=(n+0x6d2b79f5)>>>0;let 
 function shuffled<T>(items:readonly T[],next:()=>number):T[]{const result=[...items];for(let i=result.length-1;i>0;i--){const j=Math.floor(next()*(i+1));[result[i],result[j]]=[result[j]!,result[i]!]}return result}
 /** Bounded instantaneous screening. A complete draft is still conditional on dynamic rest simulation. */
 export function generateAutomaticRoster(base:RosterWorkspace,entries:readonly OwnedOperatorInput[],options:AutomaticRosterOptions={}):AutomaticRosterResult {
+ base=mainPlanOnly(base)
  const result:AutomaticRosterResult={status:'blocked',draft:null,diagnostics:[],trials:[],selectedTrial:null}
  const seed=options.seed??42,trials=options.trials??3,maxStates=options.maxStates??2000,mainDutyRatio=options.mainDutyRatio??.775
  const fail=(code:string,message:string)=>{result.diagnostics.push({code,message});return result}

@@ -72,6 +72,7 @@ function download(){
 <template>
  <details class="roster-draft" data-test="roster-draft-panel">
   <summary>组合排班草案</summary>
+  <p data-test="main-plan-only">自动生成只使用主表及普通候补，不带入副表；原始导入排班保持不变。</p>
   <p>选择成员和技能齐备的组合，在当前布局的空位中摆放，并尝试分配普通候补。原主班、原候补、已有分组和 Free 床位会保留。</p>
   <p v-if="!enabled">先在上方录入并启用干员库检查。</p>
   <label>生成方式<select v-model="generationMode" data-test="draft-mode"><option value="manual">手动选择组合</option><option value="automatic">空布局自动组队</option></select></label>

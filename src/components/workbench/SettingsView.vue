@@ -12,6 +12,8 @@ export interface SimulationSettings {
   seed: number
   droneTarget: 'gold' | 'exp' | 'trading' | 'none'
   droneTradingRoomId?: string
+  fiammettaFool?: boolean
+  restingThreshold?: number
 }
 
 const props = defineProps<{
@@ -53,6 +55,18 @@ function updateField<K extends keyof SimulationSettings>(key: K, val: Simulation
       </div>
 
       <div class="sim-controls-grid">
+        <label class="control-item">
+          <span class="control-label">菲亚防呆</span>
+          <select class="control-select" data-test="fiammetta-fool" :value="String(settings.fiammettaFool ?? true)" @change="updateField('fiammettaFool', ($event.target as HTMLSelectElement).value === 'true')">
+            <option value="true">开启（Mower 默认）</option>
+            <option value="false">关闭（允许最低心情候选兜底）</option>
+          </select>
+          <span class="control-hint">按作业要求设置；排班图片不包含这个全局选项。</span>
+        </label>
+        <label class="control-item">
+          <span class="control-label">休息阈值（%）</span>
+          <input class="control-input" data-test="resting-threshold" type="number" min="0" max="100" step="1" :value="(settings.restingThreshold ?? .65) * 100" @input="updateField('restingThreshold', Number(($event.target as HTMLInputElement).value) / 100)" />
+        </label>
         <!-- 采样天数 -->
         <label class="control-item">
           <span class="control-label">采样天数（天）</span>

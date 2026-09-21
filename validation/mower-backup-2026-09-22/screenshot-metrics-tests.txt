@@ -1,0 +1,8 @@
+RUN  v3.2.7 D:/Project/Arknights/ArcIncCalc - Codex
+
+ ✓ src/workbench/mowerReportMetrics.spec.ts (1 test) 36ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  01:59:25
+   Duration  495ms (transform 40ms, setup 0ms, collect 51ms, tests 36ms, environment 0ms, prepare 120ms)

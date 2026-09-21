@@ -1,0 +1,9 @@
+RUN  v3.2.7 D:/Project/Arknights/ArcIncCalc - Codex
+
+ ✓ src/scheduler/rosterRuntime.spec.ts (12 tests) 11ms
+ ✓ src/simulator/scheduleSimulation.spec.ts (14 tests) 249ms
+
+ Test Files  2 passed (2)
+      Tests  26 passed (26)
+   Start at  02:25:07
+   Duration  1.12s (transform 361ms, setup 0ms, collect 691ms, tests 261ms, environment 0ms, prepare 199ms)

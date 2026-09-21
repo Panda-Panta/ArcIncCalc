@@ -1,0 +1,15 @@
+RUN  v3.2.7 C:/Users/Panda-Panta/.codex/worktrees/mower-backup-support/ArcIncCalc - Codex
+
+ ✓ src/optimizer/automaticRoster.spec.ts (9 tests) 89990ms
+   ✓ bounded complete automatic roster drafts > builds complete 243 mains with unique backups and retains the source layout  7309ms
+   ✓ bounded complete automatic roster drafts > uses actual dorm residents rather than Free beds in every static projection  8064ms
+   ✓ bounded complete automatic roster drafts > is repeatable and selects the highest complete pair ranking score among trials  32755ms
+   ✓ bounded complete automatic roster drafts > preserves a learned cross-room group and its chosen backups after filling and optimization  14661ms
+   ✓ bounded complete automatic roster drafts > adapts to a 252 layout with two-seat trade and keeps fixed auxiliary occupants and Free  7151ms
+   ✓ bounded complete automatic roster drafts > builds from a reduced owned roster without borrowing missing or locked high-efficiency staff  12711ms
+   ✓ bounded complete automatic roster drafts > protects occupied output, control, and opaque policies without modifying the source  7242ms
+
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  01:47:35
+   Duration  91.12s (transform 370ms, setup 0ms, collect 691ms, tests 89.99s, environment 0ms, prepare 119ms)

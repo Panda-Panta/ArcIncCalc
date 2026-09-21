@@ -1,0 +1,53 @@
+RUN  v3.2.7 D:/Project/Arknights/ArcIncCalc - Codex
+
+ ✓ src/components/workbench/ScheduleSimulationPanel.spec.ts (12 tests) 810ms
+ ✓ src/scheduler/backupPlans.spec.ts (17 tests) 613ms
+   ✓ Mower backup source contract > does not mutate a compiled schedule across repeated simulations  532ms
+ ✓ src/simulator/idealRunOrder.spec.ts (4 tests) 224ms
+ ✓ src/scheduler/rosterRuntime.spec.ts (11 tests) 15ms
+ ✓ src/components/workbench/WorkbenchShell.spec.ts (23 tests) 62500ms
+   ✓ WorkbenchShell.vue and App primary entry integration > mounts App with only WorkbenchShell primary entry and no legacy dashboard/editor  879ms
+   ✓ WorkbenchShell.vue and App primary entry integration > renders complete Mower main roster UI as primary full page with all required components  611ms
+   ✓ WorkbenchShell.vue and App primary entry integration > holds and hands off the real BaseMap export DOM element to PlanToolbar  401ms
+   ✓ WorkbenchShell.vue and App primary entry integration > focuses and updates FacilityEditor when a room is selected in BaseMap or store  479ms
+   ✓ WorkbenchShell.vue and App primary entry integration > opens OperatorSelectModal in main mode and writes back selected operator to slot  520ms
+   ✓ WorkbenchShell.vue and App primary entry integration > opens OperatorSelectModal in replacement mode and writes back added replacement  494ms
+   ✓ WorkbenchShell.vue and App primary entry integration > handles validation focus event to select room and slot  458ms
+   ✓ WorkbenchShell.vue and App primary entry integration > handles validation focus event for policy keys without throwing  349ms
+   ✓ WorkbenchShell.vue and App primary entry integration > opens and closes GlobalReplaceModal and displays replaced status banner  468ms
+   ✓ WorkbenchShell.vue and App primary entry integration > guards against invalid calculation when validation has critical errors  359ms
+   ✓ WorkbenchShell.vue and App primary entry integration > displays compact results panel with actual report fields and refreshes on repeat calculation  885ms
+   ✓ WorkbenchShell.vue and App primary entry integration > calculates with unlocked low-stage skills and clears stale results on a real failure  762ms
+   ✓ WorkbenchShell.vue and App primary entry integration > updates all views immediately on file import and clears stale calculation state on reset  722ms
+   ✓ WorkbenchShell.vue and App primary entry integration > preserves imported unknown fields and syncs workspace to localStorage  327ms
+   ✓ WorkbenchShell.vue and App primary entry integration > upgrades untouched legacy 4-gold default workspace in localStorage to 2-gold and 2-exp  387ms
+   ✓ WorkbenchShell.vue and App primary entry integration > wraps the fixed Mower board in a horizontal scroll container while keeping toolbar reachable  310ms
+   ✓ WorkbenchShell.vue and App primary entry integration > enforces removal of legacy body 1180px min-width and verifies local overflow containment  321ms
+   ✓ WorkbenchShell.vue and App primary entry integration > keeps the workspace unchanged when ordinary backups cannot be completed  7426ms
+   ✓ WorkbenchShell.vue and App primary entry integration > triggers smart roster generation, keeps user placed operators, and updates store  21387ms
+   ✓ WorkbenchShell.vue and App primary entry integration > aborts active roster generation worker and updates status message  312ms
+   ✓ WorkbenchShell.vue and App primary entry integration > switches between workbench and skills tab, displaying riic skills browser  385ms
+   ✓ WorkbenchShell.vue and App primary entry integration > runs a custom configuration successfully with ideal run orders  24247ms
+
+ Test Files  5 passed (5)
+      Tests  67 passed (67)
+   Start at  02:03:18
+   Duration  70.45s (transform 3.53s, setup 0ms, collect 11.39s, tests 64.16s, environment 2.94s, prepare 691ms)
+
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 2897 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                        0.64 kB │ gzip:   0.42 kB
+dist/assets/candidateSimulationWorker-OX1zRhKB.js    846.77 kB
+dist/assets/calculationWorker-CVoz-cJR.js            868.73 kB
+dist/assets/smartRosterWorker-Bo5DUrtw.js            959.61 kB
+dist/assets/index-CVRzn6E5.css                        80.09 kB │ gzip:  14.69 kB
+dist/assets/index-CvhgciDF.js                      2,638.59 kB │ gzip: 650.65 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 16.95s

@@ -133,7 +133,7 @@ describe('bounded complete automatic roster drafts',()=>{
   const result=generateAutomaticRoster(createDefaultWorkspace(),allOwned.filter(o=>['砾','芬'].includes(o.operator)),{trials:1})
   expect(result.status).toBe('blocked');expect(result.draft).toBeNull()
  })
- it('protects occupied output, control, and opaque policies without modifying the source', async ({ annotate }) => {
+ it('protects occupied policies and generates a main-only draft without modifying imported backups', async ({ annotate }) => {
 
    await annotate('同步计算前确认测试进度已送达')
   for(const change of ['main','control','conf','metadata','backup','group'] as const){
@@ -145,10 +145,14 @@ describe('bounded complete automatic roster drafts',()=>{
    if(change==='backup')base.compatibility.backupPlans.push({custom:true})
    if(change==='group')base.mainPlan.facilities.room_1_1.slots[0]!.groupId='custom'
    const before=JSON.stringify(base)
-   expect(generateAutomaticRoster(base,allOwned,{trials:1}).status).toBe('blocked')
+   const result=generateAutomaticRoster(base,allOwned,{trials:1})
+   if(change==='backup'){
+    expect(result.status).toBe('draft')
+    expect(result.draft?.workspace?.compatibility.backupPlans).toEqual([])
+   }else expect(result.status).toBe('blocked')
    expect(JSON.stringify(base)).toBe(before)
   }
- })
+ },60000)
  it('rejects unsupported product, low-stage fixed support, and invalid options', async ({ annotate }) => {
 
    await annotate('同步计算前确认测试进度已送达')

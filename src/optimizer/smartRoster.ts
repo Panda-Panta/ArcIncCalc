@@ -1,3 +1,4 @@
+import { mainPlanOnly } from './mainPlanOnly'
 import { runOrderInventoryDiagnostics } from './configureRunOrder'
 import type { RosterWorkspace } from '../workbench/model'
 import { resolveOperatorCharId as resolveId } from '../workbench/compat/mowerJson'
@@ -148,6 +149,7 @@ function* smartRosterSteps(
   options: SmartRosterOptions = {},
   onProgress?: (p: SmartRosterProgress) => void,
 ): Generator<CandidateSimulationJob[], SmartRosterResult, CandidateSimulationResult[]> {
+ base = mainPlanOnly(base)
   const result: SmartRosterResult = {
     status: 'blocked',
     workspace: null,
@@ -236,6 +238,7 @@ function* smartRosterSteps(
   const uniqueCandidates: SmartRosterCandidate[] = []
   for (let bIdx = 0; bIdx < molecularBranches.length; bIdx++) {
     const branch = molecularBranches[bIdx]!
+    if (branch.workspace.compatibility.backupPlans.length) { result.diagnostics.push({ code: 'AUTOMATIC_BACKUP_PLANS_FORBIDDEN', message: '自动生成候选禁止携带副表' }); continue }
     const fp = workspaceFingerprint(branch.workspace)
     if (seenFingerprints.has(fp)) continue
     seenFingerprints.add(fp)
@@ -447,6 +450,10 @@ function* smartRosterSteps(
 
   // The exported roster must be the one whose score was evaluated. Never fill or rewrite
   // dormitories/auxiliary seats after simulation; molecular synthesis already prepares them.
+  if (finalWorkspace.compatibility.backupPlans.length) {
+    result.diagnostics.push({ code: 'AUTOMATIC_BACKUP_PLANS_FORBIDDEN', message: '自动生成结果禁止携带副表' })
+    return result
+  }
   const finalErrors = validatePhysicalRoster(finalWorkspace)
   if (finalErrors.length) {
     result.workspace = finalWorkspace

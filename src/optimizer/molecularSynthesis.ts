@@ -1,3 +1,4 @@
+import { mainPlanOnly } from './mainPlanOnly'
 import { isUnsupportedTradeOperator } from '../domain/shiftRunPolicy'
 import { configureRunOrder } from './configureRunOrder'
 import type { MowerFacilityType, MowerRoomId, RosterWorkspace } from '../workbench/model'
@@ -121,6 +122,7 @@ export function generateMolecularCandidates(
   inventory: OperatorInventory,
   options: SynthesisOptions = {},
 ): MolecularCandidate[] {
+ base = mainPlanOnly(base)
   const seed = options.seed ?? 42
   const branchCount = options.branchCount ?? 8
   const lockedPositions = options.lockedPositions ?? new Set<string>()

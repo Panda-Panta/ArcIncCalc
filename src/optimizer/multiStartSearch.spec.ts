@@ -18,7 +18,9 @@ it('validates independent random search parameters before simulating',()=>{
 })
 it('finds and independently revalidates a real control improvement without altering the layout or source',()=>{
  vi.spyOn(backup,'generateBackupNeighbors').mockReturnValue([])
- const input=request();input.options.sampleHours=24;const before=structuredClone(input)
+ // A 2% factory bonus needs enough completed-item observations to beat the
+ // step/seed envelope; a single day can legitimately have zero minimum gain.
+ const input=request();input.options.sampleHours=72;const before=structuredClone(input)
  const result=runRosterIncomeSearch(input)
  expect(result.candidates.some(c=>c.move?.kind==='control-main')).toBe(true)
  expect(result.validation?.status).toBe('passed');expect(result.bestCandidateId).not.toBeNull()
@@ -28,6 +30,15 @@ it('finds and independently revalidates a real control improvement without alter
  expect(result.validation!.candidates.find(c=>c.id===result.bestCandidateId)!.comparison.minGain).toBeGreaterThan(0)
  expect(input).toEqual(before)
  expect(result.bestWorkspace.mainPlan.facilities.central.slots[0]!.occupant).toEqual({kind:'operator',operatorId:id('凯尔希')})
+},60000)
+it('does not promote a one-day gain when completed-item granularity leaves a zero lower bound',()=>{
+ vi.spyOn(backup,'generateBackupNeighbors').mockReturnValue([])
+ const input=request();input.options.sampleHours=24
+ const result=runRosterIncomeSearch(input)
+ expect(result.validation?.status).toBe('no-improvement')
+ expect(result.bestCandidateId).toBeNull()
+ expect(result.bestWorkspace).toEqual(input.baseline)
+ expect(result.candidates.some(c=>c.comparison?.status==='unchanged' && c.comparison.minGain<=0)).toBe(true)
 },60000)
 it('uses a shared distinct-plan budget and reproduces search candidates with a fixed seed',()=>{
  const input={...request(),inventory:owned(['杜宾','阿米娅','凯尔希','Mon3tr','诗怀雅','调香师','砾']),maxCandidates:5}

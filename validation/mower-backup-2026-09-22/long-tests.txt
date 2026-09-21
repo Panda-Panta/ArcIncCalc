@@ -1,0 +1,13 @@
+RUN  v3.2.7 C:/Users/Panda-Panta/.codex/worktrees/mower-backup-support/ArcIncCalc - Codex
+
+ ✓ src/scheduler/backupPlans.spec.ts (17 tests) 401ms
+   ✓ Mower backup source contract > does not mutate a compiled schedule across repeated simulations  344ms
+ ✓ src/scheduler/backupPlans.long.spec.ts (3 tests) 42992ms
+   ✓ decodes the supplied image byte-for-data without losing any backup settings  402ms
+   ✓ executes real backups and production continuously for 24 hours  5087ms
+   ✓ executes real backups and production continuously for 168 hours  37502ms
+
+ Test Files  2 passed (2)
+      Tests  20 passed (20)
+   Start at  01:35:52
+   Duration  45.05s (transform 417ms, setup 0ms, collect 916ms, tests 43.39s, environment 0ms, prepare 234ms)

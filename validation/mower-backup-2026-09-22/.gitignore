@@ -1,0 +1,6 @@
+/*.json
+!roster.json
+!screenshot-observations.json
+!screenshot-comparison.json
+!parity-diagnosis.json
+/rosterRuntime-before-*.txt

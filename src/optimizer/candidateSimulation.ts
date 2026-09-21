@@ -19,6 +19,7 @@ export interface CandidateSimulationResult {
 }
 
 export function simulateCandidate(job: CandidateSimulationJob): CandidateSimulationResult {
+  if (job.workspace.compatibility.backupPlans.length) return { completed: false, simScore: 0, diagnostics: ['AUTOMATIC_BACKUP_PLANS_FORBIDDEN'] }
   const response = runScheduleSimulationBridge(job.workspace, job.options, job.assumptions)
   const report = response.report
   if (!report?.success || !report.production?.success) {

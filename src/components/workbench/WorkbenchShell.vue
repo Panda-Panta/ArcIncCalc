@@ -46,8 +46,15 @@ const defaultSimSettings: SimulationSettings = {
   seed: -1,
   droneTarget: 'gold',
   droneTradingRoomId: '',
+  fiammettaFool: true,
+  restingThreshold: .65,
 }
 const simSettings = ref<SimulationSettings>({ ...defaultSimSettings })
+watch(simSettings, value => {
+  if (typeof localStorage !== 'undefined') {
+    try { localStorage.setItem(SIM_SETTINGS_STORAGE_KEY, JSON.stringify(value)) } catch { /* storage unavailable */ }
+  }
+}, { deep: true })
 const simulationReport = shallowRef<ScheduleSimulationReport | null>(null)
 const isCalculating = ref(false)
 const isGeneratingRoster = ref(false)
@@ -419,6 +426,10 @@ function executeCalculation(): void {
 
     const options = {
       engine: 'simulation' as const,
+      simulationAssumptions: {
+        fiammettaFool: simSettings.value.fiammettaFool ?? true,
+        restingThreshold: simSettings.value.restingThreshold ?? .65,
+      },
       simulationOptions: {
         warmupHours: simSettings.value.warmupDays * 24,
         sampleHours: simSettings.value.sampleDays * 24,

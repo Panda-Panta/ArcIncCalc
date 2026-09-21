@@ -4,6 +4,7 @@ import type { AppConfig, CalculationReport, SummaryOutput } from '../domain/type
 import { createDefaultConfig } from '../domain/defaults'
 import { calculate } from '../engine/calculate'
 import { compileRosterSchedule } from '../scheduler/compileRosterSchedule'
+import type { SimulationAssumptions } from '../scheduler/types'
 import { compileMainPlanToAppConfig } from './adapter'
 import type { RosterWorkspace } from './model'
 import { validateRosterWorkspace, type ValidationResult } from './validate'
@@ -22,6 +23,7 @@ export interface CalculationBridgeOptions {
   engine?: CalculationEngineKind
   baseConfig?: AppConfig
   simulationOptions?: ScheduleSimulationOptions
+  simulationAssumptions?: Partial<SimulationAssumptions>
 }
 
 export interface CalculationBridgeResult {
@@ -169,7 +171,7 @@ export function runCalculationBridge(
           droneTarget: 'gold',
         },
       },
-      {},
+      options.simulationAssumptions ?? {},
       onProgress,
     )
 

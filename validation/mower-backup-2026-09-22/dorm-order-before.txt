@@ -1,0 +1,45 @@
+RUN  v3.2.7 D:/Project/Arknights/ArcIncCalc - Codex
+
+ ❯ src/scheduler/rosterRuntime.spec.ts (14 tests | 1 failed) 18ms
+   × event roster runtime > uses dorm bed order, not main-plan slot order, for the first high-priority return member 8ms
+     → expected 2 to be 4 // Object.is equality
+   ✓ event roster runtime > returns low-priority peers below the planning threshold when the high-priority member is ready 2ms
+   ✓ event roster runtime > does not schedule an empty return group for a permanent operator moved by a backup task 1ms
+   ✓ event roster runtime > does not let a full-morale passive group member return a still-tired producer 1ms
+   ✓ event roster runtime > does not force an under-recovered group back to work when an exhausted group needs a bed 1ms
+   ✓ event roster runtime > keeps recurring shifts when recovery and fatigue happen simultaneously 1ms
+   ✓ event roster runtime > reuses a recovered substitute and its bed at the same timestamp 0ms
+   ✓ event roster runtime > selects the next available candidate and reserves shared candidates atomically 0ms
+   ✓ event roster runtime > skips occupied candidates, fills an actual bed and returns at the upper limit 1ms
+   ✓ event roster runtime > does not manufacture recovery without a bed; permanent workers remain at zero 0ms
+   ✓ event roster runtime > assigns low priority to ordinary beds and enforces bounded monotonic long timelines 2ms
+   ✓ event roster runtime > terminates cleanly on zero-duration and sub-epsilon without infinite loop 0ms
+   ✓ event roster runtime > guarantees candidate uniqueness: no operator is ever in two places simultaneously 0ms
+   ✓ event roster runtime > preserves config immutability across runtime execution 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/scheduler/rosterRuntime.spec.ts > event roster runtime > uses dorm bed order, not main-plan slot order, for the first high-priority return member
+AssertionError: expected 2 to be 4 // Object.is equality
+
+- Expected
++ Received
+
+- 4
++ 2
+
+ ❯ src/scheduler/rosterRuntime.spec.ts:17:44
+     15|     // Mower scheduler_task.py: the first dorm needs 4 h, versus 2 h f…
+     16|     // the >1.5 h mismatch protects the first dorm's full recovery tim…
+     17|     expect(s.returnDeadlines?.['group:g']).toBe(4)
+       |                                            ^
+     18|   })
+     19|   it('returns low-priority peers below the planning threshold when the…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 13 passed (14)
+   Start at  02:44:17
+   Duration  578ms (transform 112ms, setup 0ms, collect 173ms, tests 18ms, environment 0ms, prepare 106ms)

@@ -153,6 +153,7 @@ export function compiledScheduleToRuntimeConfig(schedule: CompiledSchedule): Run
 
   return {
     idleOperators: schedule.assumptions.idleOperators,
+    freeBlacklist: Array.isArray(schedule.policies.free_blacklist) ? schedule.policies.free_blacklist.map(String).map(resolveOperatorCharId) : typeof schedule.policies.free_blacklist === 'string' ? schedule.policies.free_blacklist.split(',').filter(Boolean).map(resolveOperatorCharId) : [],
     mowerPolicy: { restingThreshold, rescueThreshold: schedule.assumptions.rescueThreshold ?? 0.75, taskBuffers: true, powerPlantCount: schedule.rooms.filter(r => r.type === 'power').length, opeRestingPriority: [...(schedule.policies.ope_resting_priority ?? [])] },
     positions,
     beds,

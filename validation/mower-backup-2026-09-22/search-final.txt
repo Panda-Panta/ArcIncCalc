@@ -1,0 +1,11 @@
+RUN  v3.2.7 D:/Project/Arknights/ArcIncCalc - Codex
+
+ ✓ src/optimizer/multiStartSearch.spec.ts (8 tests) 32819ms
+   ✓ finds and independently revalidates a real control improvement without altering the layout or source  21557ms
+   ✓ uses a shared distinct-plan budget and reproduces search candidates with a fixed seed  640ms
+   ✓ keeps the baseline when new-seed validation rejects the exploratory winner  10363ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  03:13:05
+   Duration  34.37s (transform 543ms, setup 0ms, collect 1000ms, tests 32.82s, environment 0ms, prepare 167ms)

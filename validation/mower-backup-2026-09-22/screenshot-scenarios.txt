@@ -1,0 +1,24 @@
+RUN  v3.2.7 D:/Project/Arknights/ArcIncCalc - Codex
+
+ ✓ src/scheduler/mowerScreenshotParity.spec.ts (1 test) 195885ms
+   ✓ records steady-window scenarios against the supplied screenshot observations  195883ms
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯⎯⎯ Unhandled Error ⎯⎯⎯⎯⎯⎯⎯
+Error: [vitest-worker]: Timeout calling "onTaskUpdate"
+ ❯ Object.onTimeoutError ../ArcIncCalc%20-%20Codex/node_modules/.pnpm/vitest@3.2.7_@types+node@26.4.0_jsdom@30.0.1_sass@1.104.0/node_modules/vitest/dist/chunks/rpc.-pEldfrD.js:53:10
+ ❯ Timeout._onTimeout ../ArcIncCalc%20-%20Codex/node_modules/.pnpm/vitest@3.2.7_@types+node@26.4.0_jsdom@30.0.1_sass@1.104.0/node_modules/vitest/dist/chunks/index.B521nVV-.js:59:62
+ ❯ listOnTimeout node:internal/timers:605:17
+ ❯ processTimers node:internal/timers:541:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+     Errors  1 error
+   Start at  01:54:34
+   Duration  196.97s (transform 343ms, setup 0ms, collect 661ms, tests 195.88s, environment 0ms, prepare 146ms)

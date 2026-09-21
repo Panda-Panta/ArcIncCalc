@@ -1,0 +1,16 @@
+RUN  v3.2.7 D:/Project/Arknights/ArcIncCalc - Codex
+
+ ✓ src/optimizer/mainPlanOnly.spec.ts (2 tests) 7933ms
+   ✓ generates only main-plan candidates without mutating the source  7930ms
+ ✓ src/scheduler/backupPlans.spec.ts (17 tests) 444ms
+   ✓ Mower backup source contract > does not mutate a compiled schedule across repeated simulations  382ms
+ ✓ src/simulator/scheduleSimulation.spec.ts (14 tests) 242ms
+ ✓ src/simulator/idealRunOrder.spec.ts (4 tests) 182ms
+ ✓ src/workbench/mowerReportMetrics.spec.ts (2 tests) 36ms
+ ✓ src/scheduler/rosterRuntime.spec.ts (14 tests) 13ms
+ ✓ src/scheduler/mowerTiming.spec.ts (3 tests) 2ms
+
+ Test Files  7 passed (7)
+      Tests  56 passed (56)
+   Start at  02:49:05
+   Duration  12.33s (transform 507ms, setup 0ms, collect 1.27s, tests 8.85s, environment 1ms, prepare 736ms)

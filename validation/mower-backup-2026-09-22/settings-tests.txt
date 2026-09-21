@@ -1,0 +1,11 @@
+RUN  v3.2.7 D:/Project/Arknights/ArcIncCalc - Codex
+
+ ✓ src/workbench/calculationBridge.spec.ts (7 tests) 282ms
+ ✓ src/components/workbench/CalculationFlow.spec.ts (4 tests) 1599ms
+   ✓ asks for drone settings before launching a cancellable background calculation  661ms
+   ✓ estimates remaining time from real progress and resets timing on restart  359ms
+
+ Test Files  2 passed (2)
+      Tests  11 passed (11)
+   Start at  02:16:38
+   Duration  9.77s (transform 2.21s, setup 0ms, collect 6.66s, tests 1.88s, environment 1.76s, prepare 263ms)

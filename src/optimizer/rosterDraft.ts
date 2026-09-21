@@ -1,3 +1,4 @@
+import { mainPlanOnly } from './mainPlanOnly'
 import {isUnsupportedTradeOperator} from '../domain/shiftRunPolicy'
 import {OPERATOR_MAP} from '../domain/operators'
 import {compileOperatorInventory,type OwnedOperatorInput,type OperatorInventory} from '../domain/operatorInventory'
@@ -97,6 +98,7 @@ function sameMembers(a:string[],b:string[]){return a.length===b.length&&a.every(
 
 /** Bounded physical placement plus ordinary backup matching. It does not rank efficiency. */
 export function generateRosterDraft(base:RosterWorkspace,entries:readonly OwnedOperatorInput[],candidateIds:readonly string[],options:{maxStates?:number}={}):RosterDraftResult {
+ base = mainPlanOnly(base)
  const result:RosterDraftResult={status:'blocked',workspace:null,placements:[],diagnostics:[],statesVisited:0,uncheckedConditions:[],restResources:{freeBeds:0,minimumFreeBedsForNewGroup:0,missingReplacementIds:[]}}
  const maxStates=options.maxStates??2000
  if(!Number.isSafeInteger(maxStates)||maxStates<1||maxStates>100000){result.diagnostics.push({code:'INVALID_BUDGET',message:'布局搜索预算须为1–100000的整数'});return result}
@@ -186,7 +188,6 @@ export function generateRosterDraft(base:RosterWorkspace,entries:readonly OwnedO
  const admission=validateScheduleInventory(compileRosterSchedule(draft),inventory)
  if(!admission.valid){result.diagnostics.push(...admission.diagnostics);return result}
  if(result.restResources.missingReplacementIds.length||result.restResources.freeBeds<result.restResources.minimumFreeBedsForNewGroup)result.diagnostics.push({code:'REST_RESOURCES_INCOMPLETE',message:'新增主班存在候补或Free床位不足；仅物理可放置，须补足并模拟工休'})
- if(base.compatibility.backupPlans.length)result.diagnostics.push({code:'BACKUP_PLANS_NOT_EXECUTED',message:'保留原备用计划；本草案的检查与模拟仅针对主排班'})
  result.diagnostics.push({code:'CONDITIONAL_DRAFT',message:'这是固定布局草案；普通候补按主替混班和跨站条件筛选，静态筛选不代表长期工休已验证'})
  result.status='draft';result.workspace=draft
  return result

@@ -1,3 +1,4 @@
+import { backupParticipants, createBackupPlanController } from '../scheduler/backupPlans'
 import { inventoryOperatorRecords, operatorFor, hasOperatorSkill } from '../domain/operatorContext'
 import {createProductionTimeline,type ProductionOptions,type ProductionReport,type ProductionFrame} from './productionTimeline'
 import {createDefaultConfig,createRoom} from '../domain/defaults'
@@ -87,6 +88,7 @@ export function projectScheduleState(schedule:CompiledSchedule,state:RuntimeStat
 
 /** Integrates rates over actual joint rosters. This reports efficiency and duty, not order/resource settlement. */
 export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimulationOptions={},onProgress?:(progress:ScheduleSimulationProgress)=>void):ScheduleSimulationReport {
+ schedule=structuredClone(schedule)
  const sampleHours=options.sampleHours??336,warmupHours=options.warmupHours??0,maxStepHours=options.maxStepHours??.25,maxEvents=options.maxEvents??200000
  const values={sampleHours,warmupHours,maxStepHours,maxEvents}
  for(const key of numericKeys)if(!Number.isFinite(values[key]) || (key==='warmupHours'?values[key]<0:values[key]<=0))throw new Error(`Invalid ${key}`)
@@ -103,6 +105,12 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
  const inventory=options.operatorInventory===undefined?undefined:compileOperatorInventory(options.operatorInventory)
  const operatorRecords=inventory?inventoryOperatorRecords(inventory):undefined
  if(inventory){
+  try {
+   const ids=backupParticipants(schedule.sourceWorkspace)
+   const owned=new Set(inventory.operators.map(op=>op.charId))
+   const missing=ids.filter(id=>!owned.has(id))
+   if(missing.length){diagnostic('BACKUP_INVENTORY_MISSING',missing.map(id=>OPERATOR_MAP.get(id)?.name??id).join('、'));return report}
+  } catch(error){diagnostic('INVALID_BACKUP_PLAN',String(error));return report}
   const admission=validateScheduleInventory(schedule,inventory,options.efficiencyResources)
   for(const d of admission.diagnostics)diagnostic(d.code,d.message)
   if(!admission.valid)return report
@@ -113,6 +121,7 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
  diagnostic('TIME_INTEGRATION_MODEL',`使用${warmupModel==='hourly'?'整小时':'连续'}暖机，最大步长 ${maxStepHours} h；复制取整等非线性效率采用区间中点数值积分，可缩小步长检查敏感性`)
  diagnostic('SINGLE_RECOVERY_TARGET_ASSUMPTION','单体恢复目标为显式模拟策略；多个合格目标时默认槽位顺序，并非已确认的游戏随机目标规则')
  let state:RuntimeState
+ let backups:ReturnType<typeof createBackupPlanController> | undefined
  try{
   const runtimeConfig=compiledScheduleToRuntimeConfig(schedule)
   // Ideal runners are virtual order modifiers. Keep explicit primary/idle placements,
@@ -120,12 +129,13 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
   if(options.production&&(options.production.runOrderMode??'ideal')==='ideal')runtimeConfig.runOrderPolicies=[]
   if(runtimeConfig.fiammetta&&!hasOperatorSkill({operatorRecords},runtimeConfig.fiammetta.operatorId,'dorm_exchangeAp[000]'))runtimeConfig.fiammetta=undefined
   state=createRosterRuntime(runtimeConfig)
+  backups=createBackupPlanController(schedule,state,{virtualRunners:!!options.production&&(options.production.runOrderMode??'ideal')==='ideal',canUseFiammetta:id=>hasOperatorSkill({operatorRecords},id,'dorm_exchangeAp[000]')})
  }catch(error){diagnostic('INVALID_RUNTIME',String(error));return report}
  const total=warmupHours+sampleHours,initial={...state.morale}
  const entered=new Map<string,{room:string;time:number}>()
  const refreshSessions=(newEvents:RuntimeEvent[]=[])=>{
   const reset=new Set(newEvents.filter(e=>e.type==='fiammetta').map(e=>e.operators[1]))
-  const working=new Map(state.config.positions.filter(p=>!p.dormitory).map(p=>[state.occupants[p.id]!,p.roomId]))
+  const working=new Map(state.config.positions.filter(p=>!p.dormitory&&state.occupants[p.id]).map(p=>[state.occupants[p.id]!,p.roomId]))
   for(const id of entered.keys())if(!working.has(id))entered.delete(id)
   for(const [id,room] of working)if(entered.get(id)?.room!==room||reset.has(id))entered.set(id,{room,time:state.time-(state.time===0&&!reset.has(id)?(options.initialWorkHours?.[id]??0):0)})
  }
@@ -141,8 +151,9 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
   deleteProperty(target,key){if(Object.prototype.hasOwnProperty.call(target,key))rateRevision++;return Reflect.deleteProperty(target,key)},
  })
  state.morale=trackRateMap(state.morale);state.occupants=trackRateMap(state.occupants);state.bedOccupants=trackRateMap(state.bedOccupants)
- let trackedMorale=state.morale,trackedOccupants=state.occupants,trackedBeds=state.bedOccupants
+ let trackedMorale=state.morale,trackedOccupants=state.occupants,trackedBeds=state.bedOccupants,trackedConfig=state.config
  const updateRates=()=>{
+  if(state.config!==trackedConfig){trackedConfig=state.config;rateRevision++}
   // Runtime replaces the bed map atomically after group reservations/reordering.
   if(state.morale!==trackedMorale){state.morale=trackedMorale=trackRateMap(state.morale);rateRevision++}
   if(state.occupants!==trackedOccupants){state.occupants=trackedOccupants=trackRateMap(state.occupants);rateRevision++}
@@ -166,7 +177,9 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
    const ids=c.facilityOperatorIds.dormitories[index]??[],targets=new Map<string,string>()
    for(const id of ids){
     const skill=operatorFor(c,id)?.skills.find(s=>s.roomType==='DORMITORY'&&s.description.includes('某个干员'))
-    const target=options.recoveryTargetByProvider?.[id]??ids.find(other=>(morale.get(other)??24)<24-EPS&&(!skill?.description.includes('除自身以外')||other!==id))
+    const target=options.recoveryTargetByProvider?.[id]??ids.find(other=>(morale.get(other)??24)<24-EPS
+      && !operatorFor(c,other)?.skills.some(s=>s.buffId==='dorm_recExcludeOther[000]')
+      &&(!skill?.description.includes('除自身以外')||other!==id))
     if(target)targets.set(id,target)
    }
    const recovery=evaluateDormitoryRecovery(c,index,morale,options.atmosphereByRoom?.[room.roomId]??(!schedule.assumptions.defaultsApplied.includes('dormAtmosphere')?schedule.assumptions.dormAtmosphere:room.level*1000),targets)
@@ -189,15 +202,30 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
  const deferrals:NonNullable<ScheduleSimulationReport['shiftDeferrals']>=[]
  const pendingDeferrals=new Map<string,typeof deferrals[number]>()
  const blockedMembers=new Map<string,string[]>()
- for(const p of state.config.positions.filter(p=>!p.dormitory&&!p.permanent)){
+ const refreshGroups=()=>{blockedMembers.clear(); for(const p of state.config.positions.filter(p=>!p.dormitory&&!p.permanent)){
   const key=p.group?`group:${p.group}`:`slot:${p.id}`
   blockedMembers.set(key,[...(blockedMembers.get(key)??[]),p.primary])
  }
- const settle=()=>{
+ }
+ refreshGroups()
+ let backupFailed=false
+ const settleUnsafe=()=>{
   // Capture each planning pass: a deduplicated message alone cannot prove
   // whether an already recovered group blocked again later.
   state.diagnostics=state.diagnostics.filter(d=>d.code!=='group-blocked')
-  const count=state.events.length;settleRoster(state,rates)
+  const count=state.events.length
+  const phase=(timing:Parameters<NonNullable<typeof backups>['evaluate']>[0])=>{
+   const changed=backups?.evaluate(timing)??false
+   if(changed){Object.assign(schedule,backups!.schedule);cachedRevision=-1;refreshGroups()}
+   return changed
+  }
+  phase('BEGINNING')
+  settleRoster(state,rates,0,phase)
+  let passes=0
+  while(phase('END')){
+   if(++passes>64)throw new Error('副表同刻任务链循环')
+   settleRoster(state,rates,0,phase)
+  }
   const events=state.events.slice(count)
   for(const [key,episode] of pendingDeferrals)if(events.some(e=>e.type==='shift-off'&&e.time>episode.blockedAt+EPS&&e.operators.length===episode.operatorIds.length&&episode.operatorIds.every(id=>e.operators.includes(id)))){
    episode.resolvedAt=state.time;pendingDeferrals.delete(key)
@@ -212,6 +240,10 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
   }
   refreshSessions(events);cachedRevision=-1
  }
+ const settle=()=>{
+  if(backupFailed)return
+  try{settleUnsafe()}catch(error){backupFailed=true;diagnostic('BACKUP_EXECUTION_FAILED',error instanceof Error?error.message:String(error))}
+ }
  const frameAt=(offset:number):ProductionFrame=>{
   const c=projectScheduleState(schedule,state);c.operatorRecords=operatorRecords;Object.assign(c.efficiencyResources,options.efficiencyResources)
   for(const id of Object.keys(c.operatorMorale))c.operatorMorale[id]=Math.max(0,Math.min(24,c.operatorMorale[id]!+moraleDerivative(state,id,rates)*offset))
@@ -224,9 +256,15 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
  }
  const efficiencies=(frame:ProductionFrame)=>Object.fromEntries(Object.entries(frame.evaluations).map(([id,r])=>[id,r.efficiencyPercent]))
  settle()
+ if(backupFailed)return report
  const production=options.production?createProductionTimeline(schedule,state,options.production,warmupHours,diagnostic,()=>{refreshSessions();cachedRevision=-1}):undefined
  production?.settle(()=>frameAt(0))
  let steps=0,lastProgress=-1,lastPhase=''
+ // Ideal order events cannot alter the morale clock. Keep its next boundary
+ // and endpoint independent of random production subdivisions; otherwise tiny
+ // summation differences eventually change discrete group/backup decisions.
+ const independentMoraleClock=!!production&&(options.production?.runOrderMode??'ideal')==='ideal'
+ let moraleStep:{end:number;morale:Record<string,number>;actionAt:number}|undefined
  const reportProgress=()=>{
   if(!onProgress)return
   const percent=Math.floor(state.time/total*100),phase=state.time<warmupHours-EPS?'warmup':'sampling'
@@ -235,13 +273,20 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
    onProgress({phase,elapsedHours:state.time,totalHours:total,warmupHours})
   }
  }
- while(state.time<total-EPS){
+ while(state.time<total-EPS&&!backupFailed){
   reportProgress()
   if(steps++>=maxEvents){diagnostic('SIMULATION_EVENT_LIMIT',`达到 ${maxEvents} 个积分区间，结果未完成`);break}
-  let action=production?.isRosterLocked()?Infinity:nextRosterActionHours(state,rates)
+  let action=moraleStep?moraleStep.actionAt-state.time:production?.isRosterLocked()?Infinity:nextRosterActionHours(state,rates)
   if(action<=EPS){settle();production?.settle(()=>frameAt(0));action=production?.isRosterLocked()?Infinity:nextRosterActionHours(state,rates);if(action<=EPS){diagnostic('SIMULATION_SAME_TIME_ACTION','同刻调度未能稳定，结果未完成');break}}
-  let dt=Math.min(maxStepHours,total-state.time,nextRosterEventHours(state,rates,!production?.isRosterLocked()),state.time<warmupHours-EPS?warmupHours-state.time:Infinity)
-  for(const [id,s] of entered)for(const boundary of getTemporalSkillBoundaries(id,{operatorRecords})){const delay=boundary+s.time-state.time;if(delay>EPS)dt=Math.min(dt,delay)}
+  let dt=moraleStep?moraleStep.end-state.time:Math.min(maxStepHours,total-state.time,nextRosterEventHours(state,rates,!production?.isRosterLocked()),state.time<warmupHours-EPS?warmupHours-state.time:Infinity)
+  if(!moraleStep)for(const [id,s] of entered)for(const boundary of getTemporalSkillBoundaries(id,{operatorRecords})){const delay=boundary+s.time-state.time;if(delay>EPS)dt=Math.min(dt,delay)}
+  if(independentMoraleClock&&!moraleStep){
+   const morale=Object.fromEntries(Object.entries(state.morale).map(([id,m])=>{
+    const value=Math.max(0,Math.min(24,m+moraleDerivative(state,id,rates)*dt))
+    return [id,value<=EPS?0:value>=24-EPS?24:value]
+   }))
+   moraleStep={end:state.time+dt,morale,actionAt:state.time+action}
+  }
   const frames=new Map<number,ProductionFrame>()
   const frame=(offset:number)=>{let value=frames.get(offset);if(!value){value=frameAt(offset);frames.set(offset,value)}return value}
   if(production)dt=production.nextStep(dt,frame)
@@ -259,7 +304,7 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
    }
    for(const [id,r] of roomStats){
     r.efficiencyPercentHours+=eff[id]!*dt
-    const ids=state.config.positions.filter(p=>p.roomId===id).map(p=>state.occupants[p.id]!).sort()
+    const ids=state.config.positions.filter(p=>p.roomId===id).map(p=>state.occupants[p.id]!).filter(Boolean).sort()
     if(ids.length)r.occupiedHours+=dt
     let team=r.teams.find(t=>JSON.stringify(t.operatorIds)===JSON.stringify(ids))
     if(!team){team={operatorIds:ids,hours:0,fraction:0};r.teams.push(team)}team.hours+=dt
@@ -269,10 +314,15 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
   }
   production?.advance(dt,frame(dt/2))
   advanceRoster(state,dt,rates)
+  if(moraleStep&&Math.abs(state.time-moraleStep.end)<=EPS){
+   state.time=moraleStep.end
+   Object.assign(state.morale,moraleStep.morale)
+   moraleStep=undefined
+  }
   production?.settle(()=>frameAt(0))
   if(Math.abs(dt-action)<=EPS&&!production?.isRosterLocked()){settle();production?.settle(()=>frameAt(0))}
  }
- report.elapsedHours=state.time;report.success=Math.abs(state.time-total)<EPS
+ report.elapsedHours=state.time;report.success=!backupFailed&&Math.abs(state.time-total)<EPS
  report.operators=[...stats.values()].map(s=>({...s,finalMorale:state.morale[s.operatorId]!,workFraction:report.observedHours?s.workHours/report.observedHours:0,workRestRatio:s.restHours>EPS?s.workHours/s.restHours:null}))
  report.rooms=[...roomStats.values()].map(r=>({...r,averageEfficiencyPercent:report.observedHours?r.efficiencyPercentHours/report.observedHours:0,teams:r.teams.map(t=>({...t,fraction:report.observedHours?t.hours/report.observedHours:0}))}))
  if(production){report.production=production.report();report.production.success&&=report.success}

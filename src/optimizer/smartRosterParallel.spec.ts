@@ -75,6 +75,25 @@ describe('parallel smart roster preserves serial semantics', () => {
     expect(base).toEqual(original)
     expect(progress.filter(p => p.phase === 'simulating').map(p => p.phaseProgress)).toEqual([0, 0.5, 1])
   })
+  it('isolates backup input in serial and parallel automatic generation', async () => {
+    const base=baseWorkspace()
+    base.compatibility.backupPlans=[{trigger:'True',name:'must not enter generation'}]
+    const original=structuredClone(base)
+    vi.spyOn(synthesis,'generateMolecularCandidates').mockImplementation(source=>{
+      expect(source.compatibility.backupPlans).toEqual([])
+      return candidates()
+    })
+    const serial=runSmartRoster(base,entries,options)
+    const parallel=await runSmartRosterParallel(base,entries,options,async jobs=>{
+      jobs.forEach(job=>expect(job.workspace.compatibility.backupPlans).toEqual([]))
+      return jobs.map(simulateCandidate)
+    })
+    expect(serial.status).toBe('draft')
+    expect(parallel.status).toBe('draft')
+    expect(serial.workspace!.compatibility.backupPlans).toEqual([])
+    expect(parallel.workspace!.compatibility.backupPlans).toEqual([])
+    expect(base).toEqual(original)
+  })
   it('never dispatches an incomplete candidate set', async () => {
     vi.spyOn(synthesis, 'generateMolecularCandidates').mockReturnValue([])
     const executor = vi.fn()

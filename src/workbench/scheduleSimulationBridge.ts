@@ -24,12 +24,6 @@ export function runScheduleSimulationBridge(
 
   try {
     const report = simulateSchedule(compileRosterSchedule(cleanWorkspace, cleanAssumptions), cleanOptions, onProgress)
-    if (cleanWorkspace.compatibility.backupPlans.length) {
-      report.diagnostics.push({
-        code: 'BACKUP_PLANS_NOT_EXECUTED',
-        message: '本报告仅执行主排班；备用计划及条件触发保留但不执行',
-      })
-    }
     return { report }
   } catch (error) {
     return {
