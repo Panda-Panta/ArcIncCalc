@@ -12,10 +12,16 @@ import {createDroneState,generateDrones,spendDrones} from './droneTimeline'
 import {MANUFACTURING_FORMULAS,startManufacturing,authorizeManufacturingBatch,advanceManufacturing,collectManufacturing,nextManufacturingEvent,updateManufacturingCapacity,type ManufacturingFormulaId,type ManufacturingState} from './manufacturingTimeline'
 import {prepareRunOrderSwap,type PreparedRunOrderSwap} from './mowerRunOrder'
 
+/** Reject legacy persisted/API options as well as typed callers. */
+export function assertRunOrderMode(mode: unknown): void {
+ if(mode==='natural')throw new Error('自然跑单已全面禁用，请使用理想跑单或显式无人机跑单')
+ if(mode!==undefined&&mode!=='ideal'&&mode!=='drone')throw new Error('Invalid run-order mode')
+}
+
 export interface ProductionOptions {
  outputMode?:'settled'|'potential'
  seed?:number;initialResources?:ResourceAmounts;collectionIntervalHours?:number
- runOrderMode?:'ideal'|'natural'|'drone';runOrderLeadSeconds?:number
+ runOrderMode?:'ideal'|'drone';runOrderLeadSeconds?:number
  droneTarget?:'gold'|'exp'|'none'|'trading';droneTradingRoomId?:string;droneRoomId?:string;droneReserve?:number
  fragmentFormulaByRoom?:Record<string,'fragment-orirock'|'fragment-device'>
 }
@@ -29,7 +35,7 @@ export interface ProductionReport {
  drones:ReturnType<typeof createDroneState>
  manufacturing:{roomId:string;product:string;completedItems:number;pendingItems:number;remainingBaseMinutes:number;blockedHours:number;blockedMaterialHours:number}[]
  trading:{roomId:string;completedOrders:number;collectedOrders:number;pendingOrders:CompletedOrder[];remainingBaseMinutes:number|null;blockedHours:number}[]
- events:ProductionEvent[];assumptions:{outputMode:'settled'|'potential';seed:number;runOrderMode:'ideal'|'natural'|'drone';runOrderLeadSeconds:number;droneTarget:'gold'|'exp'|'none'|'trading';droneRoomId?:string;droneReserve:number;collectionIntervalHours:number;orderSnapshotPolicy:string}
+ events:ProductionEvent[];assumptions:{outputMode:'settled'|'potential';seed:number;runOrderMode:'ideal'|'drone';runOrderLeadSeconds:number;droneTarget:'gold'|'exp'|'none'|'trading';droneRoomId?:string;droneReserve:number;collectionIntervalHours:number;orderSnapshotPolicy:string}
 }
 const EPS=1e-8
 const resources:ResourceKind[]=['gold','lmd','exp','fragment','orundum','drone','orirock','device']
@@ -42,10 +48,11 @@ function capture(frame:ProductionFrame,roomId:string):SpecialCapture {
 }
 /** Shares the roster clock. Only this controller owns inventories and immutable order snapshots. */
 export function createProductionTimeline(schedule:CompiledSchedule,state:RuntimeState,options:ProductionOptions,warmupHours:number,diagnostic:(code:string,message:string)=>void,onOccupancyChanged:()=>void){
+ assertRunOrderMode(options.runOrderMode)
  const outputMode=options.outputMode??'settled',potential=outputMode==='potential'
  if(!['settled','potential'].includes(outputMode))throw new Error('Invalid output mode')
- const seed=options.seed??1,mode=options.runOrderMode??'ideal',lead=mode==='ideal'?0:options.runOrderLeadSeconds??(mode==='natural'?15:180),target=options.droneTarget??'gold',reserve=options.droneReserve??20,interval=potential?0:options.collectionIntervalHours??schedule.assumptions.collectionIntervalHours
- if(!Number.isSafeInteger(seed)||seed<0||seed>0xffffffff||!['ideal','natural','drone'].includes(mode)||!['gold','exp','none','trading'].includes(target))throw new Error('Invalid production strategy/seed')
+ const seed=options.seed??1,mode=options.runOrderMode??'ideal',lead=mode==='ideal'?0:options.runOrderLeadSeconds??180,target=options.droneTarget??'gold',reserve=options.droneReserve??20,interval=potential?0:options.collectionIntervalHours??schedule.assumptions.collectionIntervalHours
+ if(!Number.isSafeInteger(seed)||seed<0||seed>0xffffffff||!['ideal','drone'].includes(mode)||!['gold','exp','none','trading'].includes(target))throw new Error('Invalid production strategy/seed')
  if(![lead,reserve,interval].every(x=>Number.isFinite(x)&&x>=0)||(mode!=='ideal'&&lead<=0)||!Number.isInteger(reserve)||reserve>=235)throw new Error('Invalid production timing/reserve')
  const initial={gold:schedule.assumptions.initialGold,fragment:schedule.assumptions.initialFragments,drone:schedule.assumptions.initialDrones,...options.initialResources,...(potential?{gold:0,fragment:0,lmd:0,exp:0,orundum:0,orirock:0,device:0}:{})}
  for(const k of Object.keys(initial))if(!resources.includes(k as ResourceKind))throw new Error(`Unknown initial resource ${k}`)
@@ -239,7 +246,7 @@ export function createProductionTimeline(schedule:CompiledSchedule,state:Runtime
    trading:[...trades.values()].map(t=>({roomId:t.roomId,completedOrders:t.completedOrders,collectedOrders:t.collectedOrders,pendingOrders:t.pending,remainingBaseMinutes:t.active?.remainingBaseMinutes??null,blockedHours:t.blockedHours}))})
   if(potential)diagnostic('POTENTIAL_OUTPUT_MODEL','直观产出模式：忽略赤金、原料、收取和存仓约束，完成即计产出；账本为测算辅助，不代表实际到账。无人机仍按所选策略及实际生成量使用。')
   if(mode==='ideal')diagnostic('IDEAL_RUN_ORDER_ASSUMPTIONS','理想跑单：按常驻阵容正常获取订单；完成瞬间应用已配置的但书/龙舌兰效果。不临时进驻、不等待、不消耗跑单干员心情或无人机，忽略跑单干员占位冲突；普通排班与订单资源规则仍保留。')
-  else diagnostic('PRODUCTION_TIMING_ASSUMPTIONS','生产按整数配方和固定种子抽单；基础单在开始抽取、特殊奖励在完成锁定为版本化假设。自然跑单前15秒是原阵容预测，换入后按临时阵容重新计时；等待期间暂缓普通调度。')
+  else diagnostic('PRODUCTION_TIMING_ASSUMPTIONS','生产按整数配方和固定种子抽单；基础单在开始抽取、特殊奖励在完成锁定为版本化假设。显式无人机跑单在提前窗口换人并消耗无人机完成订单；自然跑单已禁用。')
   diagnostic('DRONE_ALLOCATION_POLICY',`剩余无人机采用满仓时批量加速${options.droneRoomId&&target!=='none'?`设施(${options.droneRoomId})`:target==='gold'?'赤金':target==='exp'?'作战记录':target==='trading'?`贸易站(${options.droneTradingRoomId??'默认'})`:'关闭'}、保留 ${reserve} 架策略；此分配策略可调整，不代表用户 Mower 全局配置。`)
   if(mode!=='ideal')diagnostic('RUN_ORDER_SOURCE_BED_POLICY','跑单只恢复目标站原阵容；借用的 Free 床腾空，跑单人完成后闲置至正常宿舍填充，不自动恢复来源床位。')
   return {settle,nextStep,advance,report,isRosterLocked:()=>Boolean(run)}

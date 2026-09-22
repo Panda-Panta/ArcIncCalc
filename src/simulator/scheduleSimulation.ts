@@ -1,6 +1,6 @@
 import { backupParticipants, createBackupPlanController } from '../scheduler/backupPlans'
 import { inventoryOperatorRecords, operatorFor, hasOperatorSkill } from '../domain/operatorContext'
-import {createProductionTimeline,type ProductionOptions,type ProductionReport,type ProductionFrame} from './productionTimeline'
+import {createProductionTimeline,assertRunOrderMode,type ProductionOptions,type ProductionReport,type ProductionFrame} from './productionTimeline'
 import {createDefaultConfig,createRoom} from '../domain/defaults'
 import {OPERATOR_MAP} from '../domain/operators'
 import {compileOperatorInventory,type OwnedOperatorInput} from '../domain/operatorInventory'
@@ -88,6 +88,7 @@ export function projectScheduleState(schedule:CompiledSchedule,state:RuntimeStat
 
 /** Integrates rates over actual joint rosters. This reports efficiency and duty, not order/resource settlement. */
 export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimulationOptions={},onProgress?:(progress:ScheduleSimulationProgress)=>void):ScheduleSimulationReport {
+ if(options.production)assertRunOrderMode(options.production.runOrderMode)
  schedule=structuredClone(schedule)
  const sampleHours=options.sampleHours??336,warmupHours=options.warmupHours??0,maxStepHours=options.maxStepHours??.25,maxEvents=options.maxEvents??200000
  const values={sampleHours,warmupHours,maxStepHours,maxEvents}
@@ -130,6 +131,7 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
   if(runtimeConfig.fiammetta&&!hasOperatorSkill({operatorRecords},runtimeConfig.fiammetta.operatorId,'dorm_exchangeAp[000]'))runtimeConfig.fiammetta=undefined
   state=createRosterRuntime(runtimeConfig)
   backups=createBackupPlanController(schedule,state,{virtualRunners:!!options.production&&(options.production.runOrderMode??'ideal')==='ideal',canUseFiammetta:id=>hasOperatorSkill({operatorRecords},id,'dorm_exchangeAp[000]')})
+  for(const d of backups.diagnostics)diagnostic(d.code,d.message)
  }catch(error){diagnostic('INVALID_RUNTIME',String(error));return report}
  const total=warmupHours+sampleHours,initial={...state.morale}
  const entered=new Map<string,{room:string;time:number}>()

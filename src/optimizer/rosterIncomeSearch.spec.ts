@@ -109,7 +109,7 @@ describe('bounded ordinary backup income search',()=>{
   baseline.mainPlan.facilities.dormitory_1.slots[0]!.occupant={kind:'free'}
   const before=structuredClone(baseline)
   const r=runRosterIncomeSearch({baseline,inventory:owned(['断罪者','香草','Castle-3']),objective:'exp',maxCandidates:2,
-   options:{sampleHours:168,warmupHours:24,maxStepHours:.25,production:{seed:42,runOrderMode:'natural',droneTarget:'none'}},
+   options:{sampleHours:168,warmupHours:24,maxStepHours:.25,production:{seed:42,runOrderMode:'ideal',droneTarget:'none'}},
    assumptions:{idleOperators:[],restingThreshold:.65,operationDurationHours:0}})
   expect(r.bestCandidateId).toBe('candidate-1');expect(r.candidates[1]!.comparison!.status).toBe('improved')
   for(const base of r.baseline.cases){

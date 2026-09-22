@@ -76,7 +76,7 @@ Mower 排班 JSON 通常不表达本软件的 `droneTarget`。导入后若回退
 
 副表覆盖不能重置心情、时间、生产账本或将人复制到多个岗位。显式任务挤出休息人员时保留心情并候床，不创造床位；恢复截止时间必须覆盖全组成员。free_blacklist 过滤空闲填床，不禁止显式宿舍任务。
 
-当前白名单支持样本九副表使用的条件树、数字/布尔、and/or、比较、四则运算、is_working/is_resting/current_mood/current_room。未建模的表达式（例如 party_time）必须阻止完整模拟，不能静默忽略。本实现是零操作耗时模拟器内的副表适配，不等于 Mower 的设备任务/时间/识别行为复刻。
+条件解释器按本地 Mower logic_expression.py 的括号拼接语义，支持条件树及字段内文本表达式、数字/布尔/None、and/or/not、比较与链式比较、四则运算、is_working/is_resting/current_mood/current_room；例如 operator 为 >4 且右值为空时等价于 > 4，空条件不触发。按用户 2026-09-22 指令，包含 op_data.party_time 的整张副表跳过并输出 BACKUP_EXTERNAL_CONDITION_SKIPPED，不执行该副表岗位/策略/任务，也不把外部谓词改成 True；原始导入导出数据保留。其他未知生产条件仍阻断，不扩大为任意表达式执行。本实现是零操作耗时模拟器内的副表适配，不等于 Mower 的设备任务/时间/识别行为复刻。
 
 自动生成禁止副表：smartRoster、automaticRoster、molecularSynthesis、rosterDraft 在私有副本去掉副表；评分入口拒绝副表，最终输出再检查。普通 replacement 候补仍属于主表；原始导入工作区保持不变。
 
@@ -97,3 +97,10 @@ Mower RecordPie.vue 的工休比按相邻心情观测差分估计：下降或不
 理想跑单的订单随机种子不得改变轮班时钟。生产事件只能在既定心情区间内细分，区间终点使用独立预计算心情；不能让随机订单切步的累计误差改变副表/返岗。336小时双种子回归已从失败转为通过。内部12/18/20阈值不舍入；自然/无人机实际换人跑单仍使用原联动时钟。失败及修复证据见roster-seed-336-before.txt和roster-seed-336-clock.txt。
 
 最终840小时运行（168小时预热+672小时采样）的两个种子已验证：采样期1669个轮班事件一致（时间保留6位小数），所有干员工休时长和最终心情差小于1e-6；经验/赤金相同，订单随种子变化。见parity-diagnosis.json中的rosterSeedInvariant。
+
+
+## 2026-09-22 自然跑单禁用与本地源码对齐
+
+用户已全面禁止自然跑单，旧自然模式指令不再适用。生产选项只允许 ideal 或显式 drone；模拟引擎、直接生产入口、收益搜索与旧收益报告均拒绝 natural，不静默回退。界面保持理想跑单。普通订单随时间自然完成仍是生产基础过程，不等于已禁用的临时换人自然跑单策略。
+
+源码基准：C:/Users/Panda-Panta/Downloads/Compressed/arknights-mower-main/arknights_mower 下 utils/logic_expression.py、utils/operators.py、utils/plan.py、solvers/base_schedule.py。副表按原顺序叠加，Current 保留前一层岗位；列表策略稳定去重并集；触发时机门槛及仅 false→true 执行任务不变；不把副表 conf.ling_xi 误当列表覆盖（源码 merge_config 未覆盖此标量）。操作耗时仍为零，跳过外部条件的报告不代表完整 Mower 行为复刻。

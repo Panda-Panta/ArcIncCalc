@@ -1,3 +1,4 @@
+import {assertRunOrderMode} from '../simulator/productionTimeline'
 import {runMultiStartSearch,type MultiStartValidation} from './multiStartSearch'
 import {generateControlMainNeighbors,type ControlMainNeighbor} from './controlNeighborhood'
 import {generateProductionMainNeighbors,type ProductionMainNeighbor} from './primaryNeighborhood'
@@ -42,6 +43,7 @@ export interface IncomeSearchResult {
 }
 
 function normalize(request:IncomeSearchRequest):IncomeSearchSettings {
+ assertRunOrderMode(request.options?.production?.runOrderMode)
  const mode=request.mode??'single-pass',maxDepth=request.maxDepth??3
  if(!['single-pass','hill-climb','multi-start'].includes(mode)||!Number.isInteger(maxDepth)||maxDepth<1||maxDepth>8)throw new Error('搜索模式无效或深度不在 1–8 整数范围')
  const seed=request.options?.production?.seed??1,step=request.options?.maxStepHours??.25

@@ -7,11 +7,12 @@ import { compileRosterSchedule } from './compileRosterSchedule'
 import { compiledScheduleToRuntimeConfig } from './scheduleAdapter'
 import type { CompiledSchedule } from './types'
 import type { RuntimeState } from './rosterRuntime'
+import { compileBackupExpression } from './backupExpression'
+export { actualRoom } from './backupExpression'
 
 export const BACKUP_TIMINGS = { BEGINNING: 0, BEFORE_PLANNING: 300, AFTER_PLANNING: 600, END: 999 } as const
 export type BackupTiming = keyof typeof BACKUP_TIMINGS
-type Value = string | number | boolean
-type Expression = (state: RuntimeState) => Value
+type Expression = ReturnType<typeof compileBackupExpression>['evaluate']
 const lists = ['rest_in_full', 'exhaust_require', 'workaholic', 'resting_priority', 'free_blacklist', 'refresh_trading', 'refresh_drained', 'ope_resting_priority'] as const
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value)
 const fail = (message: string): never => { throw new Error(`副表：${message}`) }
@@ -19,73 +20,28 @@ function operator(value: unknown): string {
   if (typeof value !== 'string' || !OPERATOR_MAP.has(resolveId(value))) return fail(`未知干员 ${String(value)}`)
   return resolveId(value)
 }
-export function actualRoom(state: RuntimeState, id: string): string {
-  const position = state.config.positions.find(p => state.occupants[p.id] === id)
-  return position?.roomId ?? state.config.beds.find(b => state.bedOccupants[b.id] === id)?.roomId ?? ''
+export function evaluateBackupExpression(source: unknown, state: RuntimeState) {
+  return compileBackupExpression(source, new Set()).evaluate(state)
 }
-function expression(source: unknown, participants: Set<string>, depth = 0, budget = { nodes: 0 }): Expression {
-  if (depth > 32 || ++budget.nodes > 512) return fail('条件树超过限制')
-  if (typeof source === 'number' && Number.isFinite(source) || typeof source === 'boolean') return () => source as Value
-  if (typeof source === 'string') {
-    const text = source.trim()
-    if (/^(True|False)$/.test(text)) return () => text === 'True'
-    if (/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(text) && Number.isFinite(Number(text))) return () => Number(text)
-    const match = /^op_data\.operators\[['"]([^'"\[\]]+)['"]\]\.(is_resting\(\)|is_working\(\)|current_mood\(\)|current_room)$/.exec(text)
-    if (match) {
-      const id = operator(match[1]); participants.add(id)
-      return state => {
-        const room = actualRoom(state, id)
-        switch (match[2]) {
-          case 'is_resting()': return room.startsWith('dormitory_')
-          case 'is_working()': return !!room && !room.startsWith('dormitory_')
-          case 'current_room': return room
-          default: return state.morale[id] ?? fail(`缺少 ${match[1]} 的心情`)
-        }
-      }
-    }
-    if (/^(?:room_[1-3]_[1-3]|dormitory_[1-4]|central|meeting|factory|contact|train)$/.test(text)) return () => text
-    if (/^(['"])(?:room_[1-3]_[1-3]|dormitory_[1-4]|central|meeting|factory|contact|train|)\1$/.test(text)) return () => text.slice(1, -1)
-    return fail(`不支持的条件 ${text}`)
-  }
-  if (!record(source)) return fail('条件必须为表达式树')
-  const left = expression(source.left, participants, depth + 1, budget)
-  const op = source.operator ?? ''
-  if (op === '' && (source.right === '' || source.right === undefined)) return left
-  if (!['and', 'or', '==', '!=', '<', '<=', '>', '>=', '+', '-', '*', '/'].includes(String(op))) return fail(`不支持的运算符 ${String(op)}`)
-  const right = expression(source.right, participants, depth + 1, budget)
-  return state => {
-    const a = left(state)
-    if (op === 'and') return Boolean(a) && Boolean(right(state))
-    if (op === 'or') return Boolean(a) || Boolean(right(state))
-    const b = right(state)
-    if (op === '==') return a === b
-    if (op === '!=') return a !== b
-    if (typeof a !== 'number' || typeof b !== 'number') return fail('比较/算术运算需要数字')
-    if (op === '<') return a < b
-    if (op === '<=') return a <= b
-    if (op === '>') return a > b
-    if (op === '>=') return a >= b
-    const value = op === '+' ? a + b : op === '-' ? a - b : op === '*' ? a * b : a / b
-    if (!Number.isFinite(value)) return fail('条件运算结果不是有限数')
-    return value
-  }
-}
-export function evaluateBackupExpression(source: unknown, state: RuntimeState): Value {
-  return expression(source, new Set())(state)
-}
+export interface BackupDiagnostic { code: string; message: string }
 interface BackupPlan {
   name: string; timing: BackupTiming; condition: Expression
   slots: { room: MowerRoomId; index: number; agent: string; group: string | null; replacements: string[] }[]
   policies: Partial<Record<typeof lists[number], string[]>>
   task: Record<string, string[]>
 }
-function parsePlans(workspace: RosterWorkspace, participants: Set<string>): BackupPlan[] {
+function parsePlans(workspace: RosterWorkspace, participants: Set<string>, diagnostics: BackupDiagnostic[] = []): BackupPlan[] {
   const known = (value: unknown) => { const id = operator(value); participants.add(id); return id }
   return workspace.compatibility.backupPlans.map((raw, index) => {
     if (!record(raw)) return fail(`#${index + 1} 格式错误`)
     const name = typeof raw.name === 'string' ? raw.name : `#${index + 1}`
     try {
-      const condition = expression(raw.trigger, participants)
+      const compiledCondition = compileBackupExpression(raw.trigger, participants)
+      const condition = compiledCondition.evaluate
+      if (compiledCondition.skipped) {
+        diagnostics.push({ code: 'BACKUP_EXTERNAL_CONDITION_SKIPPED', message: `副表 ${name}（#${index + 1}）：跳过依赖 ${compiledCondition.skipped} 的整张副表；未执行其岗位、策略与任务` })
+        return { name, timing: 'AFTER_PLANNING' as const, condition, slots: [], policies: {}, task: {} }
+      }
       const timing = typeof raw.trigger_timing === 'string' ? raw.trigger_timing.toUpperCase() : ''
       const slots: BackupPlan['slots'] = [], task: BackupPlan['task'] = {}, policies: BackupPlan['policies'] = {}
       if (raw.plan !== undefined && !record(raw.plan) || raw.task !== undefined && !record(raw.task) || raw.conf !== undefined && !record(raw.conf)) fail('plan/task/conf 格式错误')
@@ -121,7 +77,8 @@ export function backupParticipants(workspace: RosterWorkspace): string[] {
 /** Keeps planned roles separate from physical occupancy; no morale/production reset. */
 export function createBackupPlanController(base: CompiledSchedule, state: RuntimeState, options: { virtualRunners?: boolean; canUseFiammetta?: (id: string) => boolean } = {}) {
   base = structuredClone(base)
-  const participants = new Set<string>(), plans = parsePlans(base.sourceWorkspace, participants)
+  const diagnostics: BackupDiagnostic[] = []
+  const participants = new Set<string>(), plans = parsePlans(base.sourceWorkspace, participants, diagnostics)
   const active = plans.map(() => false)
   for (const id of participants) state.morale[id] ??= base.assumptions.operatorMorale[id] ?? base.assumptions.initialMorale
   let effective = base
@@ -214,5 +171,5 @@ export function createBackupPlanController(base: CompiledSchedule, state: Runtim
     for (const task of taskEvents) state.events.push({ time: state.time, type: 'backup-task', operators: task.operators, backupIndex: task.index, backupName: plans[task.index]!.name, timing })
     return true
   }
-  return { active, evaluate, get schedule() { return effective }, count: plans.length }
+  return { active, evaluate, diagnostics, get schedule() { return effective }, count: plans.length }
 }
