@@ -15,7 +15,6 @@ import { compiledScheduleToRuntimeConfig, isShiftRunOperator } from '../schedule
 import { captureOrder, getOrderDistribution } from '../rules/orderRules'
 import { generateMolecularCandidates } from './molecularSynthesis'
 import { configureRunOrder } from './configureRunOrder'
-import { runSmartRoster } from './smartRoster'
 
 const owned = OPERATORS.map(o => ({ operator: o.name, elitePhase: o.rarity < 3 ? 0 : o.rarity === 3 ? 1 : 2, level: o.rarity < 3 ? 30 : o.rarity === 3 ? 55 : o.rarity === 4 ? 70 : o.rarity === 5 ? 80 : 90 }))
 
@@ -130,11 +129,14 @@ describe('shift-run branch contract', () => {
     expect(configureRunOrder(ws, inventory)).toBe(true)
     expect(ws.mainPlan.facilities.room_3_1.slots[0]!.replacements[0]).toBe(id('但书'))
   })
-  it('reports missing trained runners before evaluating ordinary-only candidates', async ({ annotate }) => {
+  it('configures only owned runners without blocking ordinary rosters', async ({ annotate }) => {
     await annotate('同步计算前确认测试进度已送达')
-    const result = runSmartRoster(createDefaultWorkspace(), owned.filter(o => o.operator !== '但书'), { enableDeepSearch: false })
-    expect(result.status).toBe('blocked')
-    expect(result.diagnostics.some(d => d.code === 'RUN_ORDER_OPERATOR_UNAVAILABLE')).toBe(true)
-    expect(result.phases.simulation).toBeNull()
+    const ws = createDefaultWorkspace()
+    const inventory = compileOperatorInventory(owned.filter(o => o.operator !== '但书'))
+    for (const room of Object.values(ws.mainPlan.facilities).filter(r=>r.type==='trading')) {
+      room.slots.forEach((s,i)=>{s.occupant={kind:'operator',operatorId:id(['芬','克洛丝','空爆'][i]!)}})
+    }
+    expect(configureRunOrder(ws,inventory)).toBe(true)
+    expect(ws.mainPlan.facilities.room_3_1.slots.flatMap(s=>s.replacements)).toEqual([id('龙舌兰')])
   }, 60000)
 })

@@ -208,7 +208,7 @@ export function assignBackups(draft:RosterWorkspace,inventory:OperatorInventory,
  const positions=ordinaryPositions.filter(p=>!draft.mainPlan.facilities[p.roomId].slots[p.slotIndex]!.replacements.some(id=>!isShiftRunOperator(id)))
  const roomTypes=new Map(Object.entries(CANDIDATE_FACILITY_TYPES).map(([game,type])=>[type,game]))
  roomTypes.set('factory', 'WORKSHOP')
- const pools=positions.map(p=>rankStaffingCandidates(draft,inventory,p,inventory.operators.filter(o=>(draft.mainPlan.facilities[p.roomId].type!=='trading'||!isUnsupportedTradeOperator(o.charId))&&o.matchesMaximumSkills&&!reserved.has(o.charId)&&!isShiftRunOperator(o.charId)&&o.name!=='菲亚梅塔'&&o.skills.some(s=>s.roomType===roomTypes.get(draft.mainPlan.facilities[p.roomId].type))).map(o=>o.charId),'backup',{completingReliefTeam:true}))
+ const pools=positions.map(p=>rankStaffingCandidates(draft,inventory,p,inventory.operators.filter(o=>(draft.mainPlan.facilities[p.roomId].type!=='trading'||!isUnsupportedTradeOperator(o.charId))&&!reserved.has(o.charId)&&!isShiftRunOperator(o.charId)&&o.name!=='菲亚梅塔'&&o.skills.some(s=>s.roomType===roomTypes.get(draft.mainPlan.facilities[p.roomId].type))).map(o=>o.charId),'backup',{completingReliefTeam:true}))
  // Bipartite augmentation avoids consuming a scarce multi-facility backup greedily.
  const owner=new Map<string,number>()
  function match(index:number,seen:Set<string>):boolean{
@@ -244,7 +244,7 @@ export function improveBackups(draft:RosterWorkspace,inventory:OperatorInventory
    const current=resolveId(slot.replacements[index]!)
    if(excluded.has(current))continue
    const reserved=new Set(Object.values(draft.mainPlan.facilities).flatMap(r=>r.slots.flatMap(s=>[...(s.occupant.kind==='operator'?[resolveId(s.occupant.operatorId)]:[]),...s.replacements.map(resolveId)])))
-   const pool=inventory.operators.filter(o=>o.matchesMaximumSkills&&!excluded.has(o.charId)&&!reserved.has(o.charId)&&!isShiftRunOperator(o.charId)&&o.name!=='菲亚梅塔'&&(room.type!=='trading'||!isUnsupportedTradeOperator(o.charId))&&o.skills.some(s=>s.roomType===roomTypes.get(room.type)))
+   const pool=inventory.operators.filter(o=>!excluded.has(o.charId)&&!reserved.has(o.charId)&&!isShiftRunOperator(o.charId)&&o.name!=='菲亚梅塔'&&(room.type!=='trading'||!isUnsupportedTradeOperator(o.charId))&&o.skills.some(s=>s.roomType===roomTypes.get(room.type)))
    const best=rankStaffingCandidates(draft,inventory,p,[current,...pool.map(o=>o.charId)],'backup')[0]
    if(best&&best!==current){slot.replacements[index]=best;changed=true}
    else if(!best&&(room.type==='manufacture'||room.type==='trading')){slot.replacements.splice(index,1);changed=true}

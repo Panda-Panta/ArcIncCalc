@@ -94,13 +94,21 @@ describe('parallel smart roster preserves serial semantics', () => {
     expect(parallel.workspace!.compatibility.backupPlans).toEqual([])
     expect(base).toEqual(original)
   })
-  it('never dispatches an incomplete candidate set', async () => {
+  it('never dispatches an empty candidate set', async () => {
     vi.spyOn(synthesis, 'generateMolecularCandidates').mockReturnValue([])
     const executor = vi.fn()
     const result = await runSmartRosterParallel(baseWorkspace(), entries, options, executor)
     expect(result.status).toBe('blocked')
-    expect(result.diagnostics.some(d => d.code === 'INSUFFICIENT_UNIQUE_BRANCHES')).toBe(true)
+    expect(result.diagnostics.some(d => d.code === 'INSUFFICIENT_STAFF')).toBe(true)
     expect(executor).not.toHaveBeenCalled()
+  })
+  it('simulates the available candidates when fewer than requested are distinct', async () => {
+    vi.spyOn(synthesis, 'generateMolecularCandidates').mockReturnValue(candidates().slice(0, 1))
+    const executor = vi.fn(async jobs => jobs.map(simulateCandidate))
+    const result = await runSmartRosterParallel(baseWorkspace(), entries, options, executor)
+    expect(result.status).toBe('draft')
+    expect(executor.mock.calls[0]![0]).toHaveLength(1)
+    expect(result.diagnostics.some(d => d.code === 'FEWER_DISTINCT_BRANCHES')).toBe(true)
   })
   it('rejects a missing result instead of ranking a partial batch', async () => {
     vi.spyOn(synthesis, 'generateMolecularCandidates').mockImplementation(candidates)

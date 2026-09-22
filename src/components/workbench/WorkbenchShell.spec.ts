@@ -586,7 +586,7 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
   })
 
   // 15. One-click smart roster generation with preserved user-locked operators
-  const INSUFFICIENT_TEST_OPS = [
+  const LIMITED_TEST_OPS = [
     '但书,2,80', '能天使,2,90', '德克萨斯,2,80', '拉普兰德,2,80', '巫恋,2,80', '龙舌兰,2,80', '柏喙,2,80',
     '砾,2,70', '芬,1,55', '克洛丝,1,55', '伊芙利特,2,90', '白面鸮,2,80', '红豆,1,55',
     '斑点,1,55', '卡达,2,70', '远山,1,60', '梅,2,70', '流星,1,60', '杰克,1,60',
@@ -603,17 +603,27 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
     `${o.name},${o.rarity < 3 ? 0 : o.rarity === 3 ? 1 : 2},${o.rarity < 3 ? 30 : o.rarity === 3 ? 55 : o.rarity === 4 ? 70 : o.rarity === 5 ? 80 : 90}`,
   )
 
-  it('keeps the workspace unchanged when ordinary backups cannot be completed', async ({ annotate }) => {
+  it('applies singleton fallback for a limited mixed-level pool', async ({ annotate }) => {
     await annotate('同步排班前确认测试进度已送达')
-    localStorage.setItem('arcinc-operator-inventory-v1', JSON.stringify({ enabled: true, text: INSUFFICIENT_TEST_OPS.join('\n') }))
+    localStorage.setItem('arcinc-operator-inventory-v1', JSON.stringify({ enabled: true, text: LIMITED_TEST_OPS.join('\n') }))
+    const vm = mountWithPinia(WorkbenchShell).vm as any
+    const original = JSON.stringify(vm.store.workspace)
+    vm.handleConfirmSmartRosterConfig({ seed: 42, branchCount: 1, enableDeepSearch: false })
+    await flushPromises()
+    expect(vm.replaceStatusMessage).toContain('排班成功')
+    expect(JSON.stringify(vm.store.workspace)).not.toBe(original)
+  }, 60000)
+
+  it('keeps the workspace unchanged when the owned pool truly lacks enough people', async () => {
+    localStorage.setItem('arcinc-operator-inventory-v1', JSON.stringify({ enabled: true, text: LIMITED_TEST_OPS.slice(0,5).join('\n') }))
     const vm = mountWithPinia(WorkbenchShell).vm as any
     const original = JSON.stringify(vm.store.workspace)
     vm.handleConfirmSmartRosterConfig({ seed: 42, branchCount: 1, enableDeepSearch: false })
     await flushPromises()
     expect(vm.replaceStatusMessage).toContain('未成功')
-    expect(vm.replaceStatusMessage).toContain('未启动模拟')
+    expect(vm.replaceStatusMessage).toContain('主班与独立替补')
     expect(JSON.stringify(vm.store.workspace)).toBe(original)
-  }, 60000)
+  },60000)
 
   it('triggers smart roster generation, keeps user placed operators, and updates store', async ({ annotate }) => {
     await annotate('同步排班前确认测试进度已送达')

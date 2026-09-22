@@ -28,7 +28,7 @@
           <div class="field-item">
             <label for="trials-input">
               <span>有效分支数</span>
-              <small class="field-tip">先生成 10 套不同且通过布局校验的方案</small>
+              <small class="field-tip">最多生成 10 套方案；组合不足时使用实际练度散件</small>
             </label>
             <input
               id="trials-input"
@@ -69,7 +69,7 @@
           <div class="field-item">
             <label for="topk-input">
               <span>进入仿真的分支数</span>
-              <small class="field-tip">全部 10 套进入模拟，不截取前几套</small>
+              <small class="field-tip">全部有效方案进入模拟，不足 10 套也可继续</small>
             </label>
             <input
               id="topk-input"

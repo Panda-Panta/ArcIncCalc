@@ -182,8 +182,7 @@ function* smartRosterSteps(
 
   const runOrderErrors = runOrderInventoryDiagnostics(base, inventory)
   if (runOrderErrors.length) {
-    result.diagnostics.push(...runOrderErrors)
-    return result
+    result.diagnostics.push({code:'RUN_ORDER_PARTIAL',message:'未持有部分跑单干员，按实际持有技能生成排班，未具备的跑单收益不计入。'})
   }
 
   const basePhysicalErrors = validatePhysicalRoster(base)
@@ -261,10 +260,11 @@ function* smartRosterSteps(
     })
   }
 
-  if (uniqueCandidates.length < branchCount) {
-    result.diagnostics.push({ code: 'INSUFFICIENT_UNIQUE_BRANCHES', message: `仅生成 ${uniqueCandidates.length}/${branchCount} 个不同且无布局冲突的分支，未启动模拟。请检查持有干员与锁定工位。` })
+  if (uniqueCandidates.length === 0) {
+    result.diagnostics.push({ code: 'INSUFFICIENT_STAFF', message: '组合和实际练度散件均无法补齐当前布局的主班与独立替补。请增加持有干员、减少工作工位，或检查锁定人员及替补占用。' })
     return result
   }
+  if (uniqueCandidates.length < branchCount) result.diagnostics.push({code:'FEWER_DISTINCT_BRANCHES',message:`生成 ${uniqueCandidates.length}/${branchCount} 个有效候选，使用全部现有候选继续模拟。`})
 
   // ==========================================
   // Phase 2: Dynamic Simulation Verification (1+3 Days, 82 Formula)
