@@ -1,12 +1,16 @@
 {
-  "name": "arknights-arc-income-calculator",
+  "name": "riic-calculator",
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Panda-Panta/R.I.I.C-Calculator.git"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "build:desktop": "npm run build && dotnet publish desktop/ArcIncCalc.Desktop.csproj -c Release -r win-x64 --self-contained true -o release/ArcIncCalc",
+    "build:desktop": "npm run build && dotnet publish desktop/R.I.I.C-Calculator.Desktop.csproj -c Release -r win-x64 --self-contained true -o release/R.I.I.C-Calculator",
     "pack": "powershell -ExecutionPolicy Bypass -File scripts/pack-release.ps1",
     "sync:tools": "powershell -ExecutionPolicy Bypass -File scripts/sync-tools.ps1",
     "audit:data": "node scripts/audit-riic-data.mjs",

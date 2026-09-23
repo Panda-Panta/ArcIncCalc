@@ -6,7 +6,7 @@ using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 
-namespace ArcIncCalc.Desktop;
+namespace RIIC_Calculator.Desktop;
 
 public class MainForm : Form
 {
@@ -60,7 +60,7 @@ public class MainForm : Form
             else
             {
                 MessageBox.Show(
-                    $"未能在以下路径找到前端资源目录 (dist)：\n{distPath}\n\n请确保解压整合包后，dist 文件夹与 ArcIncCalc.exe 处于同一目录！",
+                    $"未能在以下路径找到前端资源目录 (dist)：\n{distPath}\n\n请确保解压整合包后，dist 文件夹与 R.I.I.C-Calculator.exe 处于同一目录！",
                     "启动失败 - 找不到资源目录",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error
@@ -73,7 +73,7 @@ public class MainForm : Form
         {
             string userDataFolder = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "ArcIncCalc",
+                "R.I.I.C-Calculator",
                 "WebView2Data"
             );
             Directory.CreateDirectory(userDataFolder);
@@ -87,12 +87,12 @@ public class MainForm : Form
 
             // Map local dist directory to virtual host
             _webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                "app.arcinc",
+                "app.riic",
                 distPath,
                 CoreWebView2HostResourceAccessKind.Allow
             );
 
-            _webView.CoreWebView2.Navigate("https://app.arcinc/index.html");
+            _webView.CoreWebView2.Navigate("https://app.riic/index.html");
         }
         catch (Exception ex)
         {
