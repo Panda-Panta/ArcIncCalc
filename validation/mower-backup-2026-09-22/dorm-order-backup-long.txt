@@ -1,0 +1,11 @@
+RUN  v3.2.7 D:/Project/Arknights/ArcIncCalc - Codex
+
+ ✓ src/scheduler/backupPlans.long.spec.ts (3 tests) 43784ms
+   ✓ decodes the supplied image byte-for-data without losing any backup settings  394ms
+   ✓ executes real backups and production continuously for 24 hours  5520ms
+   ✓ executes real backups and production continuously for 168 hours  37867ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  02:50:11
+   Duration  44.94s (transform 331ms, setup 0ms, collect 704ms, tests 43.78s, environment 0ms, prepare 107ms)

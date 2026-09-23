@@ -96,6 +96,13 @@ const number=(n:number)=>n.toLocaleString('zh-CN',{maximumFractionDigits:2})
   <template v-if="report">
    <p class="simulation-note">正在查看：{{reportBasis}}</p>
    <p role="status">{{report.success?'模拟窗口已完成':'模拟未完成'}} · 实际采样 {{number(report.observedHours/24)}} 天 <button type="button" @click="download">导出明细 JSON</button></p>
+   <details v-if="(report.events??[]).some(e=>e.type==='backup-plan')" data-test="backup-plan-events">
+    <summary>副表切换记录（{{(report.events??[]).filter(e=>e.type==='backup-plan').length}} 次）</summary>
+    <p>按实际心情和位置判断条件；下表显示采样期间的切换。完整任务记录可导出明细 JSON。</p>
+    <table><thead><tr><th>模拟小时</th><th>副表</th><th>状态</th><th>阶段</th></tr></thead><tbody>
+     <tr v-for="(event,index) in (report.events??[]).filter(e=>e.type==='backup-plan')" :key="index"><td>{{number(event.time)}}</td><td>{{event.backupName}}</td><td>{{event.active?'启用':'退出'}}</td><td>{{event.timing}}</td></tr>
+    </tbody></table>
+   </details>
    <section v-if="report.production" aria-label="采样产出与库存" class="production-results">
     <p :class="{'simulation-error':!report.production.success}" data-test="production-status">{{report.production.success?'产出策略已完整执行':'产出策略未完整执行'}}<span v-if="!report.production.success">，原因见下方假设与待核实项。</span></p>
     <template v-if="report.production.assumptions?.outputMode==='potential'&&completedOutput">

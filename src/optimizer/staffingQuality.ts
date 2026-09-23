@@ -87,7 +87,7 @@ function quality(config: AppConfig): Quality {
 export function rankStaffingCandidates(
   workspace: RosterWorkspace, inventory: OperatorInventory, position: StaffingPosition,
   candidates: readonly string[], role: 'main' | 'backup',
-  options: { completingReliefTeam?: boolean } = {},
+  options: { completingReliefTeam?: boolean; allowNeutral?: boolean } = {},
 ): string[] {
   const type = workspace.mainPlan.facilities[position.roomId].type
   const production = type === 'manufacture' || type === 'trading'
@@ -100,9 +100,10 @@ export function rankStaffingCandidates(
     const context = contexts[0]
     if (!context) return []
     const allowed = new Set(productionSingletonNames(workspace, position.roomId).map(resolveId))
-    const owned = new Set(inventory.operators.filter(o => o.matchesMaximumSkills).map(o => o.charId))
+    const owned = new Set(inventory.operators.map(o => o.charId))
+    const neutral = (id: string) => options.allowNeutral && !records[id]?.skills.some(s => s.roomType === (type === 'manufacture' ? 'MANUFACTURE' : 'TRADING'))
     return [...new Set(candidates.map(resolveId))].filter(id => owned.has(id) &&
-      (allowed.has(id) || isSelfOnlyProductionFallback(records[id]?.skills ?? [], type))).flatMap(id => {
+      (allowed.has(id) || isSelfOnlyProductionFallback(records[id]?.skills ?? [], type) || neutral(id))).flatMap(id => {
       const config: AppConfig = structuredClone(context.config)
       config.operatorRecords = records
       insertOperator(config, workspace, position, context.insertionIndex, id)
@@ -115,8 +116,8 @@ export function rankStaffingCandidates(
         const cleared = room.operatorIds.some(other => records[other]?.skills.some(s => s.buffId === 'trade_ord_vodfox[000]'))
         if (!cleared) efficiency = Math.max(0, workspace.mainPlan.facilities[position.roomId].slots.filter(s => s.occupant.kind === 'operator').length - 1) * 20
       }
-      return efficiency !== undefined && efficiency > 0 ? [{ id, efficiency, preferred: allowed.has(id) }] : []
-    }).sort((a, b) => Number(b.preferred) - Number(a.preferred) || b.efficiency - a.efficiency).map(item => item.id)
+      return efficiency !== undefined && (efficiency > 0 || options.allowNeutral && efficiency === 0) ? [{ id, efficiency, preferred: allowed.has(id) }] : []
+    }).sort((a, b) => Number(b.efficiency > 0) - Number(a.efficiency > 0) || Number(b.preferred) - Number(a.preferred) || b.efficiency - a.efficiency).map(item => item.id)
   }
   if (!contexts.length) return [...candidates]
   const baselines = contexts.map(({ config }) => { config.operatorRecords = records; return quality(config) })

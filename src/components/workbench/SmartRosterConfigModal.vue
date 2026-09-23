@@ -28,7 +28,7 @@
           <div class="field-item">
             <label for="trials-input">
               <span>有效分支数</span>
-              <small class="field-tip">先生成 10 套不同且通过布局校验的方案</small>
+              <small class="field-tip">最多生成 10 套方案；组合不足时使用实际练度散件</small>
             </label>
             <input
               id="trials-input"
@@ -69,7 +69,7 @@
           <div class="field-item">
             <label for="topk-input">
               <span>进入仿真的分支数</span>
-              <small class="field-tip">全部 10 套进入模拟，不截取前几套</small>
+              <small class="field-tip">全部有效方案进入模拟，不足 10 套也可继续</small>
             </label>
             <input
               id="topk-input"
@@ -131,19 +131,17 @@
         <div class="field-row">
           <div class="field-item">
             <label for="drone-target-select">
-              <span>无人机加速倾向</span>
-              <small class="field-tip">仿真与微调中的无人机默认消耗方向</small>
+              <span>无人机加速目标</span>
+              <small class="field-tip">选择本次仿真与微调使用的具体设施</small>
             </label>
             <select
               id="drone-target-select"
-              v-model="form.droneTarget"
+              v-model="selectedRoom"
               class="mower-select-input"
               data-test="drone-target-select"
             >
-              <option value="gold">制造站：赤金加速</option>
-              <option value="exp">制造站：中级作战记录加速</option>
-              <option value="trading">贸易站：订单获取加速</option>
               <option value="none">不使用无人机加速</option>
+              <option v-for="facility in facilities" :key="facility.roomId" :value="facility.roomId">{{ facility.label }}</option>
             </select>
           </div>
           <div class="field-item">
@@ -209,6 +207,7 @@ export interface SmartRosterConfig {
   simulationWarmupHours: number
   enableDeepSearch: boolean
   droneTarget: 'gold' | 'exp' | 'trading' | 'none'
+  droneRoomId?: string
   seed: number
 }
 
@@ -227,11 +226,14 @@ export const DEFAULT_CONFIG: SmartRosterConfig = {
 </script>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { NButton, NModal } from 'naive-ui'
+import { droneFacilities } from '../../workbench/droneTargets'
+import type { RosterWorkspace } from '../../workbench/model'
 
 const props = withDefaults(
   defineProps<{
+    workspace?: RosterWorkspace
     open?: boolean
     visible?: boolean
     to?: string | HTMLElement | undefined
@@ -253,6 +255,14 @@ const emit = defineEmits<{
 }>()
 
 const isOpen = ref(false)
+const selectedRoom = ref('none')
+const facilities = computed(() => props.workspace ? droneFacilities(props.workspace) : [])
+function restoreRoom() {
+  selectedRoom.value = form.value.droneTarget === 'none' ? 'none' :
+    facilities.value.find(f => f.roomId === form.value.droneRoomId)?.roomId ??
+    (form.value.droneRoomId ? 'none' : facilities.value.find(f => f.target === form.value.droneTarget)?.roomId ?? 'none')
+}
+
 
 const loadPersistedConfig = (): SmartRosterConfig => {
   try {
@@ -267,6 +277,7 @@ const loadPersistedConfig = (): SmartRosterConfig => {
         simulationWarmupHours: Math.max(6, Math.min(48, Number(parsed.simulationWarmupHours) || DEFAULT_CONFIG.simulationWarmupHours)),
         enableDeepSearch: parsed.enableDeepSearch !== undefined ? Boolean(parsed.enableDeepSearch) : DEFAULT_CONFIG.enableDeepSearch,
         droneTarget: ['gold', 'exp', 'trading', 'none'].includes(parsed.droneTarget) ? parsed.droneTarget : props.initialDroneTarget,
+        droneRoomId: typeof parsed.droneRoomId === 'string' ? parsed.droneRoomId : '',
         seed: Number.isInteger(parsed.seed) ? parsed.seed : props.initialSeed,
       }
     }
@@ -288,6 +299,7 @@ watch(
     isOpen.value = val
     if (val) {
       form.value = loadPersistedConfig()
+      restoreRoom()
     }
   },
   { immediate: true },
@@ -312,6 +324,7 @@ const handleReset = () => {
     seed: props.initialSeed,
   }
   try {
+    restoreRoom()
     localStorage.removeItem(STORAGE_KEY_SMART_ROSTER)
   } catch {
     // ignore
@@ -327,7 +340,8 @@ const handleConfirm = () => {
     simulationSampleHours: Math.max(24, Math.min(168, Math.floor(form.value.simulationSampleHours) || 24)),
     simulationWarmupHours: Math.max(6, Math.min(48, Math.floor(form.value.simulationWarmupHours) || 6)),
     enableDeepSearch: Boolean(form.value.enableDeepSearch),
-    droneTarget: form.value.droneTarget,
+    droneTarget: facilities.value.find(f => f.roomId === selectedRoom.value)?.target ?? 'none',
+    droneRoomId: selectedRoom.value === 'none' ? '' : selectedRoom.value,
     seed: Number.isInteger(form.value.seed) ? form.value.seed : -1,
   }
 

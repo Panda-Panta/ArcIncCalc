@@ -44,7 +44,7 @@ describe('complete branch admission before any simulation',()=>{
   try{
    const result=runSmartRoster(createDefaultWorkspace(),owned,{enableDeepSearch:false})
    expect(result.status).toBe('blocked')
-   expect(result.diagnostics.some(d=>d.code==='INSUFFICIENT_UNIQUE_BRANCHES')).toBe(true)
+   expect(result.diagnostics.some(d=>d.code==='INSUFFICIENT_STAFF')).toBe(true)
    expect(runScheduleSimulationBridge).not.toHaveBeenCalled()
   }finally{spy.mockRestore()}
  },120000)

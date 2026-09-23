@@ -1,3 +1,4 @@
+import type { BackupTiming } from './backupPlans'
 import { mowerReturnDelay, mowerRescueDelay } from './mowerTiming'
 import { applyFiammetta, type FiammettaPolicy } from './fiammettaPolicy'
 import type { RunOrderPolicy } from './types'
@@ -15,16 +16,19 @@ export interface RuntimeConfig {
   positions: RuntimePosition[]; beds: RuntimeBed[]; initialMorale?: Record<string, number>
   fiammetta?: FiammettaPolicy; excludedCandidates?: string[]
   idleOperators?: string[]
+  freeBlacklist?: string[]
   mowerPolicy?: { taskBuffers?: boolean; rescueThreshold?: number; restingThreshold: number; powerPlantCount: number; opeRestingPriority: string[] }
   runOrderPolicies?: RunOrderPolicy[]
 }
 export interface RuntimeEvent {
-  time: number; type: 'shift-off' | 'shift-on' | 'fiammetta'; operators: string[]
+  time: number; type: 'shift-off' | 'shift-on' | 'fiammetta' | 'backup-plan' | 'backup-task'; operators: string[]
+  backupIndex?: number; backupName?: string; active?: boolean; timing?: BackupTiming
   beds?: string[]; moraleBefore?: number[]; moraleAfter?: number[]
 }
 export interface RuntimeState {
   config: RuntimeConfig; time: number; occupants: Record<string, string>; morale: Record<string, number>
   bedOccupants: Record<string, string>; events: RuntimeEvent[]
+  pendingRest?: string[]
   nextPlanningTime?: number
   nextFiammettaCheckTime?: number
   returnDeadlines?: Record<string, number>; timingSignature?: string
@@ -82,14 +86,29 @@ function shiftThreshold(p: RuntimePosition, s: RuntimeState, rates?: RuntimeRate
   // base_schedule.py:1467–1497; first refresh at lower+2, fallback lower+.25 minus 30 minutes.
   return (p.lowerLimit ?? 0) + Math.min(2, .25 + rates.workRate(p.primary,p.roomId,s) * .5)
 }
-/** Returning a group must leave its working members above the next shift-off threshold. */
+/** Guard against empty recovery cycles using the operator's mood floor.
+ * The planning threshold is not a minimum return mood: Mower returns groups
+ * according to their high-priority rest deadlines, including low-priority peers.
+ */
 function minimumReturnMorale(p: RuntimePosition, s: RuntimeState, rates: RuntimeRates): number {
   if (p.restToFull) return upper(p)
   if ((p.roomId === 'factory' || p.roomId === 'train') && rates.workRate(p.primary, p.roomId, s) <= 0) return 0
-  return Math.min(upper(p), shiftThreshold(p, s, rates) + 2)
+  return Math.min(upper(p), (p.lowerLimit ?? 0) + 2)
 }
-export function settleRoster(s: RuntimeState, rates?: RuntimeRates, retryDepth = 0): void {
+export function settleRoster(s: RuntimeState, rates?: RuntimeRates, retryDepth = 0, onPhase?: (phase: BackupTiming) => boolean): void {
+  if (retryDepth > 64) throw new Error('副表同刻调度无法稳定')
   if (s.config.mowerPolicy) s.nextPlanningTime = s.time + 2.5
+  if (s.pendingRest?.length) {
+    s.pendingRest = s.pendingRest.filter(id => {
+      if (Object.values(s.occupants).includes(id) || Object.values(s.bedOccupants).includes(id)) return false
+      const p = s.config.positions.find(p => p.primary === id)
+      if (!p) return false
+      const bed = freeBed(s, p, s.bedOccupants)
+      if (!bed) return true
+      s.bedOccupants[bed.id] = id
+      return false
+    })
+  }
   const swapped = applyFiammetta(s)
   const fiaTarget = swapped ? s.events[s.events.length - 1]?.operators[1] : undefined
   // Resolve completed rest before testing candidate availability at this timestamp.
@@ -117,16 +136,18 @@ export function settleRoster(s: RuntimeState, rates?: RuntimeRates, retryDepth =
       const covers = ps.map(p => s.occupants[p.id]!)
       for (const p of ps) {
         for (const [bed, id] of Object.entries(s.bedOccupants)) if (id === p.primary) delete s.bedOccupants[bed]
+        for (const [slot, id] of Object.entries(s.occupants)) if (id === p.primary && slot !== p.id) delete s.occupants[slot]
         s.occupants[p.id] = p.primary
       }
       covers.forEach((id, i) => {
-        if ((s.morale[id] ?? 24) < 24 - MORALE_EPSILON) {
+        if (id && (s.morale[id] ?? 24) < 24 - MORALE_EPSILON) {
           const bed = freeBed(s, { ...ps[i]!, restingPriority: 'low' }, s.bedOccupants)
           if (bed) s.bedOccupants[bed.id] = id
         }
       })
       if (s.returnDeadlines) delete s.returnDeadlines[key]
       s.events.push({ time: s.time, type: 'shift-on', operators: ps.map(p => p.primary) })
+      if (onPhase?.('AFTER_PLANNING')) { settleRoster(s, rates, retryDepth + 1, onPhase); return }
       continue
     }
     if (s.config.mowerPolicy && s.events.some(e => e.time === s.time && e.type === 'shift-on' && e.operators.some(id => ps.some(p => p.primary === id)))) continue
@@ -142,17 +163,20 @@ export function settleRoster(s: RuntimeState, rates?: RuntimeRates, retryDepth =
     }
     const reserved = new Set<string>(); const beds = { ...s.bedOccupants }; const swaps: { p: RuntimePosition; candidate: string; bed: string }[] = []
     for (const p of ps) {
-      const candidate = nextCandidate(p, s, reserved, beds)
+      const existingBed = s.config.beds.find(b => beds[b.id] === p.primary)
+      const current = s.occupants[p.id]
+      const candidate = existingBed && current && p.candidates.includes(current) && !reserved.has(current) ? current : nextCandidate(p, s, reserved, beds)
       if (candidate && s.config.mowerPolicy) for (const [bedId, occupant] of Object.entries(beds)) if (occupant === candidate) delete beds[bedId]
-      const bed = freeBed(s, p, beds)
+      const bed = existingBed ?? freeBed(s, p, beds)
       if (!candidate || !bed) break
       reserved.add(candidate); beds[bed.id] = p.primary; swaps.push({ p, candidate, bed: bed.id })
     }
-    if (swaps.length !== ps.length && s.config.mowerPolicy && ps.some(p => p.exhaustRequired) && retryDepth < s.config.positions.length && preemptMowerRest(s,ps.length,rates)) { settleRoster(s,rates,retryDepth+1); return }
+    if (swaps.length !== ps.length && s.config.mowerPolicy && ps.some(p => p.exhaustRequired) && retryDepth < s.config.positions.length && preemptMowerRest(s,ps.length,rates)) { settleRoster(s,rates,retryDepth+1,onPhase); return }
     if (swaps.length !== ps.length) { rosterDiagnostic(s, 'group-blocked', `${key}: insufficient available candidates or beds; original occupants retained`); continue }
     s.bedOccupants = beds
     for (const { p, candidate } of swaps) s.occupants[p.id] = candidate
     s.events.push({ time: s.time, type: 'shift-off', operators: ps.map(p => p.primary), beds: swaps.map(x => x.bed) })
+    if (onPhase?.('BEFORE_PLANNING')) { settleRoster(s, rates, retryDepth + 1, onPhase); return }
   }
   releaseRecoveredSubstitutes(s)
   if (s.config.mowerPolicy) {
@@ -196,7 +220,7 @@ function preemptMowerRest(s: RuntimeState, required: number, rates?: RuntimeRate
 }
 function fillIdleBeds(s: RuntimeState): void {
   const pool = [...new Set([...s.config.positions.flatMap(p=>p.candidates),...(s.config.runOrderPolicies?.flatMap(p=>p.orderedOperatorIds) ?? []),...(s.config.idleOperators ?? [])])]
-  const available = pool.filter(id => !s.config.positions.some(p => p.primary === id) && !Object.values(s.occupants).includes(id) && !Object.values(s.bedOccupants).includes(id)).sort((a,b) => s.morale[a]! - s.morale[b]!)
+  const available = pool.filter(id => !s.config.freeBlacklist?.includes(id) && !s.config.positions.some(p => p.primary === id) && !Object.values(s.occupants).includes(id) && !Object.values(s.bedOccupants).includes(id)).sort((a,b) => s.morale[a]! - s.morale[b]!)
   for (const bed of s.config.beds) if (!s.bedOccupants[bed.id] && available.length) s.bedOccupants[bed.id] = available.shift()!
 }
 /** Mower try_reorder: explicit list, then high/normal primaries, then substitutes. */
@@ -220,13 +244,21 @@ function updateMowerReturnDeadlines(s: RuntimeState, rates: RuntimeRates): void 
   const rescue = mowerRescueDelay(workers.map(p => ({ morale:s.morale[p.primary]!, lower:p.lowerLimit ?? 0, rate:rates.workRate(p.primary,p.roomId,s), ignore:p.permanent || p.exhaustRequired || p.roomId === 'factory' || p.roomId === 'train' })))
   const grouped = new Map<string, RuntimePosition[]>()
   // Stable bed order reproduces grouped_dorms insertion order.
-  for (const id of Object.values(s.bedOccupants)) {
-    const p = s.config.positions.find(p => p.primary === id && s.occupants[p.id] !== id)
+  for (const bed of [...s.config.beds].sort((a,b) => Number(b.vip)-Number(a.vip))) {
+    const id = s.bedOccupants[bed.id]
+    const p = s.config.positions.find(p => !p.dormitory && !p.permanent && p.primary === id && s.occupants[p.id] !== id)
     if (p) { const key=p.group ? `group:${p.group}` : `slot:${p.id}`; grouped.set(key,[...(grouped.get(key) ?? []),p]) }
   }
   const deadlines: Record<string,number> = {}
-  for (const [key,ps] of grouped) {
-    const high=ps.filter(p => p.restingPriority !== 'low'); const members=high.length ? high : ps
+  for (const [key,bedMembers] of grouped) {
+    const firstMember = bedMembers[0]!
+    const ps = s.config.positions.filter(p => !p.dormitory && !p.permanent && (firstMember.group ? p.group === firstMember.group : p.id === firstMember.id))
+    // Partial groups can occur after explicit backup tasks. Replan them normally;
+    // a return deadline is valid only when the entire group is off its main posts.
+    if (ps.some(p => s.occupants[p.id] === p.primary)) continue
+    // scheduler_task.py retains grouped_dorms order when selecting high_dorms.
+    // Main-plan order changes which member controls the mismatch deadline.
+    const high=bedMembers.filter(p => p.restingPriority !== 'low'); const members=high.length ? high : bedMembers
     const values=members.map(p => { const rate=moraleDerivative(s,p.primary,rates); return {hours:rate>0 ? Math.max(0,(upper(p)-s.morale[p.primary]!)/rate) : Infinity,full:p.restToFull} })
     let delay=mowerReturnDelay(values,s.config.mowerPolicy!.powerPlantCount,rescue)
     if (s.config.mowerPolicy!.taskBuffers) {

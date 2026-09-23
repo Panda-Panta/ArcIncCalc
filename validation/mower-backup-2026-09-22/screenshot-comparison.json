@@ -1,0 +1,29 @@
+{
+  "observed": {
+    "exp": 23428.571428571428,
+    "goldValue": 86857.14285714286,
+    "orderLmd": 72642.85714285714,
+    "tequilaGoldValue": 1857.142857142857,
+    "mower82": 108928.57142857143
+  },
+  "after": {
+    "exp": 23321.428571428485,
+    "goldValue": 85642.85714285682,
+    "orderLmd": 72553.57142857116,
+    "tequilaGoldValue": 1321.4285714285666,
+    "mower82": 107403.57142857103,
+    "meanOrderValue": 2154.294803817603,
+    "orderCount": 943,
+    "orderDistribution": {
+      "proviso": {
+        "count": 869,
+        "lmd": 1846500
+      },
+      "tequila": {
+        "count": 74,
+        "lmd": 185000
+      }
+    }
+  },
+  "completeParity": false
+}

@@ -121,7 +121,7 @@
           type="button"
           class="mower-btn btn-auto-roster"
           data-test="auto-roster-btn"
-          :disabled="disabled || isExportingImage || isGeneratingRoster"
+          :disabled="disabled || isExportingImage || isGeneratingRoster || isCalculating"
           @click="onAutoGenerateClick"
         >
           <span v-if="isGeneratingRoster" class="mower-spinner" aria-hidden="true"></span>
@@ -150,13 +150,13 @@
           type="button"
           class="mower-btn btn-calc"
           data-test="calc-btn"
-          :disabled="disabled || !isValid || isExportingImage"
+          :disabled="disabled || !isValid || isExportingImage || isCalculating || isGeneratingRoster"
           @click="onCalculateClick"
         >
           <svg class="mower-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
             <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-6 2h5v2h-5V5zm0 3h5v2h-5V8zm-7-3h5v5H6V5zm1 14l1.5-1.5L10 19l1.5-1.5L10 16l1.5-1.5L10 13l-1.5 1.5L7 13l-1.5 1.5L7 16l-1.5 1.5L7 19zm11 0h-5v-2h5v2zm0-3h-5v-2h5v2z"/>
           </svg>
-          计算产出
+          {{ isCalculating ? '正在计算…' : '计算产出' }}
         </button>
       </div>
     </div>
@@ -177,6 +177,18 @@
           :style="{ width: `${Math.round((generationProgress.phaseProgress || 0) * 100)}%` }"
         ></div>
       </div>
+    </div>
+
+    <div v-if="isCalculating" class="generation-progress-row" data-test="calculation-progress-row">
+      <div class="progress-info">
+        <span class="mower-spinner" aria-hidden="true"></span>
+        <span class="progress-label" role="status">{{ calculationProgress?.label || '正在准备计算…' }}</span>
+        <button class="mower-btn" type="button" data-test="abort-calculation-btn" @click="emit('abort-calculation')">中止计算</button>
+      </div>
+      <div class="progress-bar-track" role="progressbar" aria-label="产出计算进度" :aria-valuenow="Math.round((calculationProgress?.fraction || 0) * 100)" aria-valuemin="0" aria-valuemax="100">
+        <div class="progress-bar-fill" :style="{ width: `${Math.round((calculationProgress?.fraction || 0) * 100)}%` }"></div>
+      </div>
+      <span class="calculation-timing">{{ calculationTiming }}</span>
     </div>
 
     <!-- Visible Success / Error / Info Status Message Banner -->
@@ -251,6 +263,9 @@ export interface PlanToolbarProps {
   disabled?: boolean
   isGeneratingRoster?: boolean
   generationProgress?: SmartRosterProgress | null
+  isCalculating?: boolean
+  calculationProgress?: { label: string; fraction: number } | null
+  calculationTiming?: string
 }
 
 const props = withDefaults(defineProps<PlanToolbarProps>(), {
@@ -261,11 +276,15 @@ const props = withDefaults(defineProps<PlanToolbarProps>(), {
   disabled: false,
   isGeneratingRoster: false,
   generationProgress: null,
+  isCalculating: false,
+  calculationProgress: null,
+  calculationTiming: '',
 })
 
 const emit = defineEmits<{
   (e: 'open-replace'): void
   (e: 'calculate'): void
+  (e: 'abort-calculation'): void
   (e: 'reset'): void
   (e: 'clear-operators'): void
   (e: 'imported', workspace: RosterWorkspace): void
@@ -736,7 +755,10 @@ defineExpose({
   animation: fadeIn 0.2s ease-in-out;
 }
 
+.calculation-timing { color: #a9b5c8; font-size: 12px; }
+.progress-info .mower-btn { margin-left: auto; flex-shrink: 0; }
 .progress-info {
+  flex-wrap: wrap;
   display: flex;
   align-items: center;
   gap: 8px;

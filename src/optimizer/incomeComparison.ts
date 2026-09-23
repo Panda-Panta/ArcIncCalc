@@ -1,3 +1,4 @@
+import {assertRunOrderMode} from '../simulator/productionTimeline'
 import {scoreProduction,type ProductionScore,type IncomeObjective} from './productionObjective'
 import type {ScheduleSimulationReport} from '../simulator/scheduleSimulation'
 import type {ResourceAmounts,ResourceKind} from '../simulator/resourceLedger'
@@ -21,6 +22,7 @@ function canonical(x:unknown):string {
 export function summarizeIncome(report:ScheduleSimulationReport):IncomeCase {
  const p=report.production,a=report.assumptions,issues:string[]=[]
  const add=(message:string)=>{if(!issues.includes(message))issues.push(message)}
+ try{assertRunOrderMode(report.inputs.options.production?.runOrderMode);assertRunOrderMode(p?.assumptions.runOrderMode)}catch(error){add(error instanceof Error?error.message:String(error))}
  if(!report.success||!p?.success)add('模拟或生产策略未完整执行')
  if(!Number.isFinite(report.observedHours)||report.observedHours<=0||Math.abs(report.observedHours-a.sampleHours)>EPS||!Number.isFinite(report.elapsedHours)||Math.abs(report.elapsedHours-a.sampleHours-a.warmupHours)>EPS)add('采样或预热窗口未完成')
  for(const d of report.diagnostics){

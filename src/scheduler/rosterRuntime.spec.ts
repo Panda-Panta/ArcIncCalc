@@ -1,9 +1,54 @@
 import { describe, expect, it } from 'vitest'
-import { createRosterRuntime, settleRoster } from './rosterRuntime'
+import { advanceRoster, createRosterRuntime, settleRoster } from './rosterRuntime'
 import { simulateMoraleTimeline } from '../simulator/moraleTimeline'
 
 const rates = { workRate: () => 1, recoveryRate: () => 2 }
 describe('event roster runtime', () => {
+  it('restarts integration after charging and consumption-rate changes', () => {
+    const s = createRosterRuntime({ positions: [{ id: 'a', roomId: 'r', primary: 'A', candidates: [] }], beds: [], initialMorale: { A: 20 } })
+    advanceRoster(s, 1, rates)
+    expect(s.morale.A).toBe(19)
+    s.morale.A = 24
+    advanceRoster(s, 2, rates)
+    expect(s.morale.A).toBe(22)
+    advanceRoster(s, 1, { ...rates, workRate: () => 2 })
+    expect(s.morale.A).toBe(20)
+    expect(s.time).toBe(4)
+  })
+  it('uses dorm bed order, not main-plan slot order, for the first high-priority return member', () => {
+    const s = createRosterRuntime({ positions: [
+      { id: 'a', roomId: 'manufacture', primary: 'A', candidates: ['X'], group: 'g' },
+      { id: 'b', roomId: 'manufacture', primary: 'B', candidates: ['Y'], group: 'g' },
+    ], beds: [{ id: 'first', roomId: 'd', vip: true }, { id: 'second', roomId: 'd', vip: true }],
+    initialMorale: { A: 20, B: 16 }, mowerPolicy: { restingThreshold: .65, powerPlantCount: 2, opeRestingPriority: [] } })
+    s.occupants = { a: 'X', b: 'Y' }; s.bedOccupants = { first: 'B', second: 'A' }
+    settleRoster(s, rates)
+    // Mower scheduler_task.py: the first dorm needs 4 h, versus 2 h for the next;
+    // the >1.5 h mismatch protects the first dorm's full recovery time.
+    expect(s.returnDeadlines?.['group:g']).toBe(4)
+  })
+  it('returns low-priority peers below the planning threshold when the high-priority member is ready', () => {
+    const s = createRosterRuntime({ positions: [
+      { id: 'high', roomId: 'manufacture', primary: 'A', candidates: ['X'], group: 'g', lowerLimit: 12, shiftOffThreshold: 19.8 },
+      { id: 'low', roomId: 'manufacture', primary: 'B', candidates: ['Y'], group: 'g', lowerLimit: 12, shiftOffThreshold: 19.8, restingPriority: 'low' },
+    ], beds: [{ id: 'a', roomId: 'd', vip: true }, { id: 'b', roomId: 'd', vip: false }],
+    initialMorale: { A: 24, B: 16 }, mowerPolicy: { restingThreshold: .65, powerPlantCount: 3, opeRestingPriority: [] } })
+    s.occupants = { high: 'X', low: 'Y' }; s.bedOccupants = { a: 'A', b: 'B' }
+    settleRoster(s, rates)
+    expect(s.occupants).toEqual({ high: 'A', low: 'B' })
+    expect(s.events.filter(e => e.type === 'shift-on')).toHaveLength(1)
+    expect(s.morale.B).toBe(16)
+  })
+  it('does not schedule an empty return group for a permanent operator moved by a backup task', () => {
+    const s = createRosterRuntime({ positions: [
+      { id: 'work', roomId: 'manufacture', primary: 'A', candidates: [], permanent: true },
+    ], beds: [{ id: 'bed', roomId: 'dormitory_1', vip: true }],
+    initialMorale: { A: 10 }, mowerPolicy: { restingThreshold: .65, powerPlantCount: 2, opeRestingPriority: [] } })
+    delete s.occupants.work; s.bedOccupants.bed = 'A'
+    expect(() => settleRoster(s, rates)).not.toThrow()
+    expect(s.bedOccupants.bed).toBe('A')
+    expect(s.returnDeadlines).toEqual({})
+  })
   it('does not let a full-morale passive group member return a still-tired producer', () => {
     const s = createRosterRuntime({ positions: [
       { id: 'producer', roomId: 'manufacture', primary: 'A', candidates: ['B'], group: 'g', lowerLimit: 15 },

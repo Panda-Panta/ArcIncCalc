@@ -23,7 +23,7 @@ describe('joint production event clock',()=>{
  })
  it('crosses coincident roster and fractional manufacturing endpoints in the real 252 fixture',()=>{
   const ws=importMowerJson(readFileSync('src/workbench/compat/fixtures/mower-252-2gold.json','utf8'))
-  const r=simulateSchedule(compileRosterSchedule(ws),{sampleHours:12,production:{runOrderMode:'natural',droneTarget:'none'}})
+  const r=simulateSchedule(compileRosterSchedule(ws),{sampleHours:12,production:{runOrderMode:'ideal',droneTarget:'none'}})
   expect(r.success).toBe(true)
   expect(r.production!.manufacturing.find(m=>m.roomId==='room_2_2')!.completedItems).toBeGreaterThanOrEqual(17)
  },30000)

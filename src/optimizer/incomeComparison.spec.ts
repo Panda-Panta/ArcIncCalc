@@ -64,10 +64,11 @@ it('excludes exhausted staffing and scheduler blockage even if production comple
  expect(summarizeIncome(d).eligible).toBe(false)
 })
 
-it('accepts the documented ideal model but keeps natural and ideal scenarios separate',()=>{
+it('accepts ideal reports and rejects persisted natural reports',()=>{
  const ideal=report(),summary=summarizeIncome(ideal)
  expect(summary.eligible).toBe(true)
  expect(summary.assumptions.some(d=>d.code==='IDEAL_RUN_ORDER_ASSUMPTIONS')).toBe(true)
- const natural=report();natural.inputs.options.production!.runOrderMode='natural'
- expect(summarizeIncome(natural).context).not.toBe(summary.context)
+ const natural=report();Object.assign(natural.inputs.options.production!,{runOrderMode:'natural'})
+ expect(summarizeIncome(natural).eligible).toBe(false)
+ expect(summarizeIncome(natural).issues.join()).toMatch(/自然跑单.*禁用/)
 })

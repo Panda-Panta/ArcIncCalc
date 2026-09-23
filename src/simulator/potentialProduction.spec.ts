@@ -32,3 +32,26 @@ describe('unconstrained direct production accounting',()=>{
   expect(accelerated.production!.sample.completed.orderLmd).toBeGreaterThan(unaccelerated.production!.sample.completed.orderLmd)
  })
 })
+
+it('spends manufacturing drones only in the selected room',()=>{
+ const s=compileRosterSchedule(createDefaultWorkspace(),{idleOperators:[]})
+ s.rooms=s.rooms.filter(r=>['room_1_1','room_1_2'].includes(r.roomId))
+ for(const r of s.rooms){r.type='manufacture';r.product='gold'}
+ const p=simulateSchedule(s,{sampleHours:24,production:{outputMode:'potential',droneTarget:'gold',droneRoomId:'room_1_2'}}).production!
+ const events=p.events.filter(e=>e.type==='manufacture-drone' && e.roomId)
+ expect(events.length).toBeGreaterThan(0)
+ expect([...new Set(events.map(e=>e.roomId))]).toEqual(['room_1_2'])
+})
+
+it('does not redirect drones to another facility when the selected room is unavailable',()=>{
+ const s=compileRosterSchedule(createDefaultWorkspace(),{idleOperators:[]})
+ const p=simulateSchedule(s,{sampleHours:24,production:{outputMode:'potential',droneTarget:'gold',droneRoomId:'room_1_3'}}).production!
+ expect(p.events.filter(e=>e.type==='manufacture-drone' && e.roomId)).toHaveLength(0)
+})
+it('uses the selected trading room through the shared facility target',()=>{
+ const s=compileRosterSchedule(createDefaultWorkspace(),{idleOperators:[]})
+ const p=simulateSchedule(s,{sampleHours:24,production:{outputMode:'potential',droneTarget:'trading',droneRoomId:'room_3_2'}}).production!
+ const events=p.events.filter(e=>e.type==='trade-drone' && e.roomId)
+ expect(events.length).toBeGreaterThan(0)
+ expect([...new Set(events.map(e=>e.roomId))]).toEqual(['room_3_2'])
+})

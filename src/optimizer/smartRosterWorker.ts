@@ -1,4 +1,5 @@
-import { runSmartRoster, type SmartRosterOptions } from './smartRoster'
+import { runSmartRosterParallel, type SmartRosterOptions } from './smartRoster'
+import { runCandidateBatch } from './candidateSimulationPool'
 import type { RosterWorkspace } from '../workbench/model'
 import type { OwnedOperatorInput } from '../domain/operatorInventory'
 
@@ -8,10 +9,11 @@ export interface SmartRosterWorkerMessage {
   options?: SmartRosterOptions
 }
 
-self.onmessage = (event: MessageEvent<SmartRosterWorkerMessage>) => {
+self.onmessage = async (event: MessageEvent<SmartRosterWorkerMessage>) => {
   try {
     const { base, entries, options } = event.data
-    const report = runSmartRoster(base, entries, options, (progress) => {
+    const report = await runSmartRosterParallel(base, entries, options ?? {},
+      (jobs, onComplete) => runCandidateBatch(jobs, { onComplete }), (progress) => {
       self.postMessage({ type: 'progress', progress })
     })
     self.postMessage({ type: 'complete', report })

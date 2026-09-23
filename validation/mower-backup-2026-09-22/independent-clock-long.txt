@@ -1,0 +1,9 @@
+RUN  v3.2.7 D:/Project/Arknights/ArcIncCalc - Codex
+
+ ✓ src/scheduler/mowerScreenshotParity.spec.ts (1 test) 236280ms
+   ✓ records steady-window scenarios against the supplied screenshot observations  236278ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  03:05:07
+   Duration  237.39s (transform 340ms, setup 0ms, collect 642ms, tests 236.28s, environment 0ms, prepare 129ms)

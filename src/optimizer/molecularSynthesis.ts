@@ -1,3 +1,4 @@
+import { mainPlanOnly } from './mainPlanOnly'
 import { isUnsupportedTradeOperator } from '../domain/shiftRunPolicy'
 import { configureRunOrder } from './configureRunOrder'
 import type { MowerFacilityType, MowerRoomId, RosterWorkspace } from '../workbench/model'
@@ -19,6 +20,7 @@ import {
 import { runScheduleSimulationBridge } from '../workbench/scheduleSimulationBridge'
 import { scoreProduction } from './productionObjective'
 import { rankStaffingCandidates } from './staffingQuality'
+import { buildSingletonFallback } from './singletonFallback'
 
 export interface MolecularCandidate {
   id: string
@@ -121,6 +123,8 @@ export function generateMolecularCandidates(
   inventory: OperatorInventory,
   options: SynthesisOptions = {},
 ): MolecularCandidate[] {
+ base = mainPlanOnly(base)
+  if (!inventory.valid || inventory.operators.length === 0) return []
   const seed = options.seed ?? 42
   const branchCount = options.branchCount ?? 8
   const lockedPositions = options.lockedPositions ?? new Set<string>()
@@ -193,7 +197,7 @@ export function generateMolecularCandidates(
       if (occupied.has(charId)) return false
       if (inventory.operators.length > 0) {
         const op = inventory.operators.find((o) => o.charId === charId || o.name === opName)
-        if (!op || !op.matchesMaximumSkills) {
+        if (!op) {
           return false
         }
       }
@@ -210,7 +214,7 @@ export function generateMolecularCandidates(
         const backupCharId = resolveId(backupName)
         if (inventory.operators.length > 0) {
           const bOp = inventory.operators.find((o) => o.charId === backupCharId || o.name === backupName)
-          if (bOp && bOp.matchesMaximumSkills) {
+          if (bOp) {
             validBackupId = backupCharId
           }
         } else {
@@ -786,7 +790,7 @@ export function generateMolecularCandidates(
       if (!room || !(room.type in roomSkills)) continue
       const skillType = roomSkills[room.type as keyof typeof roomSkills]
       for (const index of emptyIndices(room.roomId)) {
-        const pool = inventory.operators.filter(o => o.matchesMaximumSkills && !occupied.has(o.charId) &&
+        const pool = inventory.operators.filter(o => !occupied.has(o.charId) &&
           !isShiftRunOperator(o.charId) && o.name !== '菲亚梅塔' &&
           (room.type !== 'trading' || !isUnsupportedTradeOperator(o.charId)) && o.skills.some(s => s.roomType === skillType))
         const selected = rankStaffingCandidates(ws, inventory, { roomId: room.roomId, slotIndex: index }, pool.map(o => o.charId), 'main')[0]
@@ -795,6 +799,10 @@ export function generateMolecularCandidates(
     }
 
     // Dormitory rooms: free beds for empty slots
+    // A missing singleton must reject this skeleton, not become a half-filled candidate.
+    if (Object.values(ws.mainPlan.facilities).some(room =>
+      ['manufacture', 'trading', 'power', 'central'].includes(room.type) &&
+      room.slots.some(slot => slot.occupant.kind !== 'operator'))) continue
     const dormRooms = Object.values(ws.mainPlan.facilities).filter((r) => r.type === 'dormitory')
     for (const dorm of dormRooms) {
       for (const slot of dorm.slots) {
@@ -950,6 +958,11 @@ export function generateMolecularCandidates(
     }
   }
 
+  if (!candidates.length) {
+    const fallback = buildSingletonFallback(base, inventory, lockedPositions)
+    if (fallback) candidates.push({ id: 'singleton_fallback', name: '实际练度散件排班', workspace: fallback,
+      appliedAtoms: [], staticScore: 0, simScore: null, diagnostics: [], confPolicy: {} })
+  }
   return candidates
 }
 

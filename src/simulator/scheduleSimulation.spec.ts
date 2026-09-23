@@ -17,6 +17,18 @@ function scenario(primary='砾',candidate?:string){
 }
 
 describe('time-dependent Mower schedule simulation',()=>{
+ it('default single recovery selects a recipient who can receive outside healing',()=>{
+  const ws=createDefaultWorkspace();ws.mainPlan.facilities.dormitory_1.level=1
+  ws.mainPlan.facilities.dormitory_1.slots=['闪灵','菲亚梅塔','芬'].map(name=>({occupant:{kind:'operator' as const,operatorId:name},groupId:null,replacements:[]}))
+  const s=compileRosterSchedule(ws,{operatorMorale:{[id('菲亚梅塔')]:0,[id('芬')]:10}})
+  const r=simulateSchedule(s,{sampleHours:1})
+  expect(r.success).toBe(true)
+  expect(r.operators.find(o=>o.operatorId===id('菲亚梅塔'))!.finalMorale).toBeCloseTo(2)
+  expect(r.operators.find(o=>o.operatorId===id('芬'))!.finalMorale).toBeCloseTo(12.75)
+  // A caller's explicit target remains an explicit modelling assumption.
+  const explicit=simulateSchedule(s,{sampleHours:1,recoveryTargetByProvider:{[id('闪灵')]:id('菲亚梅塔')}})
+  expect(explicit.operators.find(o=>o.operatorId===id('芬'))!.finalMorale).toBeCloseTo(12)
+ })
  it('integrates actual warmup instead of the stationary peak',()=>{
   const s=scenario('阿罗玛')
   const r=simulateSchedule(s,{sampleHours:10,maxStepHours:1,warmupModel:'continuous',consumptionOverrides:{[id('阿罗玛')]:0.5}})

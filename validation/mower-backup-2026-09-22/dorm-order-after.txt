@@ -1,0 +1,10 @@
+RUN  v3.2.7 D:/Project/Arknights/ArcIncCalc - Codex
+
+ ✓ src/scheduler/rosterRuntime.spec.ts (14 tests) 12ms
+ ✓ src/scheduler/backupPlans.spec.ts (17 tests) 426ms
+   ✓ Mower backup source contract > does not mutate a compiled schedule across repeated simulations  359ms
+
+ Test Files  2 passed (2)
+      Tests  31 passed (31)
+   Start at  02:45:04
+   Duration  1.71s (transform 312ms, setup 0ms, collect 573ms, tests 438ms, environment 0ms, prepare 209ms)

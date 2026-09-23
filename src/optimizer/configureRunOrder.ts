@@ -17,10 +17,11 @@ export function runOrderInventoryDiagnostics(workspace: RosterWorkspace, invento
 /** Mower uses replacement[0] for a temporary swap; ordinary backups follow it. */
 export function configureRunOrder(workspace: RosterWorkspace, inventory: OperatorInventory): boolean {
   if (!EDITION.allowShiftRun) return true
-  if (runOrderInventoryDiagnostics(workspace, inventory).length) return false
+  const context = { operatorRecords: inventoryOperatorRecords(inventory) }
   for (const room of Object.values(workspace.mainPlan.facilities)) {
     if (room.type !== 'trading' || room.product !== 'money') continue
-    const runners = room.level === 3 ? ['但书', '龙舌兰'] : ['但书']
+    const runners = (room.level === 3 ? ['但书', '龙舌兰'] : ['但书']).filter(name =>
+      inventory.operators.some(o => o.charId === id(name) && runOrderSkillRank(context, o.charId, name === '但书' ? 'proviso' : 'tequila') > 0))
     if (room.slots.length < runners.length) return false
     // Reapplying after roster changes preserves the ordinary backup order.
     for (const slot of room.slots) slot.replacements = slot.replacements.filter(x => !isShiftRunOperator(x))

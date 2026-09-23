@@ -8,7 +8,7 @@ beforeEach(()=>{vi.mocked(repairInventorySeed).mockReset();vi.mocked(repairInven
 import RosterIncomeSearchPanel from './RosterIncomeSearchPanel.vue'
 const workers:any[]=[]
 class MockWorker {onmessage:any;onerror:any;postMessage=vi.fn();terminate=vi.fn();constructor(){workers.push(this)}}
-const props=()=>({workspace:createDefaultWorkspace(),inventory:{enabled:true,valid:true,entries:[{operator:'砾',elitePhase:1,level:1}]},options:{maxStepHours:.25,production:{seed:42,runOrderMode:'natural' as const,droneTarget:'none' as const,initialResources:{gold:10}}},assumptions:{idleOperators:[],restingThreshold:.65}})
+const props=()=>({workspace:createDefaultWorkspace(),inventory:{enabled:true,valid:true,entries:[{operator:'砾',elitePhase:1,level:1}]},options:{maxStepHours:.25,production:{seed:42,runOrderMode:'ideal' as const,droneTarget:'none' as const,initialResources:{gold:10}}},assumptions:{idleOperators:[],restingThreshold:.65}})
 afterEach(()=>{workers.length=0;vi.unstubAllGlobals()})
 describe('income search worker ownership',()=>{
  it('uses common production settings with a separate window and explicit idle roster',async()=>{

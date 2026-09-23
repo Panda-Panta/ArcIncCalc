@@ -104,11 +104,11 @@ describe('production resource contracts independent of the event controller',()=
   ws.mainPlan.conf.workaholic=['砾','能天使']
   const s=compileRosterSchedule(ws);s.rooms=s.rooms.filter(r=>['room_1_1','room_3_1','room_3_2'].includes(r.roomId))
   // The faster other post has an unpaid finished order; gold also waits in the warehouse.
-  const r=simulateSchedule(s,{sampleHours:2.5,production:{...noDrones,runOrderMode:'natural',collectionIntervalHours:10,initialResources:{gold:20}}})
+  const r=simulateSchedule(s,{sampleHours:2.5,production:{...noDrones,runOrderMode:'drone',collectionIntervalHours:10,initialResources:{gold:20,drone:20}}})
   conserved(r)
   const p=r.production!
   expect(p.events.some(e=>e.type==='run-order-restored')).toBe(true)
-  expect(p.drones.consumed).toBe(0)
+  expect(p.drones.consumed).toBeGreaterThan(0)
   expect(p.manufacturing[0]!.completedItems).toBe(2)
   expect(p.manufacturing[0]!.pendingItems).toBe(2)
   expect(p.trading.find(t=>t.roomId==='room_3_1')!.collectedOrders).toBe(1)

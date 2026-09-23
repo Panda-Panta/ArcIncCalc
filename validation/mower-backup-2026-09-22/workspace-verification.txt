@@ -1,0 +1,14 @@
+RUN  v3.2.7 D:/Project/Arknights/ArcIncCalc - Codex
+
+ ✓ src/workbench/compat/mowerBackupAudit.spec.ts (12 tests) 1774ms
+   ✓ supplied nine-backup Mower roster > executes backups and produces a different 24-hour timeline  1759ms
+ ✓ src/scheduler/backupPlans.spec.ts (17 tests) 445ms
+   ✓ Mower backup source contract > does not mutate a compiled schedule across repeated simulations  388ms
+ ✓ src/optimizer/smartRosterParallel.spec.ts (7 tests) 195ms
+ ✓ src/optimizer/mainPlanOnly.spec.ts (2 tests) 7778ms
+   ✓ generates only main-plan candidates without mutating the source  7774ms
+
+ Test Files  4 passed (4)
+      Tests  38 passed (38)
+   Start at  01:50:10
+   Duration  9.09s (transform 672ms, setup 0ms, collect 1.93s, tests 10.19s, environment 1ms, prepare 454ms)

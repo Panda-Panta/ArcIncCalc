@@ -1,0 +1,84 @@
+{
+  "before": {
+    "exp": 23321.428571428736,
+    "goldValue": 85142.85714285774,
+    "orderLmd": 72428.57142857194,
+    "tequilaGoldValue": 1321.4285714285809,
+    "mower82": 106978.57142857219,
+    "meanOrderValue": 2155.1540913921363,
+    "orderCount": 941,
+    "orderDistribution": {
+      "proviso": {
+        "count": 867,
+        "lmd": 1843000
+      },
+      "tequila": {
+        "count": 74,
+        "lmd": 185000
+      }
+    }
+  },
+  "after": {
+    "exp": 23321.428571428485,
+    "goldValue": 85642.85714285682,
+    "orderLmd": 72553.57142857116,
+    "tequilaGoldValue": 1321.4285714285666,
+    "mower82": 107403.57142857103,
+    "meanOrderValue": 2154.294803817603,
+    "orderCount": 943,
+    "orderDistribution": {
+      "proviso": {
+        "count": 869,
+        "lmd": 1846500
+      },
+      "tequila": {
+        "count": 74,
+        "lmd": 185000
+      }
+    }
+  },
+  "otherSeed": {
+    "exp": 23321.428571428478,
+    "goldValue": 85642.8571428568,
+    "orderLmd": 72499.99999999971,
+    "tequilaGoldValue": 1446.4285714285654,
+    "mower82": 107492.85714285671,
+    "meanOrderValue": 2148.1481481481483,
+    "orderCount": 945,
+    "orderDistribution": {
+      "proviso": {
+        "count": 864,
+        "lmd": 1827500
+      },
+      "tequila": {
+        "count": 81,
+        "lmd": 202500
+      }
+    }
+  },
+  "seed42Orders": {
+    "orders": 424,
+    "tequilaOrders": 74,
+    "tequilaFraction": 0.17452830188679244,
+    "illustrativeWeeklyOrders": 106,
+    "conditional95CountRange": [
+      13,
+      30
+    ],
+    "conditionalProbabilityAtLeast26": 0.14846330148470122
+  },
+  "seed2026Orders": {
+    "orders": 426,
+    "tequilaOrders": 81,
+    "tequilaFraction": 0.19014084507042253,
+    "illustrativeWeeklyOrders": 106,
+    "conditional95CountRange": [
+      13,
+      30
+    ],
+    "conditionalProbabilityAtLeast26": 0.14846330148470122
+  },
+  "rosterSeedInvariant": true,
+  "comparedRosterEvents": 1669,
+  "completeParity": false
+}

@@ -1,0 +1,9 @@
+RUN  v3.2.7 D:/Project/Arknights/ArcIncCalc - Codex
+
+ ✓ src/optimizer/multiStartSearch.spec.ts (9 tests | 8 skipped) 1563ms
+   ✓ does not promote a one-day gain when completed-item granularity leaves a zero lower bound  1562ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 8 skipped (9)
+   Start at  03:14:45
+   Duration  2.70s (transform 394ms, setup 0ms, collect 753ms, tests 1.56s, environment 0ms, prepare 112ms)

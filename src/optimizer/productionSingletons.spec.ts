@@ -44,7 +44,7 @@ describe('user reference singleton admission and theoretical ranking', () => {
     const w = createDefaultWorkspace(), p = { roomId: 'room_1_1' as const, slotIndex: 0 }
     for (const name of ['槐琥', '机械师', '能天使']) expect(rankStaffingCandidates(w, inventory, p, [id(name)], 'main')).toEqual([])
     const low = compileOperatorInventory([{ operator: '机械师', elitePhase: 0, level: 1 }])
-    expect(rankStaffingCandidates(w, low, { roomId: 'room_2_1', slotIndex: 0 }, [id('机械师')], 'main')).toEqual([])
+    expect(rankStaffingCandidates(w, low, { roomId: 'room_2_1', slotIndex: 0 }, [id('机械师')], 'main')).toEqual([id('机械师')])
   })
   it('uses documented singletons first, then ranks safe self-only fallback staff by efficiency', () => {
     const w = createDefaultWorkspace(), p = { roomId: 'room_1_1' as const, slotIndex: 0 }

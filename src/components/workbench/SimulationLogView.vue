@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import type { ScheduleSimulationReport } from '../../simulator/scheduleSimulation'
 import { getRoomDisplayName } from '../../workbench/operatorHelpers'
+import { mowerReportMetrics } from '../../workbench/mowerReportMetrics'
 
 const props = defineProps<{
   report: ScheduleSimulationReport | null
@@ -15,6 +16,7 @@ const emit = defineEmits<{
 const searchKeyword = ref('')
 const selectedRoom = ref<string>('all')
 const copySuccess = ref(false)
+const mowerMetrics = computed(() => props.report ? mowerReportMetrics(props.report) : null)
 
 const resourceLabels = [
   ['gold', '赤金（件）'],
@@ -52,6 +54,9 @@ interface LogEventItem {
   amount?: number
   operators?: string[]
   operatorIds?: string[]
+  backupName?: string
+  active?: boolean
+  timing?: string
 }
 
 const filteredEvents = computed<LogEventItem[]>(() => {
@@ -63,6 +68,7 @@ const filteredEvents = computed<LogEventItem[]>(() => {
     }
     if (!q) return true
     if (e.type.toLowerCase().includes(q)) return true
+    if (e.backupName?.toLowerCase().includes(q)) return true
     if (e.roomId && e.roomId.toLowerCase().includes(q)) return true
     const ops = e.operatorIds || e.operators || []
     if (ops.some(id => id.toLowerCase().includes(q))) return true
@@ -187,6 +193,13 @@ function exportJson(): void {
         </div>
       </section>
 
+      <section v-if="mowerMetrics" class="log-section">
+        <h4 class="section-heading">Mower 报表口径对照（日均）</h4>
+        <p>82 收益 {{ number(mowerMetrics.mower82) }}；经验 {{ number(mowerMetrics.exp) }}；赤金价值 {{ number(mowerMetrics.goldValue) }}；订单 {{ number(mowerMetrics.orderLmd) }}；龙舌兰额外价值 {{ number(mowerMetrics.tequilaGoldValue) }}。</p>
+        <p>平均订单金额 {{ number(mowerMetrics.meanOrderValue) }}。龙舌兰额外价值仅用于报表折算，不增加赤金库存。</p>
+        <p>Mower 工休图按心情记录变化估算；下方工作占比统计非疲劳工作时间，不能直接视为同一指标。</p>
+      </section>
+
       <!-- Facility average efficiency table -->
       <section v-if="report.rooms && report.rooms.length > 0" class="log-section">
         <h4 class="section-heading">设施平均效率统计</h4>
@@ -265,7 +278,7 @@ function exportJson(): void {
               v-model="searchKeyword"
               type="text"
               class="search-input"
-              placeholder="搜索事件类型或干员..."
+              placeholder="搜索事件类型、副表名称或干员..."
             />
             <select v-model="selectedRoom" class="room-select">
               <option value="all">全部设施</option>
@@ -280,6 +293,7 @@ function exportJson(): void {
           <div v-for="(e, idx) in filteredEvents.slice(0, 500)" :key="idx" class="event-row">
             <span class="event-time">T+{{ number(e.time) }}h</span>
             <span class="event-badge" :class="e.type">{{ e.type }}</span>
+            <span v-if="e.backupName" class="event-room">{{e.backupName}} · {{e.type==='backup-task'?'执行任务':e.active?'启用':'退出'}} · {{e.timing}}</span>
             <span v-if="e.roomId" class="event-room">{{ getRoomDisplayName(e.roomId) }}</span>
             <span v-if="e.amount !== undefined" class="event-amount">数量: {{ e.amount }}</span>
             <span v-if="(e.operatorIds || e.operators)?.length" class="event-ops">

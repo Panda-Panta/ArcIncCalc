@@ -1,0 +1,120 @@
+
+ RUN  v3.2.7 D:/Project/Arknights/ArcIncCalc - Codex
+
+ ✓ src/optimizer/smartRosterBranches.spec.ts (3 tests | 2 skipped) 65319ms
+   ✓ complete branch admission before any simulation > ignores old trial and top-K truncation and simulates all ten distinct branches in ideal mode  65318ms
+ ✓ src/optimizer/molecularSynthesis.spec.ts (4 tests | 3 skipped) 31560ms
+   ✓ Molecular Synthesis & Indivisible Atomic Units > strictly respects indivisible atomic core members  31559ms
+ ❯ src/optimizer/shiftRunContract.spec.ts (19 tests | 6 failed | 12 skipped) 111757ms
+   ✓ shift-run branch contract > constructs ten distinct physically valid branches before simulation  66916ms
+   ↓ shift-run branch contract > recognizes only Proviso and Tequila as dedicated runners
+   ↓ shift-run branch contract > rejects closure order acquisition
+   ↓ shift-run branch contract > rejects pepe order acquisition
+   ↓ shift-run branch contract > rejects other special captures even on an ordinary base order
+   ↓ shift-run branch contract > blocks imported 佩佩 trading mains and backups
+   ↓ shift-run branch contract > blocks imported 可露希尔 trading mains and backups
+   ↓ shift-run branch contract > blocks imported U-Official trading mains and backups
+   × shift-run branch contract > generates executable runners plus ordinary backups at trade level 1 9353ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   × shift-run branch contract > generates executable runners plus ordinary backups at trade level 2 9844ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   × shift-run branch contract > generates executable runners plus ordinary backups at trade level 3 9866ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ↓ shift-run branch contract > cannot hide 佩佩 behind the default static shift-run flag
+   ↓ shift-run branch contract > cannot hide 可露希尔 behind the default static shift-run flag
+   ↓ shift-run branch contract > cannot hide U-Official behind the default static shift-run flag
+   × shift-run branch contract > executes generated level 1 swaps, settlement and restoration 5090ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   × shift-run branch contract > executes generated level 2 swaps, settlement and restoration 5367ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   × shift-run branch contract > executes generated level 3 swaps, settlement and restoration 5320ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ↓ shift-run branch contract > accepts runners with the unlocked elite 0 reward skills
+   ↓ shift-run branch contract > reports missing trained runners before evaluating ordinary-only candidates
+ ✓ src/optimizer/automaticRoster.spec.ts (9 tests | 8 skipped) 6000ms
+   ✓ bounded complete automatic roster drafts > builds complete 243 mains with unique backups and retains the source layout  5999ms
+ ✓ src/optimizer/smartRoster.spec.ts (4 tests | 3 skipped) 18158ms
+   ✓ smartRoster generation with 3-phase optimization > builds complete 243 mains with backups and simulation validation  18157ms
+ ✓ src/optimizer/multiStartSearch.spec.ts (9 tests | 8 skipped) 16658ms
+   ✓ finds and independently revalidates a real control improvement without altering the layout or source  16657ms
+stdout | src/optimizer/roster252.spec.ts > 252 Layout Automatic Roster Generation (Trade 2+1, Manufacture 33332, Right Side Full, 2 Power) > generates a fully valid 252 roster with complete tracking and all rules satisfied
+=== 252 AUTO ROSTER TRACKING SUMMARY ===
+Score: 102133.3333333336
+Phases count: 8
+Phases: [
+  '[building] 阶段 1/2: 不可分割原子组合与多分支分子合成...',
+  '[building] 阶段 1/2: 分子合成候选生成 1/2 完成',
+  '[building] 阶段 1/2: 分子合成候选生成 2/2 完成',
+  '[simulating] 阶段 2/2: 全量动态拟真评估（预热 1 天 + 采样 3 天，82 综合评分）...',
+  '[simulating] 阶段 2/2: 动态拟真进度 1/2（82分: 102133.3）',
+  '[simulating] 阶段 2/2: 动态拟真进度 2/2（82分: 101066.7）',
+  '[searching] 阶段 3/3: 全局人均产出检测与优化置换...',
+  '[done] 一键智能排班已完成，最终 82 综合评分：102133.3 分/日'
+]
+Replacement logs: []
+[room_1_1] (manufacture lv3): 迷迭香, 阿罗玛, 槐琥 | 替补: 斑点 ; 夜烟 ; 铅踝
+[room_1_2] (manufacture lv3): 温蒂, 清流, 冬时 | 替补: 雪猎 ; 温米 ; 梅尔
+[room_1_3] (power lv3): 承曦格雷伊 | 替补: 澄闪
+[room_2_1] (manufacture lv3): 红云, 酒神, Miss.Christine | 替补: 淬羽赫默 ; 断罪者 ; 食铁兽
+[room_2_2] (manufacture lv3): 泡泡, 火神, 贝娜 | 替补: 裂响 ; 弑君者 ; 机械师
+[room_2_3] (power lv3): Lancet-2 | 替补: 
+[room_3_1] (trading lv2): 鸿雪, 图耶 | 替补: 但书,能天使 ; 赫德雷
+[room_3_2] (trading lv1): 黑键 | 替补: 但书,伺夜
+[room_3_3] (manufacture lv2): 苍苔, 引星棘刺 | 替补: 砾 ; 维伊
+[central] (central lv5): 森蚺, Mon3tr, 阿斯卡纶, 丰川祥子, 夕 | 替补: 若叶睦 ; 望 ; 阿米娅 ; 薇薇安娜 ; 八幡海铃
+[dormitory_1] (dormitory lv1): 桃金娘, 黑, free, free, free | 替补:  ;  ;  ;  ; 
+[dormitory_2] (dormitory lv1): 杜林, 琴柳, free, free, free | 替补:  ;  ;  ;  ; 
+[dormitory_3] (dormitory lv1): 斥罪, 闪灵, free, free, free | 替补:  ;  ;  ;  ; 
+[dormitory_4] (dormitory lv1): 菲亚梅塔, 纯烬艾雅法拉, 新约能天使, free, free | 替补: 阿罗玛,槐琥,红云 ;  ;  ;  ; 
+[meeting] (meeting lv3): 伊内丝, 晓歌 | 替补: 提丰 ; 远山
+[factory] (factory lv3): 至简 | 替补: 特克诺
+[contact] (contact lv3): 絮雨 | 替补: 林
+[train] (train lv3): 褐果, 火龙S黑角 | 替补: 艾丽妮 ; 鞭刃
+
+ ✓ src/optimizer/roster252.spec.ts (1 test) 17144ms
+   ✓ 252 Layout Automatic Roster Generation (Trade 2+1, Manufacture 33332, Right Side Full, 2 Power) > generates a fully valid 252 roster with complete tracking and all rules satisfied  17143ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/optimizer/shiftRunContract.spec.ts > shift-run branch contract > generates executable runners plus ordinary backups at trade level 1
+ FAIL  src/optimizer/shiftRunContract.spec.ts > shift-run branch contract > generates executable runners plus ordinary backups at trade level 2
+ FAIL  src/optimizer/shiftRunContract.spec.ts > shift-run branch contract > generates executable runners plus ordinary backups at trade level 3
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/optimizer/shiftRunContract.spec.ts:59:20
+     57|     }
+     58|   })
+     59|   it.each([1, 2, 3])('generates executable runners plus ordinary backu…
+       |                    ^
+     60|     await yieldToRunner(250)
+     61|     const ws = createDefaultWorkspace()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  src/optimizer/shiftRunContract.spec.ts > shift-run branch contract > executes generated level 1 swaps, settlement and restoration
+ FAIL  src/optimizer/shiftRunContract.spec.ts > shift-run branch contract > executes generated level 2 swaps, settlement and restoration
+ FAIL  src/optimizer/shiftRunContract.spec.ts > shift-run branch contract > executes generated level 3 swaps, settlement and restoration
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/optimizer/shiftRunContract.spec.ts:92:20
+     90|     expect(compileRosterSchedule(workspace).diagnostics.some(d => d.co…
+     91|   })
+     92|   it.each([1, 2, 3])('executes generated level %i swaps, settlement an…
+       |                    ^
+     93|     await yieldToRunner(250)
+     94|     const workspace = createDefaultWorkspace()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+
+ Test Files  1 failed | 6 passed (7)
+      Tests  6 failed | 7 passed | 36 skipped (49)
+   Start at  03:34:59
+   Duration  271.21s (transform 640ms, setup 0ms, collect 2.29s, tests 266.60s, environment 1ms, prepare 734ms)
+

@@ -15,7 +15,6 @@ import { compiledScheduleToRuntimeConfig, isShiftRunOperator } from '../schedule
 import { captureOrder, getOrderDistribution } from '../rules/orderRules'
 import { generateMolecularCandidates } from './molecularSynthesis'
 import { configureRunOrder } from './configureRunOrder'
-import { runSmartRoster } from './smartRoster'
 
 const owned = OPERATORS.map(o => ({ operator: o.name, elitePhase: o.rarity < 3 ? 0 : o.rarity === 3 ? 1 : 2, level: o.rarity < 3 ? 30 : o.rarity === 3 ? 55 : o.rarity === 4 ? 70 : o.rarity === 5 ? 80 : 90 }))
 
@@ -89,7 +88,7 @@ describe('shift-run branch contract', () => {
     workspace.mainPlan.facilities.factory.slots[0]!.occupant = { kind: 'operator', operatorId: id(name) }
     expect(compileRosterSchedule(workspace).diagnostics.some(d => d.code === 'UNSUPPORTED_SPECIAL_ORDER')).toBe(false)
   })
-  it.each([1, 2, 3])('executes generated level %i swaps, settlement and restoration', async level => {
+  it.each([1, 2, 3])('executes generated level %i ideal rewards without physical swaps', async level => {
     await yieldToRunner(250)
     const workspace = createDefaultWorkspace()
     const room = workspace.mainPlan.facilities.room_3_1
@@ -102,13 +101,13 @@ describe('shift-run branch contract', () => {
     schedule.fiammettaPolicies = []
     const result = simulateSchedule(schedule, { sampleHours: 24, recordSegments: true,
       consumptionOverrides: Object.fromEntries(OPERATORS.map(o => [o.charId, 0])),
-      production: { outputMode: 'potential', runOrderMode: 'natural', droneTarget: 'none', seed: 20260919 } })
+      production: { outputMode: 'potential', runOrderMode: 'ideal', droneTarget: 'none', seed: 20260919 } })
     expect(result.success).toBe(true)
     const events = result.production!.events
-    const insertions = events.filter(e => e.type === 'run-order-inserted')
+    const insertions = events.filter(e => e.type === 'run-order-ideal')
     const restorations = events.filter(e => e.type === 'run-order-restored')
     expect(insertions.length).toBeGreaterThan(0)
-    expect(restorations).toHaveLength(insertions.length)
+    expect(restorations).toHaveLength(0)
     expect(insertions.every(e => e.operatorIds?.includes(id('但书')))).toBe(true)
     const orders = events.filter(e => e.type === 'order-completed').map(e => e.order!)
     expect(orders.some(o => o.kind === 'proviso')).toBe(true)
@@ -130,11 +129,14 @@ describe('shift-run branch contract', () => {
     expect(configureRunOrder(ws, inventory)).toBe(true)
     expect(ws.mainPlan.facilities.room_3_1.slots[0]!.replacements[0]).toBe(id('但书'))
   })
-  it('reports missing trained runners before evaluating ordinary-only candidates', async ({ annotate }) => {
+  it('configures only owned runners without blocking ordinary rosters', async ({ annotate }) => {
     await annotate('同步计算前确认测试进度已送达')
-    const result = runSmartRoster(createDefaultWorkspace(), owned.filter(o => o.operator !== '但书'), { enableDeepSearch: false })
-    expect(result.status).toBe('blocked')
-    expect(result.diagnostics.some(d => d.code === 'RUN_ORDER_OPERATOR_UNAVAILABLE')).toBe(true)
-    expect(result.phases.simulation).toBeNull()
+    const ws = createDefaultWorkspace()
+    const inventory = compileOperatorInventory(owned.filter(o => o.operator !== '但书'))
+    for (const room of Object.values(ws.mainPlan.facilities).filter(r=>r.type==='trading')) {
+      room.slots.forEach((s,i)=>{s.occupant={kind:'operator',operatorId:id(['芬','克洛丝','空爆'][i]!)}})
+    }
+    expect(configureRunOrder(ws,inventory)).toBe(true)
+    expect(ws.mainPlan.facilities.room_3_1.slots.flatMap(s=>s.replacements)).toEqual([id('龙舌兰')])
   }, 60000)
 })

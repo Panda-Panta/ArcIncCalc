@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import OperatorInventoryPanel from './OperatorInventoryPanel.vue'
-import { useRosterWorkbenchStore } from '../../workbench/store'
-import { getRoomDisplayName } from '../../workbench/operatorHelpers'
 import type { OwnedOperatorInput } from '../../domain/operatorInventory'
 
 export interface SimulationSettings {
@@ -10,8 +7,12 @@ export interface SimulationSettings {
   warmupDays: number
   step: number
   seed: number
-  droneTarget: 'gold' | 'exp' | 'trading'
+  droneTarget: 'gold' | 'exp' | 'trading' | 'none'
   droneTradingRoomId?: string
+  droneRoomId?: string
+  useOperatorInventory?: boolean
+  fiammettaFool?: boolean
+  restingThreshold?: number
 }
 
 const props = defineProps<{
@@ -22,18 +23,6 @@ const emit = defineEmits<{
   (e: 'update:settings', val: SimulationSettings): void
   (e: 'inventory-change', val: { enabled: boolean; valid: boolean; entries: OwnedOperatorInput[] }): void
 }>()
-
-const store = useRosterWorkbenchStore()
-
-const tradingRooms = computed(() => {
-  const facilities = store.workspace.mainPlan.facilities
-  return Object.values(facilities)
-    .filter(f => f.type === 'trading')
-    .map(f => ({
-      id: f.roomId,
-      label: getRoomDisplayName(f.roomId, 'trading'),
-    }))
-})
 
 function updateField<K extends keyof SimulationSettings>(key: K, val: SimulationSettings[K]): void {
   emit('update:settings', {
@@ -53,6 +42,18 @@ function updateField<K extends keyof SimulationSettings>(key: K, val: Simulation
       </div>
 
       <div class="sim-controls-grid">
+        <label class="control-item">
+          <span class="control-label">菲亚防呆</span>
+          <select class="control-select" data-test="fiammetta-fool" :value="String(settings.fiammettaFool ?? true)" @change="updateField('fiammettaFool', ($event.target as HTMLSelectElement).value === 'true')">
+            <option value="true">开启（Mower 默认）</option>
+            <option value="false">关闭（允许最低心情候选兜底）</option>
+          </select>
+          <span class="control-hint">按作业要求设置；排班图片不包含这个全局选项。</span>
+        </label>
+        <label class="control-item">
+          <span class="control-label">休息阈值（%）</span>
+          <input class="control-input" data-test="resting-threshold" type="number" min="0" max="100" step="1" :value="(settings.restingThreshold ?? .65) * 100" @input="updateField('restingThreshold', Number(($event.target as HTMLInputElement).value) / 100)" />
+        </label>
         <!-- 采样天数 -->
         <label class="control-item">
           <span class="control-label">采样天数（天）</span>
@@ -111,34 +112,6 @@ function updateField<K extends keyof SimulationSettings>(key: K, val: Simulation
           <span class="control-hint">-1 代表随机种子</span>
         </label>
 
-        <!-- 余量无人机加速目标 -->
-        <label class="control-item">
-          <span class="control-label">余量无人机加速</span>
-          <select
-            class="control-select"
-            :value="settings.droneTarget"
-            @change="updateField('droneTarget', ($event.target as HTMLSelectElement).value as any)"
-          >
-            <option value="gold">加速赤金制造</option>
-            <option value="exp">加速作战记录制造</option>
-            <option value="trading">加速贸易站</option>
-          </select>
-        </label>
-
-        <!-- 目标贸易站 (仅在选择加速贸易站时显示) -->
-        <label v-if="settings.droneTarget === 'trading'" class="control-item">
-          <span class="control-label">目标加速贸易站</span>
-          <select
-            class="control-select highlight-select"
-            :value="settings.droneTradingRoomId || (tradingRooms[0]?.id ?? '')"
-            @change="updateField('droneTradingRoomId', ($event.target as HTMLSelectElement).value)"
-          >
-            <option v-if="tradingRooms.length === 0" value="">当前无贸易站设施</option>
-            <option v-for="r in tradingRooms" :key="r.id" :value="r.id">
-              {{ r.label }}
-            </option>
-          </select>
-        </label>
       </div>
 
       <div class="locked-rules-bar">

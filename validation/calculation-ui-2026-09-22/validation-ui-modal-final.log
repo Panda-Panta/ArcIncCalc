@@ -1,0 +1,10 @@
+
+ RUN  v3.2.7 D:/Project/Arknights/ArcIncCalc - Codex
+
+ ✓ src/components/workbench/CalculationConfigModal.spec.ts (2 tests) 233ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  03:36:45
+   Duration  4.19s (transform 329ms, setup 0ms, collect 2.23s, tests 233ms, environment 1.27s, prepare 127ms)
+

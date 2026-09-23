@@ -49,7 +49,7 @@ import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import App from '../../App.vue'
 import WorkbenchShell from './WorkbenchShell.vue'
-import { runCalculationBridge } from '../../workbench/calculationBridge'
+import { runCalculationBridge, type CalculationBridgeOptions } from '../../workbench/calculationBridge'
 import PlanToolbar from './PlanToolbar.vue'
 import BaseMap from './BaseMap.vue'
 import FacilityEditor from './FacilityEditor.vue'
@@ -59,6 +59,7 @@ import OperatorSelectModal from './OperatorSelectModal.vue'
 import GlobalReplaceModal from './GlobalReplaceModal.vue'
 import { useRosterWorkbenchStore } from '../../workbench/store'
 import { createDefaultWorkspace } from '../../workbench/defaults'
+import type { RosterWorkspace } from '../../workbench/model'
 import { compileMainPlanToAppConfig } from '../../workbench/adapter'
 import { createDefaultConfig } from '../../domain/defaults'
 import { calculate } from '../../engine/calculate'
@@ -96,6 +97,20 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
     pinia = createPinia()
     setActivePinia(pinia)
     localStorage.clear()
+    localStorage.setItem(`arc-income-calculator-sim-settings-v1-${EDITION.storageNamespace}`, JSON.stringify({
+      warmupDays: .25, sampleDays: .75, step: .25, seed: 42, droneTarget: 'gold', droneTradingRoomId: '',
+    }))
+    // jsdom has no browser workers. Execute the real bridge through its asynchronous message boundary.
+    vi.stubGlobal('Worker', class {
+      onmessage: ((event: MessageEvent) => void) | null = null
+      stopped = false
+      postMessage(request: { workspace: RosterWorkspace; options: CalculationBridgeOptions }) {
+        queueMicrotask(() => {
+          if (!this.stopped) this.onmessage?.({ data: { type: 'complete', result: runCalculationBridge(request.workspace, request.options) } } as MessageEvent)
+        })
+      }
+      terminate() { this.stopped = true }
+    })
 
     if (!window.HTMLElement.prototype.scrollIntoView) {
       window.HTMLElement.prototype.scrollIntoView = vi.fn()
@@ -107,6 +122,7 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
       const wrapper = activeWrappers.pop()
       wrapper?.unmount()
     }
+    vi.unstubAllGlobals()
     document.body.innerHTML = ''
   })
 
@@ -341,7 +357,8 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
 
     // Attempt calculate
     wrapper.vm.handleCalculate()
-    await wrapper.vm.$nextTick()
+    if (wrapper.vm.calculationConfigOpen) wrapper.vm.handleConfirmCalculation({ droneTarget: 'gold', droneTradingRoomId: '' })
+    await flushPromises()
 
     expect(wrapper.vm.calculationReport).toBeNull()
     const errorBox = wrapper.find('[data-test="calculation-error"]')
@@ -392,7 +409,8 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
 
     // Ensure valid default configuration and trigger calculate
     wrapper.vm.handleCalculate()
-    await wrapper.vm.$nextTick()
+    if (wrapper.vm.calculationConfigOpen) wrapper.vm.handleConfirmCalculation({ droneTarget: 'gold', droneTradingRoomId: '' })
+    await flushPromises()
 
     const resultsPanel = wrapper.find('[data-test="results-panel"]')
     expect(resultsPanel.exists()).toBe(true)
@@ -414,7 +432,8 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
 
     // Repeat calculation refreshes
     wrapper.vm.handleCalculate()
-    await wrapper.vm.$nextTick()
+    if (wrapper.vm.calculationConfigOpen) wrapper.vm.handleConfirmCalculation({ droneTarget: 'gold', droneTradingRoomId: '' })
+    await flushPromises()
 
     expect(wrapper.find('[data-test="results-panel"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="metric-lmd"]').text()).toBe(initialLmd)
@@ -428,13 +447,15 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
     store.loadWorkspace(ws)
     const wrapper = mountWithPinia(WorkbenchShell)
     wrapper.vm.handleCalculate()
-    await wrapper.vm.$nextTick()
+    if (wrapper.vm.calculationConfigOpen) wrapper.vm.handleConfirmCalculation({ droneTarget: 'gold', droneTradingRoomId: '' })
+    await flushPromises()
     expect(wrapper.vm.calculationReport).not.toBeNull()
     expect(wrapper.vm.simulationReport?.success).toBe(true)
     expect(wrapper.find('[data-test="metric-gold"]').exists()).toBe(true)
     localStorage.setItem('arcinc-operator-inventory-v1', JSON.stringify({ schemaVersion: 1, enabled: true, text: '芬,0,1' }))
     wrapper.vm.handleCalculate()
-    await wrapper.vm.$nextTick()
+    if (wrapper.vm.calculationConfigOpen) wrapper.vm.handleConfirmCalculation({ droneTarget: 'gold', droneTradingRoomId: '' })
+    await flushPromises()
     expect(wrapper.vm.calculationReport).toBeNull()
     expect(wrapper.vm.simulationReport?.success).toBe(false)
     expect(wrapper.find('[data-test="metric-gold"]').exists()).toBe(false)
@@ -449,7 +470,8 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
 
     // Run a calculation first
     wrapper.vm.handleCalculate()
-    await wrapper.vm.$nextTick()
+    if (wrapper.vm.calculationConfigOpen) wrapper.vm.handleConfirmCalculation({ droneTarget: 'gold', droneTradingRoomId: '' })
+    await flushPromises()
     expect(wrapper.vm.calculationReport).not.toBeNull()
 
     // Reset clears calculation report
@@ -462,7 +484,8 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
 
     // Clear operators also clears calculation report
     wrapper.vm.handleCalculate()
-    await wrapper.vm.$nextTick()
+    if (wrapper.vm.calculationConfigOpen) wrapper.vm.handleConfirmCalculation({ droneTarget: 'gold', droneTradingRoomId: '' })
+    await flushPromises()
     expect(wrapper.vm.calculationReport).not.toBeNull()
 
     toolbar.vm.$emit('clear-operators')
@@ -563,7 +586,7 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
   })
 
   // 15. One-click smart roster generation with preserved user-locked operators
-  const INSUFFICIENT_TEST_OPS = [
+  const LIMITED_TEST_OPS = [
     '但书,2,80', '能天使,2,90', '德克萨斯,2,80', '拉普兰德,2,80', '巫恋,2,80', '龙舌兰,2,80', '柏喙,2,80',
     '砾,2,70', '芬,1,55', '克洛丝,1,55', '伊芙利特,2,90', '白面鸮,2,80', '红豆,1,55',
     '斑点,1,55', '卡达,2,70', '远山,1,60', '梅,2,70', '流星,1,60', '杰克,1,60',
@@ -580,17 +603,27 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
     `${o.name},${o.rarity < 3 ? 0 : o.rarity === 3 ? 1 : 2},${o.rarity < 3 ? 30 : o.rarity === 3 ? 55 : o.rarity === 4 ? 70 : o.rarity === 5 ? 80 : 90}`,
   )
 
-  it('keeps the workspace unchanged when ordinary backups cannot be completed', async ({ annotate }) => {
+  it('applies singleton fallback for a limited mixed-level pool', async ({ annotate }) => {
     await annotate('同步排班前确认测试进度已送达')
-    localStorage.setItem('arcinc-operator-inventory-v1', JSON.stringify({ enabled: true, text: INSUFFICIENT_TEST_OPS.join('\n') }))
+    localStorage.setItem('arcinc-operator-inventory-v1', JSON.stringify({ enabled: true, text: LIMITED_TEST_OPS.join('\n') }))
+    const vm = mountWithPinia(WorkbenchShell).vm as any
+    const original = JSON.stringify(vm.store.workspace)
+    vm.handleConfirmSmartRosterConfig({ seed: 42, branchCount: 1, enableDeepSearch: false })
+    await flushPromises()
+    expect(vm.replaceStatusMessage).toContain('排班成功')
+    expect(JSON.stringify(vm.store.workspace)).not.toBe(original)
+  }, 60000)
+
+  it('keeps the workspace unchanged when the owned pool truly lacks enough people', async () => {
+    localStorage.setItem('arcinc-operator-inventory-v1', JSON.stringify({ enabled: true, text: LIMITED_TEST_OPS.slice(0,5).join('\n') }))
     const vm = mountWithPinia(WorkbenchShell).vm as any
     const original = JSON.stringify(vm.store.workspace)
     vm.handleConfirmSmartRosterConfig({ seed: 42, branchCount: 1, enableDeepSearch: false })
     await flushPromises()
     expect(vm.replaceStatusMessage).toContain('未成功')
-    expect(vm.replaceStatusMessage).toContain('未启动模拟')
+    expect(vm.replaceStatusMessage).toContain('主班与独立替补')
     expect(JSON.stringify(vm.store.workspace)).toBe(original)
-  }, 60000)
+  },60000)
 
   it('triggers smart roster generation, keeps user placed operators, and updates store', async ({ annotate }) => {
     await annotate('同步排班前确认测试进度已送达')
@@ -612,6 +645,7 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
     }
 
     // Trigger auto generate
+    vm.activeTab = 'settings'
     vm.handleAutoGenerate()
     await flushPromises()
 
@@ -623,6 +657,13 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
 
     // Verify success status message
     expect(vm.replaceStatusMessage).toContain('排班成功')
+    expect(vm.activeTab).toBe('workbench')
+    expect(vm.calculationConfigOpen).toBe(false)
+    expect(vm.isCalculating).toBe(false)
+    expect(vm.calculationError).toBeNull()
+    expect(vm.calculationReport?.summary?.totalScore82).toBeGreaterThan(0)
+    expect(wrapper.get('[data-test="metric-lmd"]').isVisible()).toBe(true)
+    expect(wrapper.get('[data-test="metric-exp"]').isVisible()).toBe(true)
   }, 60000)
 
   // 18. Abort roster generation
@@ -685,5 +726,9 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
     expect(vm.smartRosterConfigModalOpen).toBe(false)
     expect(vm.replaceStatusMessage).toContain('排班成功')
     expect(JSON.stringify(vm.store.workspace)).not.toBe(originalWorkspace)
+    expect(vm.calculationConfigOpen).toBe(false)
+    expect(vm.calculationReport?.summary).toBeDefined()
+    expect(vm.simulationReport?.inputs.options.production.droneTarget).toBe('gold')
+    expect(wrapper.get('[data-test="results-panel"]').isVisible()).toBe(true)
   }, 60000)
 })
