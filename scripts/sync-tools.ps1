@@ -7,7 +7,10 @@ Start-Sleep -Milliseconds 500
 Write-Host ">>> Building Vue 3 Frontend (npm run build)..."
 npm run build
 
-$targetSyncDir = if (Test-Path "D:\Tools\R.I.I.C-Calculator") { "D:\Tools\R.I.I.C-Calculator" } elseif (Test-Path "D:\Tools\ArcIncCalc") { "D:\Tools\ArcIncCalc" } else { "D:\Tools\R.I.I.C-Calculator" }
+$targetSyncDir = "D:\Tools\R.I.I.C-Calculator"
+if (-not (Test-Path $targetSyncDir)) {
+    New-Item -ItemType Directory -Path $targetSyncDir -Force | Out-Null
+}
 if (Test-Path $targetSyncDir) {
     Write-Host ">>> Syncing dist assets into $targetSyncDir\dist..."
     robocopy dist "$targetSyncDir\dist" /MIR /NFL /NDL /NJH /NJS /nc /ns /np | Out-Null
