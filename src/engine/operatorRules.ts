@@ -1015,9 +1015,19 @@ export function evaluateOperators(
         let capacity = skills.reduce((sum, skill) => sum + orderLimitDelta(skill, room, operatorNames), 0)
         if (gnosisInControl && matchesRiicIdentity(op, 'nationId', 'kjerag')) capacity += 6
         if (wisdelInControl && op.name === '赫德雷') capacity += 2
-        return { operatorId: op.charId, efficiency: contribution.skillBonus,
-          snowsantCopyableEfficiency: contribution.skillBonus, orderLimitDelta: capacity,
-          dependsOnOrderLimit: skills.some(skill => ['trade_ord_spd_variable[000]', 'trade_ord_spd_variable3[000]'].includes(skill.buffId)) }
+        const orderLimitSkills = skills.filter(skill => ['trade_ord_spd_variable[000]', 'trade_ord_spd_variable3[000]'].includes(skill.buffId))
+        const orderLimitDerivedEfficiency = orderLimitSkills.reduce((sum, skill) => {
+          const item = contribution.items.find(i => i.name === `${op.name}·${skill.name}`)
+          return sum + (item ? item.value : 0)
+        }, 0)
+        return {
+          operatorId: op.charId,
+          efficiency: contribution.skillBonus,
+          snowsantCopyableEfficiency: contribution.skillBonus,
+          orderLimitDelta: capacity,
+          dependsOnOrderLimit: orderLimitSkills.length > 0,
+          orderLimitDerivedEfficiency,
+        }
       }),
     })
     if (resolved.supported) {

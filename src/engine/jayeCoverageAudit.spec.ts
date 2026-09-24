@@ -104,10 +104,10 @@ describe('pure highest-phase Jaye integration helper', () => {
     expect(evaluateHighestPhaseJaye({ ...helperInput(), snowsant: { operatorId: id('雪雉'), cap: 35 } }))
       .toMatchObject({ supported: true, jayeEfficiency: 40, snowsantEfficiency: 0 })
   })
-  it('reports order-limit conversion dependency instead of guessing a fixed point', () => {
+  it('supports partner with order-limit conversion skill where order-limit bonus does not reduce Jaye capacity', () => {
     expect(evaluateHighestPhaseJaye(helperInput([
       { operatorId: id('琳琅诗怀雅'), efficiency: 20, orderLimitDelta: 0, snowsantCopyableEfficiency: 20, dependsOnOrderLimit: true },
-    ]))).toMatchObject({ supported: false, reason: 'JAYE_ORDER_LIMIT_EFFICIENCY_DEPENDENCY' })
+    ]))).toMatchObject({ supported: true, jayeEfficiency: 32, effectiveOrderLimit: 8, capacityReduction: 2 })
   })
   it('reports negative efficiency as unverified', () => {
     expect(evaluateHighestPhaseJaye(helperInput([
@@ -126,4 +126,19 @@ describe('pure highest-phase Jaye integration helper', () => {
     expect(evaluateHighestPhaseJaye({ ...helperInput(), clearedByShamare: true }))
       .toMatchObject({ supported: true, jayeEfficiency: 0, snowsantEfficiency: 0, effectiveOrderLimit: null })
   })
+  it('deducts only base efficiency when orderLimitDerivedEfficiency is provided', () => {
+    const result = evaluateHighestPhaseJaye(helperInput([
+      { operatorId: id('琳琅诗怀雅'), efficiency: 60, orderLimitDelta: 0, snowsantCopyableEfficiency: 60, dependsOnOrderLimit: true, orderLimitDerivedEfficiency: 40 },
+    ]))
+    // Base efficiency is 60 - 40 = 20, capacityReduction is floor(20/10) = 2.
+    // effectiveOrderLimit is 10 - 2 = 8, Jaye gets 8 * 4 = 32%.
+    expect(result).toMatchObject({
+      supported: true,
+      jayeEfficiency: 32,
+      effectiveOrderLimit: 8,
+      capacityReduction: 2,
+      otherEfficiency: 20,
+    })
+  })
 })
+

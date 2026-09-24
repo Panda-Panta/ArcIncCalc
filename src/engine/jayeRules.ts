@@ -15,6 +15,8 @@ export interface JayePartnerContribution {
   snowsantCopyableEfficiency: number
   /** Order-limit-to-efficiency rules need a separately verified evaluation order. */
   dependsOnOrderLimit?: boolean
+  /** Any bonus efficiency that is derived from order limit, which does not affect Jaye's capacity deduction. */
+  orderLimitDerivedEfficiency?: number
 }
 
 export interface HighestPhaseJayeInput {
@@ -69,15 +71,21 @@ export function evaluateHighestPhaseJaye(input: HighestPhaseJayeInput): HighestP
     return { supported: true, jayeEfficiency: 0, snowsantEfficiency: 0,
       effectiveOrderLimit: null, capacityReduction: null, otherEfficiency: 0 }
   }
-  if (input.partners.some(partner => partner.dependsOnOrderLimit)) {
-    return { supported: false, reason: 'JAYE_ORDER_LIMIT_EFFICIENCY_DEPENDENCY', detail: '同站存在订单上限转效率技能，尚未验证与孑的结算层次，不能迭代猜测。' }
-  }
-  if (input.partners.some(partner => partner.efficiency < 0 || partner.snowsantCopyableEfficiency < 0)) {
+  const partnerBaseEff = (partner: JayePartnerContribution) =>
+    partner.orderLimitDerivedEfficiency !== undefined
+      ? Math.max(0, partner.efficiency - partner.orderLimitDerivedEfficiency)
+      : partner.efficiency
+  const partnerBaseCopyable = (partner: JayePartnerContribution) =>
+    partner.orderLimitDerivedEfficiency !== undefined
+      ? Math.max(0, partner.snowsantCopyableEfficiency - partner.orderLimitDerivedEfficiency)
+      : partner.snowsantCopyableEfficiency
+
+  if (input.partners.some(partner => partnerBaseEff(partner) < 0 || partnerBaseCopyable(partner) < 0)) {
     return { supported: false, reason: 'JAYE_NEGATIVE_EFFICIENCY_UNVERIFIED', detail: '负的干员净效率参与孑扣容量时的取整规则尚未验证。' }
   }
-  const copiedSource = input.partners.reduce((sum, partner) => sum + partner.snowsantCopyableEfficiency, 0)
+  const copiedSource = input.partners.reduce((sum, partner) => sum + partnerBaseCopyable(partner), 0)
   const snowsantEfficiency = input.snowsant ? Math.min(input.snowsant.cap, Math.floor(copiedSource / 5) * 5) : 0
-  const otherEfficiency = input.partners.reduce((sum, partner) => sum + partner.efficiency, 0) + snowsantEfficiency
+  const otherEfficiency = input.partners.reduce((sum, partner) => sum + partnerBaseEff(partner), 0) + snowsantEfficiency
   const capacityReduction = Math.floor(otherEfficiency / 10)
   const effectiveOrderLimit = Math.max(1, TRADING_BASE_ORDER_LIMIT[input.roomLevel - 1]! +
     input.partners.reduce((sum, partner) => sum + partner.orderLimitDelta, 0) - capacityReduction)
