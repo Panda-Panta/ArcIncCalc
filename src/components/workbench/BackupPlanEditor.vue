@@ -851,7 +851,7 @@ const taskRooms = computed<string[]>(() => {
 
 const availableFacilityOptions = computed<SelectOption[]>(() => {
   const configured = new Set(taskRooms.value)
-  return MOWER_ROOM_IDS.filter((id) => !configured.has(id)).map((id) => ({
+  return MOWER_ROOM_IDS.filter((id) => !id.startsWith('gaming') && !configured.has(id)).map((id) => ({
     label: `${getFacilityRoomDisplayName(id)} (${id})`,
     value: id,
   }))

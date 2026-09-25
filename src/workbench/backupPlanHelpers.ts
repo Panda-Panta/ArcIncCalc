@@ -197,7 +197,7 @@ export function getFacilityRoomDisplayName(roomId: string): string {
 
 export function getFacilityMaxSlots(roomId: string): number {
   if (roomId === 'central' || roomId.startsWith('dormitory_')) return 5
-  if (roomId.startsWith('room_') || roomId.startsWith('gaming_')) return 3
+  if (roomId.startsWith('room_')) return 3
   if (roomId === 'meeting') return 2
   return 1
 }

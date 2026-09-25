@@ -3,8 +3,8 @@ import { createDefaultWorkspace } from '../workbench/defaults'
 import { compileRosterSchedule } from './compileRosterSchedule'
 import { compiledScheduleToRuntimeConfig } from './scheduleAdapter'
 import { createRosterRuntime } from './rosterRuntime'
-import { backupParticipants, createBackupPlanController, evaluateBackupExpression } from './backupPlans'
-import { resolveOperatorCharId as id, exportMowerJson } from '../workbench/compat/mowerJson'
+import { createBackupPlanController, evaluateBackupExpression } from './backupPlans'
+import { resolveOperatorCharId as id } from '../workbench/compat/mowerJson'
 import { simulateSchedule } from '../simulator/scheduleSimulation'
 import { runScheduleSimulationBridge } from '../workbench/scheduleSimulationBridge'
 import { createProductionTimeline } from '../simulator/productionTimeline'
@@ -33,15 +33,12 @@ describe('local Mower expression and backup contracts', () => {
     const {state} = setup(trigger)
     expect(evaluateBackupExpression(trigger, state)).toBe(expected)
   })
-  it('skips the whole external-condition plan, including mixed OR, and preserves its raw export', () => {
-    const {workspace,schedule,state} = setup({left:'op_data.party_time is None',operator:'or',right:'True'}, {plan:{room_1_1:{plans:[{agent:'不存在的干员',replacement:[]}]}}})
-    const before=exportMowerJson(workspace)
-    expect(backupParticipants(workspace)).toEqual([])
-    const controller=createBackupPlanController(schedule,state)
-    controller.evaluate('END')
-    expect(controller.active).toEqual([false])
-    expect(controller.diagnostics).toContainEqual(expect.objectContaining({code:'BACKUP_EXTERNAL_CONDITION_SKIPPED'}))
-    expect(exportMowerJson(workspace)).toBe(before)
+  it('evaluates external party_time as always active by default', () => {
+    const {state} = setup('op_data.party_time')
+    expect(evaluateBackupExpression('op_data.party_time', state)).toBe(true)
+    expect(evaluateBackupExpression('op_data.party_time is not None', state)).toBe(true)
+    expect(evaluateBackupExpression('op_data.party_time is None', state)).toBe(false)
+    expect(evaluateBackupExpression('op_data.party_time == True', state)).toBe(true)
   })
   it('does not treat unknown production conditions or executable text as ignorable', () => {
     for(const expression of ["op_data.operators['砾'].unknown()",'globalThis.process.exit()',"__import__('os').system('echo unsafe')"]){
@@ -59,23 +56,11 @@ describe('local Mower expression and backup contracts', () => {
     expect(()=>evaluateBackupExpression('True '.repeat(5000),state)).toThrow(/限制/)
     expect(()=>evaluateBackupExpression('1 / 0',state)).toThrow(/有限数/)
   })
-  it('exposes skipped plans in the actual simulation report', () => {
-    const {schedule}=setup({left:'op_data.party_time',operator:'is',right:'None'})
+  it('allows backup plan with party_time to activate naturally in simulation', () => {
+    const {schedule}=setup({left:'op_data.party_time',operator:'==',right:'True'})
     const report=simulateSchedule(schedule,{sampleHours:.1})
     expect(report.success).toBe(true)
-    expect(report.diagnostics).toContainEqual(expect.objectContaining({code:'BACKUP_EXTERNAL_CONDITION_SKIPPED'}))
-  })
-  it('skipping an external plan leaves the same physical simulation as omitting it', () => {
-    const {workspace,schedule}=setup({left:'op_data.party_time',operator:'is',right:'None'}, {task:{room_1_1:['不存在的干员']}})
-    const options={sampleHours:2,recordSegments:true,production:{outputMode:'potential' as const,runOrderMode:'ideal' as const,droneTarget:'none' as const}}
-    const skipped=simulateSchedule(schedule,options)
-    workspace.compatibility.backupPlans=[]
-    const baseline=simulateSchedule(compileRosterSchedule(workspace),options)
-    expect(skipped.success&&baseline.success).toBe(true)
-    expect(skipped.events).toEqual(baseline.events)
-    expect(skipped.operators).toEqual(baseline.operators)
-    expect(skipped.segments).toEqual(baseline.segments)
-    expect(skipped.production).toEqual(baseline.production)
+    expect(report.diagnostics.some(d=>d.code==='BACKUP_EXTERNAL_CONDITION_SKIPPED')).toBe(false)
   })
   it('blocks legacy natural run-order requests through both engine and bridge', () => {
     const {workspace,schedule,state}=setup('False')
