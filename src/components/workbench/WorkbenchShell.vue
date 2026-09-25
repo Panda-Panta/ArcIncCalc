@@ -445,6 +445,7 @@ function executeCalculation(): void {
         sampleHours: simSettings.value.sampleDays * 24,
         maxStepHours: simSettings.value.step,
         warmupModel: 'hourly' as const,
+        recordSegments: true,
         jayeElite0: simSettings.value.jayeElite0 ?? false,
         operatorInventory: inventoryEntries,
         production: {
@@ -773,7 +774,7 @@ defineExpose({
           data-test="tab-logs"
           @click="activeTab = 'logs'"
         >
-          日志
+          时间轴与日志
           <span v-if="simulationReport" class="tab-indicator">●</span>
         </button>
       </nav>
@@ -972,6 +973,22 @@ defineExpose({
                 <span class="metric-unit">玉/日</span>
               </div>
               <span class="metric-sub">源石碎片 {{ formatNumber(calculationReport.summary.fragments, 1) }} 个</span>
+            </div>
+
+            <!-- Timeline / Gantt Quick Link -->
+            <div
+              v-if="simulationReport"
+              class="metric-card card-timeline"
+              data-test="metric-timeline-link"
+              title="点击查看排班甘特图与动态工休时间轴"
+              @click="activeTab = 'logs'"
+            >
+              <span class="metric-tag">排班时间轴</span>
+              <div class="metric-main">
+                <span class="metric-num">📊</span>
+                <span class="metric-unit">查看甘特图 →</span>
+              </div>
+              <span class="metric-sub">全周期工休轨迹与动态演化</span>
             </div>
           </div>
         </section>
@@ -1505,6 +1522,19 @@ h1 small {
 
 .card-orundum {
   border-left: 3px solid #d03050;
+}
+
+.card-timeline {
+  border-left: 3px solid #42d6c7;
+  background: rgba(66, 214, 199, 0.08);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.card-timeline:hover {
+  background: rgba(66, 214, 199, 0.16);
+  border-color: #63e2b7;
+  transform: translateY(-1px);
 }
 
 .metric-tag {

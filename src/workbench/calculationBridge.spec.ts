@@ -22,19 +22,6 @@ describe('runCalculationBridge engine options', () => {
     expect(result.report).not.toBeNull()
   })
 
-  it('returns unavailable diagnostic and null report for event-v2 without wrapping legacy numbers', () => {
-    const ws = createDefaultWorkspace()
-    const result = runCalculationBridge(ws, { engine: 'event-v2' })
-
-    expect(result.success).toBe(false)
-    expect(result.engine).toBe('event-v2')
-    // Strictly null report - NEVER wrap legacy numbers!
-    expect(result.report).toBeNull()
-    expect(result.diagnostics).toBeDefined()
-    expect(result.diagnostics?.some(d => d.code === 'EVENT_V2_UNAVAILABLE')).toBe(true)
-    expect(result.error).toContain('event-v2')
-  })
-
   it('stops before calculation if validation fails', () => {
     const ws = createDefaultWorkspace()
     // Introduce critical error: duplicate primary operator in central

@@ -1,0 +1,1329 @@
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue'
+import type { ScheduleSimulationReport } from '../../simulator/scheduleSimulation'
+import {
+  buildTimelineData,
+  type FacilityTrack,
+  type OperatorTrack,
+  type TimelineInterval,
+  type TimelineMarkerEvent,
+} from '../../workbench/timeline/timelineModel'
+
+const props = defineProps<{
+  report: ScheduleSimulationReport | null
+}>()
+
+const emit = defineEmits<{
+  (e: 'request-simulate'): void
+}>()
+
+// View mode: by facility or by operator
+const viewMode = ref<'facility' | 'operator'>('facility')
+const facilityFilter = ref<string>('all')
+const searchQuery = ref('')
+const showEventMarkers = ref(true)
+
+// Time window zoom
+const zoomPreset = ref<'24' | '48' | '72' | 'all'>('72')
+const customWindowStart = ref(0)
+const customWindowEnd = ref(72)
+
+// Hover inspector state
+const hoveredInterval = ref<TimelineInterval | null>(null)
+const hoveredEvent = ref<TimelineMarkerEvent | null>(null)
+const tooltipX = ref(0)
+const tooltipY = ref(0)
+const cursorTime = ref<number | null>(null)
+const cursorXPercent = ref<number | null>(null)
+
+// Highlighted operator when hovering an interval or searching
+const highlightedOperatorId = computed(() => {
+  if (hoveredInterval.value?.operatorId) return hoveredInterval.value.operatorId
+  return null
+})
+
+// Build dataset
+const dataset = computed(() => {
+  if (!props.report) return null
+  return buildTimelineData(props.report)
+})
+
+// Initialize zoom window based on report observed hours
+watch(
+  () => dataset.value?.observedHours,
+  (hours) => {
+    if (hours && hours > 0) {
+      customWindowStart.value = 0
+      if (zoomPreset.value === '24') customWindowEnd.value = Math.min(24, hours)
+      else if (zoomPreset.value === '48') customWindowEnd.value = Math.min(48, hours)
+      else if (zoomPreset.value === '72') customWindowEnd.value = Math.min(72, hours)
+      else customWindowEnd.value = hours
+    }
+  },
+  { immediate: true },
+)
+
+function setZoomPreset(preset: '24' | '48' | '72' | 'all'): void {
+  zoomPreset.value = preset
+  const maxH = dataset.value?.observedHours ?? 72
+  customWindowStart.value = 0
+  if (preset === '24') customWindowEnd.value = Math.min(24, maxH)
+  else if (preset === '48') customWindowEnd.value = Math.min(48, maxH)
+  else if (preset === '72') customWindowEnd.value = Math.min(72, maxH)
+  else customWindowEnd.value = maxH
+}
+
+const windowDuration = computed(() => {
+  return Math.max(0.1, customWindowEnd.value - customWindowStart.value)
+})
+
+// Calculate percentage position and width on timeline
+function getOffsetPercent(time: number): number {
+  const rel = time - customWindowStart.value
+  return Math.max(0, Math.min(100, (rel / windowDuration.value) * 100))
+}
+
+function getWidthPercent(start: number, end: number): number {
+  const s = Math.max(customWindowStart.value, start)
+  const e = Math.min(customWindowEnd.value, end)
+  if (e <= s) return 0
+  return ((e - s) / windowDuration.value) * 100
+}
+
+function isIntervalVisible(interval: TimelineInterval): boolean {
+  return interval.end > customWindowStart.value && interval.start < customWindowEnd.value
+}
+
+// Generate Ruler Ticks (Days & Hours)
+interface RulerTick {
+  time: number
+  percent: number
+  label: string
+  isMajorDay: boolean
+}
+
+const rulerTicks = computed<RulerTick[]>(() => {
+  const dur = windowDuration.value
+  const start = customWindowStart.value
+  const end = customWindowEnd.value
+  const ticks: RulerTick[] = []
+
+  let step = 6
+  if (dur <= 24) step = 3
+  else if (dur <= 48) step = 6
+  else if (dur <= 120) step = 12
+  else step = 24
+
+  const firstTick = Math.ceil(start / step) * step
+  for (let t = firstTick; t <= end; t += step) {
+    const isMajor = t % 24 === 0
+    const day = Math.floor(t / 24) + 1
+    const hourInDay = t % 24
+    let label = `${t}h`
+    if (isMajor) {
+      label = `D${day} 00:00`
+    } else {
+      label = `${hourInDay < 10 ? '0' + hourInDay : hourInDay}:00`
+    }
+
+    ticks.push({
+      time: t,
+      percent: getOffsetPercent(t),
+      label,
+      isMajorDay: isMajor,
+    })
+  }
+  return ticks
+})
+
+// Filtered Facility Tracks
+const filteredFacilityTracks = computed<FacilityTrack[]>(() => {
+  if (!dataset.value) return []
+  const q = searchQuery.value.trim().toLowerCase()
+  return dataset.value.facilityTracks.filter((track) => {
+    if (facilityFilter.value !== 'all') {
+      if (facilityFilter.value === 'manufacture' && track.roomType !== 'manufacture') return false
+      if (facilityFilter.value === 'trading' && track.roomType !== 'trading') return false
+      if (facilityFilter.value === 'power' && track.roomType !== 'power') return false
+      if (facilityFilter.value === 'central' && track.roomType !== 'central') return false
+      if (facilityFilter.value === 'dormitory' && track.roomType !== 'dormitory') return false
+      if (
+        facilityFilter.value === 'auxiliary' &&
+        ['manufacture', 'trading', 'power', 'central', 'dormitory'].includes(track.roomType)
+      ) {
+        return false
+      }
+    }
+    if (!q) return true
+    if (track.roomName.toLowerCase().includes(q)) return true
+    if (track.roomId.toLowerCase().includes(q)) return true
+    return track.slots.some((slot) =>
+      slot.intervals.some((i) => i.operatorName.toLowerCase().includes(q)),
+    )
+  })
+})
+
+// Filtered Operator Tracks
+const filteredOperatorTracks = computed<OperatorTrack[]>(() => {
+  if (!dataset.value) return []
+  const q = searchQuery.value.trim().toLowerCase()
+  return dataset.value.operatorTracks.filter((track) => {
+    if (!q) return true
+    if (track.operatorName.toLowerCase().includes(q)) return true
+    if (track.operatorId.toLowerCase().includes(q)) return true
+    return track.intervals.some((i) => i.roomName.toLowerCase().includes(q))
+  })
+})
+
+// Filtered Events within zoom window
+const visibleEvents = computed<TimelineMarkerEvent[]>(() => {
+  if (!dataset.value || !showEventMarkers.value) return []
+  return dataset.value.events.filter(
+    (e) => e.time >= customWindowStart.value && e.time <= customWindowEnd.value,
+  )
+})
+
+// Track mouse cursor over timeline
+function handleMouseMove(e: MouseEvent): void {
+  const container = (e.currentTarget as HTMLElement)
+  const rect = container.getBoundingClientRect()
+  const mouseX = Math.max(0, Math.min(rect.width, e.clientX - rect.left))
+  const frac = mouseX / rect.width
+  cursorXPercent.value = frac * 100
+  cursorTime.value = customWindowStart.value + frac * windowDuration.value
+}
+
+function handleMouseLeave(): void {
+  cursorTime.value = null
+  cursorXPercent.value = null
+  hoveredInterval.value = null
+  hoveredEvent.value = null
+}
+
+function handleIntervalHover(interval: TimelineInterval, e: MouseEvent): void {
+  hoveredInterval.value = interval
+  tooltipX.value = e.clientX + 12
+  tooltipY.value = e.clientY + 12
+}
+
+function handleEventHover(event: TimelineMarkerEvent, e: MouseEvent): void {
+  hoveredEvent.value = event
+  tooltipX.value = e.clientX + 12
+  tooltipY.value = e.clientY + 12
+}
+
+function formatHour(h: number | null | undefined): string {
+  if (h === null || h === undefined || !Number.isFinite(h)) return '0.0h'
+  return h.toFixed(1) + 'h'
+}
+
+function getStatusBadgeClass(status: TimelineInterval['status'], roomType: string): string {
+  if (status === 'exhausted') return 'status-exhausted'
+  if (status === 'resting') return 'status-resting'
+  if (status === 'idle') return 'status-idle'
+  return `type-${roomType}`
+}
+</script>
+
+<template>
+  <div class="schedule-timeline-gantt" data-test="schedule-timeline-gantt">
+    <!-- Header & Controls -->
+    <div class="gantt-header">
+      <div class="gantt-title-row">
+        <div class="gantt-title-group">
+          <h4 class="gantt-title">排班甘特图 / 时间轴可视化</h4>
+          <span class="gantt-subtitle">多周期离散事件演化、干员轮换在岗时段与实时工休轨迹</span>
+        </div>
+        <div class="view-mode-toggle">
+          <button
+            type="button"
+            class="toggle-btn"
+            :class="{ active: viewMode === 'facility' }"
+            data-test="view-mode-facility"
+            @click="viewMode = 'facility'"
+          >
+            🏢 设施分道
+          </button>
+          <button
+            type="button"
+            class="toggle-btn"
+            :class="{ active: viewMode === 'operator' }"
+            data-test="view-mode-operator"
+            @click="viewMode = 'operator'"
+          >
+            👤 干员分道
+          </button>
+        </div>
+      </div>
+
+      <!-- Filter and Zoom Bar -->
+      <div class="gantt-controls-bar">
+        <!-- Facility Filter (facility view only) -->
+        <div v-if="viewMode === 'facility'" class="filter-chips">
+          <button
+            v-for="[key, label] in [
+              ['all', '全部设施'],
+              ['manufacture', '制造站'],
+              ['trading', '贸易站'],
+              ['power', '发电站'],
+              ['central', '控制中枢'],
+              ['dormitory', '宿舍'],
+              ['auxiliary', '其他辅助'],
+            ]"
+            :key="key"
+            type="button"
+            class="chip-btn"
+            :class="{ active: facilityFilter === key }"
+            @click="facilityFilter = key"
+          >
+            {{ label }}
+          </button>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="search-wrap">
+          <input
+            v-model="searchQuery"
+            type="text"
+            class="gantt-search-input"
+            :placeholder="viewMode === 'facility' ? '搜索设施或在岗干员...' : '搜索干员名称...'"
+          />
+          <button v-if="searchQuery" type="button" class="search-clear-btn" @click="searchQuery = ''">✕</button>
+        </div>
+
+        <!-- Zoom Presets -->
+        <div class="zoom-presets">
+          <span class="ctrl-label">时间窗:</span>
+          <button
+            v-for="p in ['24', '48', '72', 'all'] as const"
+            :key="p"
+            type="button"
+            class="zoom-btn"
+            :class="{ active: zoomPreset === p }"
+            @click="setZoomPreset(p)"
+          >
+            {{ p === 'all' ? '全周期' : `${p}h` }}
+          </button>
+        </div>
+
+        <!-- Event markers toggle -->
+        <label class="event-toggle-label">
+          <input v-model="showEventMarkers" type="checkbox" />
+          <span>事件标记</span>
+        </label>
+      </div>
+
+      <!-- Time Window Info Bar -->
+      <div class="time-window-info">
+        <span>当前视窗：<strong>T+{{ customWindowStart.toFixed(1) }}h</strong> 至 <strong>T+{{ customWindowEnd.toFixed(1) }}h</strong>（共 {{ windowDuration.toFixed(1) }} 小时 / {{ (windowDuration / 24).toFixed(1) }} 天）</span>
+        <span v-if="cursorTime !== null" class="cursor-info">
+          🎯 光标定位：<strong>T+{{ cursorTime.toFixed(2) }}h</strong>（第 {{ Math.floor(cursorTime / 24) + 1 }} 天 {{ String(Math.floor(cursorTime % 24)).padStart(2, '0') }}:{{ String(Math.floor((cursorTime % 1) * 60)).padStart(2, '0') }}）
+        </span>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div v-if="!dataset || dataset.facilityTracks.length === 0" class="gantt-empty-state">
+      <div class="empty-icon">📊</div>
+      <p class="empty-title">暂无时间轴数据</p>
+      <p class="empty-desc">运行基建排班仿真计算后，系统将自动记录并呈现全周期干员工休及设施运转甘特图。</p>
+      <button type="button" class="run-sim-btn" @click="emit('request-simulate')">
+        立即运行排班模拟
+      </button>
+    </div>
+
+    <!-- Gantt Chart Main Area -->
+    <div v-else class="gantt-container" data-test="gantt-container">
+      <div class="gantt-scroll-wrapper">
+        <!-- Ruler Row (Sticky Header) -->
+        <div class="gantt-ruler-row">
+          <div class="gantt-axis-label-col">
+            <span class="axis-title">{{ viewMode === 'facility' ? '设施 / 槽位' : '干员名单' }}</span>
+          </div>
+          <div class="gantt-timeline-track ruler-track" @mousemove="handleMouseMove" @mouseleave="handleMouseLeave">
+            <!-- Ruler Ticks -->
+            <div
+              v-for="tick in rulerTicks"
+              :key="tick.time"
+              class="ruler-tick"
+              :class="{ 'major-day': tick.isMajorDay }"
+              :style="{ left: `${tick.percent}%` }"
+            >
+              <div class="tick-line" />
+              <span class="tick-label">{{ tick.label }}</span>
+            </div>
+
+            <!-- Visible Event Markers on Ruler -->
+            <div
+              v-for="(ev, idx) in visibleEvents"
+              :key="idx"
+              class="event-marker"
+              :style="{ left: `${getOffsetPercent(ev.time)}%`, backgroundColor: ev.color }"
+              @mouseenter="handleEventHover(ev, $event)"
+              @mouseleave="hoveredEvent = null"
+            >
+              <span class="marker-icon">{{ ev.icon }}</span>
+            </div>
+
+            <!-- Vertical Hairline Cursor -->
+            <div
+              v-if="cursorXPercent !== null"
+              class="scrubber-cursor"
+              :style="{ left: `${cursorXPercent}%` }"
+            >
+              <span class="scrubber-badge">T+{{ cursorTime?.toFixed(1) }}h</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tracks Body -->
+        <div class="gantt-tracks-body" @mousemove="handleMouseMove" @mouseleave="handleMouseLeave">
+          <!-- Background Grid Lines -->
+          <div class="gantt-grid-overlay">
+            <div
+              v-for="tick in rulerTicks"
+              :key="tick.time"
+              class="grid-line"
+              :class="{ 'major-grid': tick.isMajorDay }"
+              :style="{ left: `${tick.percent}%` }"
+            />
+            <div
+              v-if="cursorXPercent !== null"
+              class="scrubber-line"
+              :style="{ left: `${cursorXPercent}%` }"
+            />
+          </div>
+
+          <!-- FACILITY VIEW -->
+          <template v-if="viewMode === 'facility'">
+            <div
+              v-for="facility in filteredFacilityTracks"
+              :key="facility.roomId"
+              class="facility-group"
+              :class="`room-${facility.roomType}`"
+            >
+              <!-- Facility Subheader -->
+              <div class="facility-group-header">
+                <div class="group-title-col">
+                  <span class="facility-tag" :class="facility.roomType">{{ facility.roomType }}</span>
+                  <span class="facility-name">{{ facility.roomName }}</span>
+                  <span class="facility-eff">+{{ facility.averageEfficiency.toFixed(1) }}%</span>
+                </div>
+                <div class="group-track-spacer" />
+              </div>
+
+              <!-- Slots of this facility -->
+              <div
+                v-for="slot in facility.slots"
+                :key="slot.slotKey"
+                class="track-row"
+              >
+                <div class="track-label-col slot-label-col">
+                  <span class="slot-badge">槽位 {{ slot.slotIndex + 1 }}</span>
+                  <span v-if="slot.role === 'dorm-keeper'" class="role-badge keeper">宿管</span>
+                  <span v-else-if="slot.role === 'fiammetta'" class="role-badge fiammetta">互换</span>
+                </div>
+
+                <div class="track-content-lane">
+                  <div
+                    v-for="interval in slot.intervals.filter(isIntervalVisible)"
+                    :key="interval.id"
+                    class="gantt-block"
+                    :class="[
+                      getStatusBadgeClass(interval.status, interval.roomType),
+                      {
+                        highlighted: highlightedOperatorId === interval.operatorId && interval.operatorId,
+                        dimmed: highlightedOperatorId && highlightedOperatorId !== interval.operatorId,
+                      },
+                    ]"
+                    :style="{
+                      left: `${getOffsetPercent(interval.start)}%`,
+                      width: `${getWidthPercent(interval.start, interval.end)}%`,
+                    }"
+                    @mouseenter="handleIntervalHover(interval, $event)"
+                    @mouseleave="hoveredInterval = null"
+                  >
+                    <div class="block-content">
+                      <img
+                        v-if="interval.avatarUrl"
+                        :src="interval.avatarUrl"
+                        :alt="interval.operatorName"
+                        class="block-avatar"
+                        onerror="this.style.display='none'"
+                      />
+                      <span class="block-name">{{ interval.operatorName || '空置' }}</span>
+                      <span v-if="interval.duration >= 3" class="block-duration">
+                        {{ formatHour(interval.duration) }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <!-- OPERATOR VIEW -->
+          <template v-else>
+            <div
+              v-for="op in filteredOperatorTracks"
+              :key="op.operatorId"
+              class="track-row operator-track-row"
+            >
+              <div class="track-label-col op-label-col">
+                <img
+                  v-if="op.avatarUrl"
+                  :src="op.avatarUrl"
+                  :alt="op.operatorName"
+                  class="op-avatar"
+                  onerror="this.style.display='none'"
+                />
+                <div class="op-info">
+                  <span class="op-name">{{ op.operatorName }}</span>
+                  <span class="op-duty-badge">
+                    {{ (op.workFraction * 100).toFixed(0) }}% 工时 ({{ op.workHours.toFixed(1) }}h)
+                  </span>
+                </div>
+              </div>
+
+              <div class="track-content-lane">
+                <div
+                  v-for="interval in op.intervals.filter(isIntervalVisible)"
+                  :key="interval.id"
+                  class="gantt-block"
+                  :class="[
+                    getStatusBadgeClass(interval.status, interval.roomType),
+                    {
+                      highlighted: highlightedOperatorId === interval.operatorId && interval.operatorId,
+                      dimmed: highlightedOperatorId && highlightedOperatorId !== interval.operatorId,
+                    },
+                  ]"
+                  :style="{
+                    left: `${getOffsetPercent(interval.start)}%`,
+                    width: `${getWidthPercent(interval.start, interval.end)}%`,
+                  }"
+                  @mouseenter="handleIntervalHover(interval, $event)"
+                  @mouseleave="hoveredInterval = null"
+                >
+                  <div class="block-content">
+                    <span class="block-status-icon">
+                      {{ interval.status === 'working' ? '💼' : interval.status === 'resting' ? '🛏️' : interval.status === 'exhausted' ? '⚠️' : '💤' }}
+                    </span>
+                    <span class="block-name">{{ interval.roomName }}</span>
+                    <span v-if="interval.duration >= 3" class="block-duration">
+                      {{ formatHour(interval.duration) }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating Inspector Tooltip -->
+    <div
+      v-if="hoveredInterval"
+      class="gantt-tooltip"
+      :style="{ left: `${tooltipX}px`, top: `${tooltipY}px` }"
+    >
+      <div class="tooltip-header">
+        <img
+          v-if="hoveredInterval.avatarUrl"
+          :src="hoveredInterval.avatarUrl"
+          :alt="hoveredInterval.operatorName"
+          class="tooltip-avatar"
+        />
+        <div class="tooltip-title-box">
+          <span class="tooltip-title">{{ hoveredInterval.operatorName || '空置槽位' }}</span>
+          <span class="tooltip-subtitle">{{ hoveredInterval.roomName }} · 槽位 {{ hoveredInterval.slotIndex + 1 }}</span>
+        </div>
+        <span class="tooltip-status-tag" :class="hoveredInterval.status">
+          {{ hoveredInterval.status === 'working' ? '在岗作业' : hoveredInterval.status === 'resting' ? '宿舍恢复' : hoveredInterval.status === 'exhausted' ? '疲劳工作' : '待机闲置' }}
+        </span>
+      </div>
+      <div class="tooltip-body">
+        <div class="tooltip-row">
+          <span class="row-label">时间区间：</span>
+          <span class="row-val">T+{{ hoveredInterval.start.toFixed(2) }}h ~ T+{{ hoveredInterval.end.toFixed(2) }}h</span>
+        </div>
+        <div class="tooltip-row">
+          <span class="row-label">持续时长：</span>
+          <span class="row-val highlight">{{ hoveredInterval.duration.toFixed(2) }} 小时</span>
+        </div>
+        <div v-if="hoveredInterval.startMorale !== undefined" class="tooltip-row">
+          <span class="row-label">心情演化：</span>
+          <span class="row-val">
+            {{ hoveredInterval.startMorale.toFixed(1) }} → {{ hoveredInterval.endMorale?.toFixed(1) }} / 24
+          </span>
+        </div>
+        <div v-if="hoveredInterval.efficiencyPercent !== undefined" class="tooltip-row">
+          <span class="row-label">设施效率：</span>
+          <span class="row-val eff-val">+{{ hoveredInterval.efficiencyPercent.toFixed(1) }}%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Event Tooltip -->
+    <div
+      v-if="hoveredEvent"
+      class="gantt-tooltip event-tooltip"
+      :style="{ left: `${tooltipX}px`, top: `${tooltipY}px` }"
+    >
+      <div class="tooltip-header">
+        <span class="event-icon">{{ hoveredEvent.icon }}</span>
+        <span class="tooltip-title">{{ hoveredEvent.label }}</span>
+        <span class="tooltip-time">T+{{ hoveredEvent.time.toFixed(2) }}h</span>
+      </div>
+      <div class="tooltip-body">
+        <p class="event-desc">{{ hoveredEvent.description }}</p>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.schedule-timeline-gantt {
+  width: 100%;
+  background: #141920;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  color: #e9f2f4;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+  box-sizing: border-box;
+  margin: 16px 0;
+  overflow: hidden;
+}
+
+.gantt-header {
+  padding: 16px 20px 12px;
+  background: #1a222c;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gantt-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.gantt-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+}
+
+.gantt-subtitle {
+  font-size: 12px;
+  color: #8da5ac;
+  display: block;
+  margin-top: 2px;
+}
+
+.view-mode-toggle {
+  display: flex;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 3px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.toggle-btn {
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: #8da5ac;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggle-btn.active {
+  background: #42d6c7;
+  color: #0b1e1b;
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(66, 214, 199, 0.3);
+}
+
+.gantt-controls-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.filter-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.chip-btn {
+  padding: 3px 10px;
+  font-size: 11px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #b6c6d1;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.chip-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.chip-btn.active {
+  background: rgba(66, 214, 199, 0.15);
+  border-color: #42d6c7;
+  color: #42d6c7;
+  font-weight: 600;
+}
+
+.search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.gantt-search-input {
+  height: 26px;
+  padding: 0 24px 0 8px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  color: #fff;
+  font-size: 11px;
+  width: 170px;
+  outline: none;
+}
+
+.gantt-search-input:focus {
+  border-color: #42d6c7;
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 6px;
+  background: transparent;
+  border: none;
+  color: #8da5ac;
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.zoom-presets {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ctrl-label {
+  font-size: 11px;
+  color: #8da5ac;
+}
+
+.zoom-btn {
+  padding: 3px 8px;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #b6c6d1;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.zoom-btn.active {
+  background: rgba(240, 189, 91, 0.2);
+  border-color: #f0bd5b;
+  color: #f0bd5b;
+  font-weight: 600;
+}
+
+.event-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #8da5ac;
+  cursor: pointer;
+}
+
+.time-window-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 11px;
+  color: #8da5ac;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.time-window-info strong {
+  color: #e9f2f4;
+}
+
+.cursor-info strong {
+  color: #42d6c7;
+}
+
+/* Empty State */
+.gantt-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 40px;
+  opacity: 0.6;
+  margin-bottom: 12px;
+}
+
+.empty-title {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.empty-desc {
+  font-size: 12px;
+  color: #8da5ac;
+  max-width: 440px;
+  line-height: 1.6;
+  margin: 0 0 16px;
+}
+
+.run-sim-btn {
+  padding: 8px 18px;
+  background: #42d6c7;
+  color: #0c201d;
+  font-weight: 600;
+  font-size: 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.run-sim-btn:hover {
+  opacity: 0.9;
+}
+
+/* Gantt Scroll Container */
+.gantt-container {
+  position: relative;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.gantt-scroll-wrapper {
+  min-width: 860px;
+}
+
+/* Ruler Row */
+.gantt-ruler-row {
+  display: flex;
+  height: 38px;
+  background: #10151c;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.gantt-axis-label-col {
+  width: 190px;
+  min-width: 190px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: #10151c;
+  z-index: 11;
+}
+
+.axis-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #8da5ac;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.gantt-timeline-track {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  user-select: none;
+}
+
+.ruler-track {
+  height: 100%;
+}
+
+.ruler-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+
+.tick-line {
+  width: 1px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.major-day .tick-line {
+  height: 10px;
+  background: #42d6c7;
+  width: 2px;
+}
+
+.tick-label {
+  font-size: 10px;
+  color: #8da5ac;
+  margin-top: 4px;
+  white-space: nowrap;
+}
+
+.major-day .tick-label {
+  color: #42d6c7;
+  font-weight: 600;
+}
+
+/* Event marker on ruler */
+.event-marker {
+  position: absolute;
+  top: 4px;
+  transform: translateX(-50%);
+  padding: 2px 5px;
+  border-radius: 10px;
+  font-size: 10px;
+  cursor: pointer;
+  z-index: 5;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+}
+
+.marker-icon {
+  font-size: 10px;
+}
+
+/* Scrubber / Crosshair */
+.scrubber-cursor {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: #42d6c7;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.scrubber-badge {
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  background: #42d6c7;
+  color: #0b1e1b;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+/* Tracks Body */
+.gantt-tracks-body {
+  position: relative;
+  min-height: 280px;
+}
+
+.gantt-grid-overlay {
+  position: absolute;
+  top: 0;
+  left: 190px;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.grid-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.major-grid {
+  background: rgba(66, 214, 199, 0.08);
+}
+
+.scrubber-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(66, 214, 199, 0.6);
+  box-shadow: 0 0 6px rgba(66, 214, 199, 0.4);
+}
+
+/* Facility Group */
+.facility-group {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.facility-group-header {
+  display: flex;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.02);
+  align-items: center;
+}
+
+.group-title-col {
+  width: 190px;
+  min-width: 190px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.facility-tag {
+  font-size: 9px;
+  text-transform: uppercase;
+  padding: 1px 4px;
+  border-radius: 2px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.facility-tag.manufacture { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+.facility-tag.trading { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+.facility-tag.power { background: rgba(14, 165, 233, 0.2); color: #38bdf8; }
+.facility-tag.central { background: rgba(139, 92, 246, 0.2); color: #a78bfa; }
+.facility-tag.dormitory { background: rgba(99, 102, 241, 0.2); color: #818cf8; }
+
+.facility-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.facility-eff {
+  font-size: 10px;
+  color: #42d6c7;
+  margin-left: auto;
+}
+
+.group-track-spacer {
+  flex: 1;
+}
+
+/* Track Row */
+.track-row {
+  display: flex;
+  height: 34px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.track-row:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.track-label-col {
+  width: 190px;
+  min-width: 190px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  background: #141920;
+  z-index: 2;
+  gap: 6px;
+}
+
+.slot-badge {
+  font-size: 10px;
+  color: #8da5ac;
+}
+
+.role-badge {
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+.role-badge.keeper { background: rgba(139, 92, 246, 0.2); color: #c4b5fd; }
+.role-badge.fiammetta { background: rgba(245, 158, 11, 0.2); color: #fde68a; }
+
+.op-label-col {
+  gap: 8px;
+}
+
+.op-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 3px;
+  object-fit: cover;
+  background: #2a3440;
+}
+
+.op-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.op-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: #e9f2f4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.op-duty-badge {
+  font-size: 9px;
+  color: #8da5ac;
+}
+
+.track-content-lane {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+  z-index: 3;
+}
+
+/* Gantt Block */
+.gantt-block {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  border-radius: 3px;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 0.1s, opacity 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.gantt-block:hover {
+  transform: translateY(-1px);
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.gantt-block.highlighted {
+  border-color: #fff !important;
+  box-shadow: 0 0 10px rgba(66, 214, 199, 0.7);
+  z-index: 12;
+}
+
+.gantt-block.dimmed {
+  opacity: 0.35;
+}
+
+.block-content {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.block-avatar {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  object-fit: cover;
+}
+
+.block-name {
+  font-size: 11px;
+  font-weight: 500;
+  color: #ffffff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.block-duration {
+  font-size: 9px;
+  opacity: 0.8;
+  margin-left: 4px;
+}
+
+.block-status-icon {
+  font-size: 10px;
+}
+
+/* Category Color Coding */
+.type-manufacture {
+  background: linear-gradient(90deg, #064e3b, #047857);
+  border-color: #10b981;
+}
+
+.type-trading {
+  background: linear-gradient(90deg, #78350f, #b45309);
+  border-color: #f59e0b;
+}
+
+.type-power {
+  background: linear-gradient(90deg, #0c4a6e, #0369a1);
+  border-color: #0ea5e9;
+}
+
+.type-central {
+  background: linear-gradient(90deg, #4c1d95, #6d28d9);
+  border-color: #8b5cf6;
+}
+
+.status-resting {
+  background: linear-gradient(90deg, #312e81, #4338ca);
+  border-color: #6366f1;
+}
+
+.status-exhausted {
+  background: repeating-linear-gradient(45deg, #7f1d1d, #7f1d1d 8px, #991b1b 8px, #991b1b 16px);
+  border-color: #ef4444;
+}
+
+.status-idle {
+  background: #1e293b;
+  border-color: #475569;
+  border-style: dashed;
+}
+
+/* Floating Tooltip */
+.gantt-tooltip {
+  position: fixed;
+  z-index: 1000;
+  background: #1a222c;
+  border: 1px solid rgba(66, 214, 199, 0.5);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+  border-radius: 4px;
+  padding: 10px 12px;
+  pointer-events: none;
+  font-size: 11px;
+  color: #e9f2f4;
+  min-width: 200px;
+  max-width: 280px;
+}
+
+.tooltip-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tooltip-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 3px;
+  object-fit: cover;
+}
+
+.tooltip-title-box {
+  display: flex;
+  flex-direction: column;
+}
+
+.tooltip-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.tooltip-subtitle {
+  font-size: 10px;
+  color: #8da5ac;
+}
+
+.tooltip-status-tag {
+  margin-left: auto;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-weight: 600;
+}
+
+.tooltip-status-tag.working { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+.tooltip-status-tag.resting { background: rgba(99, 102, 241, 0.2); color: #818cf8; }
+.tooltip-status-tag.exhausted { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+.tooltip-status-tag.idle { background: rgba(255, 255, 255, 0.1); color: #94a3b8; }
+
+.tooltip-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tooltip-row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.row-label {
+  color: #8da5ac;
+}
+
+.row-val {
+  color: #e9f2f4;
+  font-family: Consolas, monospace;
+}
+
+.row-val.highlight {
+  color: #f0bd5b;
+  font-weight: 600;
+}
+
+.row-val.eff-val {
+  color: #42d6c7;
+  font-weight: 600;
+}
+
+.event-tooltip .event-desc {
+  margin: 0;
+  line-height: 1.5;
+  color: #cbd5e1;
+}
+
+.tooltip-time {
+  margin-left: auto;
+  color: #f0bd5b;
+  font-family: Consolas, monospace;
+}
+</style>

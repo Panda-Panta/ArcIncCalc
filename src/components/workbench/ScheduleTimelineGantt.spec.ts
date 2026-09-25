@@ -1,0 +1,203 @@
+/**
+ * @vitest-environment jsdom
+ */
+import { describe, expect, it } from 'vitest'
+import { mount } from '@vue/test-utils'
+import ScheduleTimelineGantt from './ScheduleTimelineGantt.vue'
+import type { ScheduleSimulationReport } from '../../simulator/scheduleSimulation'
+
+function createSampleReport(): ScheduleSimulationReport {
+  return {
+    schemaVersion: 1,
+    engine: 'mower-morale-v1',
+    success: true,
+    elapsedHours: 48,
+    observedHours: 48,
+    assumptions: {
+      sampleHours: 48,
+      warmupHours: 0,
+      maxStepHours: 0.25,
+      warmupModel: 'continuous',
+      restingThreshold: 0.65,
+      operationDurationHours: 0,
+      dormAtmosphere: '',
+      singleRecoveryTarget: '',
+    },
+    inputs: {
+      schedule: {
+        schemaVersion: 1,
+        rooms: [
+          {
+            roomId: 'room_1_1',
+            type: 'manufacture',
+            level: 3,
+            capacity: 2,
+            slots: [
+              {
+                roomId: 'room_1_1',
+                slotIndex: 0,
+                occupant: { kind: 'operator', operatorId: 'char_102_texas' },
+                primaryOperatorId: 'char_102_texas',
+                orderedCandidates: ['char_198_blackd'],
+                groupId: null,
+                role: 'work',
+              },
+              {
+                roomId: 'room_1_1',
+                slotIndex: 1,
+                occupant: { kind: 'operator', operatorId: 'char_002_amiya' },
+                primaryOperatorId: 'char_002_amiya',
+                orderedCandidates: [],
+                groupId: null,
+                role: 'work',
+              },
+            ],
+          },
+          {
+            roomId: 'room_1_3',
+            type: 'trading',
+            level: 3,
+            capacity: 1,
+            slots: [
+              {
+                roomId: 'room_1_3',
+                slotIndex: 0,
+                occupant: { kind: 'operator', operatorId: 'char_108_silent' },
+                primaryOperatorId: 'char_108_silent',
+                orderedCandidates: [],
+                groupId: null,
+                role: 'work',
+              },
+            ],
+          },
+          {
+            roomId: 'dormitory_1',
+            type: 'dormitory',
+            level: 5,
+            capacity: 1,
+            slots: [
+              {
+                roomId: 'dormitory_1',
+                slotIndex: 0,
+                occupant: { kind: 'free' },
+                primaryOperatorId: null,
+                orderedCandidates: [],
+                groupId: null,
+                role: 'free-rest',
+              },
+            ],
+          },
+        ],
+        operators: {},
+        restPools: [],
+        policies: {} as any,
+        fiammettaPolicies: [],
+        runOrderPolicies: [],
+        diagnostics: [],
+        assumptions: {} as any,
+      } as any,
+      options: {},
+    },
+    operators: [
+      { operatorId: 'char_102_texas', operatorName: '德克萨斯', mainWorkHours: 24, substituteWorkHours: 0, workHours: 24, exhaustedHours: 0, restHours: 24, idleHours: 0, workFraction: 0.5, workRestRatio: 1, initialMorale: 24, finalMorale: 24 },
+      { operatorId: 'char_198_blackd', operatorName: '黑角', mainWorkHours: 0, substituteWorkHours: 24, workHours: 24, exhaustedHours: 0, restHours: 0, idleHours: 24, workFraction: 0.5, workRestRatio: null, initialMorale: 24, finalMorale: 12 },
+    ],
+    rooms: [
+      { roomId: 'room_1_1', roomType: 'manufacture', averageEfficiencyPercent: 130, efficiencyPercentHours: 6240, occupiedHours: 48, teams: [] },
+      { roomId: 'room_1_3', roomType: 'trading', averageEfficiencyPercent: 100, efficiencyPercentHours: 4800, occupiedHours: 48, teams: [] },
+      { roomId: 'dormitory_1', roomType: 'dormitory', averageEfficiencyPercent: 100, efficiencyPercentHours: 4800, occupiedHours: 48, teams: [] },
+    ],
+    events: [
+      { time: 24, type: 'shift-off', operators: ['char_102_texas'] },
+      { time: 24, type: 'shift-on', operators: ['char_198_blackd'] },
+    ],
+    segments: [
+      { start: 0, end: 24, occupants: { room_1_1_0: 'char_102_texas', room_1_1_1: 'char_002_amiya', room_1_3_0: 'char_108_silent' }, bedOccupants: {}, morale: { char_102_texas: 12, char_198_blackd: 24 }, efficiencyPercent: { room_1_1: 130, room_1_3: 100 } },
+      { start: 24, end: 48, occupants: { room_1_1_0: 'char_198_blackd', room_1_1_1: 'char_002_amiya', room_1_3_0: 'char_108_silent' }, bedOccupants: { dormitory_1_0: 'char_102_texas' }, morale: { char_102_texas: 24, char_198_blackd: 12 }, efficiencyPercent: { room_1_1: 130, room_1_3: 100 } },
+    ],
+    diagnostics: [],
+  }
+}
+
+describe('ScheduleTimelineGantt.vue', () => {
+  it('renders empty state when report is null', () => {
+    const wrapper = mount(ScheduleTimelineGantt, {
+      props: { report: null },
+    })
+
+    expect(wrapper.find('.gantt-empty-state').exists()).toBe(true)
+    expect(wrapper.text()).toContain('暂无时间轴数据')
+  })
+
+  it('renders gantt container and tracks when report is present', () => {
+    const wrapper = mount(ScheduleTimelineGantt, {
+      props: { report: createSampleReport() },
+    })
+
+    expect(wrapper.find('.gantt-empty-state').exists()).toBe(false)
+    expect(wrapper.find('.gantt-container').exists()).toBe(true)
+    expect(wrapper.findAll('.facility-group').length).toBeGreaterThan(0)
+    expect(wrapper.text()).toContain('制造站')
+    expect(wrapper.text()).toContain('德克萨斯')
+  })
+
+  it('switches between facility view and operator view', async () => {
+    const wrapper = mount(ScheduleTimelineGantt, {
+      props: { report: createSampleReport() },
+    })
+
+    // Initially in facility view
+    expect(wrapper.findAll('.facility-group').length).toBeGreaterThan(0)
+    expect(wrapper.findAll('.operator-track-row').length).toBe(0)
+
+    // Switch to operator view
+    await wrapper.find('[data-test="view-mode-operator"]').trigger('click')
+    expect(wrapper.findAll('.facility-group').length).toBe(0)
+    expect(wrapper.findAll('.operator-track-row').length).toBeGreaterThan(0)
+
+    // Switch back to facility view
+    await wrapper.find('[data-test="view-mode-facility"]').trigger('click')
+    expect(wrapper.findAll('.facility-group').length).toBeGreaterThan(0)
+  })
+
+  it('filters facilities by chip category', async () => {
+    const wrapper = mount(ScheduleTimelineGantt, {
+      props: { report: createSampleReport() },
+    })
+
+    const chips = wrapper.findAll('.chip-btn')
+    const tradeChip = chips.find((c) => c.text().includes('贸易站'))
+    expect(tradeChip).toBeDefined()
+
+    await tradeChip!.trigger('click')
+    const groups = wrapper.findAll('.facility-group')
+    expect(groups).toHaveLength(1)
+    expect(groups[0]?.text()).toContain('贸易站')
+  })
+
+  it('filters tracks by search input', async () => {
+    const wrapper = mount(ScheduleTimelineGantt, {
+      props: { report: createSampleReport() },
+    })
+
+    const searchInput = wrapper.find('.gantt-search-input')
+    await searchInput.setValue('黑角')
+
+    // Only facilities containing Black Horn should remain
+    const groups = wrapper.findAll('.facility-group')
+    expect(groups.every((g) => g.text().includes('黑角'))).toBe(true)
+  })
+
+  it('updates time zoom window on preset buttons', async () => {
+    const wrapper = mount(ScheduleTimelineGantt, {
+      props: { report: createSampleReport() },
+    })
+
+    const zoomBtns = wrapper.findAll('.zoom-btn')
+    const btn24 = zoomBtns.find((b) => b.text() === '24h')
+    expect(btn24).toBeDefined()
+
+    await btn24!.trigger('click')
+    expect(wrapper.find('.time-window-info').text()).toContain('24.0h')
+  })
+})

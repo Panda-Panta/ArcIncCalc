@@ -3,7 +3,6 @@ import { compileOperatorInventory } from '../domain/operatorInventory'
 import type { AppConfig, CalculationReport, SummaryOutput } from '../domain/types'
 import { createDefaultConfig } from '../domain/defaults'
 import { calculate } from '../engine/calculate'
-import { compileRosterSchedule } from '../scheduler/compileRosterSchedule'
 import type { SimulationAssumptions } from '../scheduler/types'
 import { compileMainPlanToAppConfig } from './adapter'
 import type { RosterWorkspace } from './model'
@@ -11,7 +10,7 @@ import { validateRosterWorkspace, type ValidationResult } from './validate'
 import { runScheduleSimulationBridge } from './scheduleSimulationBridge'
 import type { ScheduleSimulationOptions, ScheduleSimulationReport, ScheduleSimulationProgress } from '../simulator/scheduleSimulation'
 
-export type CalculationEngineKind = 'legacy' | 'simulation' | 'event-v2'
+export type CalculationEngineKind = 'legacy' | 'simulation'
 
 export interface CalculationDiagnostic {
   code: string
@@ -106,7 +105,7 @@ export function simulationReportToCalculationReport(
 
 /**
  * Pure calculation bridge helper:
- * Supports 'legacy' (default), 'simulation', and 'event-v2' engines.
+ * Supports 'legacy' (default) and 'simulation' engines.
  */
 export function runCalculationBridge(
   workspace: RosterWorkspace,
@@ -132,31 +131,6 @@ export function runCalculationBridge(
   // Deep clone to strip any Vue reactive proxies before simulation / structuredClone
   const cleanWorkspace: RosterWorkspace = JSON.parse(JSON.stringify(workspace))
 
-  if (engine === 'event-v2') {
-    const compiled = compileRosterSchedule(cleanWorkspace)
-    const diagnostics: CalculationDiagnostic[] = [
-      {
-        code: 'EVENT_V2_UNAVAILABLE',
-        severity: 'warning',
-        message: 'event-v2 事件模拟器全周期产出积分尚未完全闭环，暂不可用；请使用 legacy 引擎查看近似稳态结果。',
-      },
-      ...compiled.diagnostics.map(d => ({
-        code: d.code,
-        severity: d.severity,
-        message: d.message,
-      })),
-    ]
-
-    return {
-      success: false,
-      report: null,
-      validation,
-      engine: 'event-v2',
-      diagnostics,
-      error: 'event-v2 事件模拟器全周期积分产出尚未就绪',
-    }
-  }
-
   if (engine === 'simulation') {
     const simBridge = runScheduleSimulationBridge(
       cleanWorkspace,
@@ -164,10 +138,12 @@ export function runCalculationBridge(
         ...options.simulationOptions,
         jayeElite0: options.jayeElite0 ?? options.simulationOptions.jayeElite0 ?? options.baseConfig?.jayeElite0,
         production: options.simulationOptions.production ?? { outputMode: 'potential', runOrderMode: 'ideal', droneTarget: 'gold' },
+        recordSegments: options.simulationOptions.recordSegments ?? true,
       } : {
         warmupHours: 72,
         sampleHours: 168,
         warmupModel: 'hourly',
+        recordSegments: true,
         jayeElite0: options.jayeElite0 ?? options.baseConfig?.jayeElite0,
         production: {
           outputMode: 'potential',

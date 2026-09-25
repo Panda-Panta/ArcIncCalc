@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import type { ScheduleSimulationReport } from '../../simulator/scheduleSimulation'
 import { getRoomDisplayName } from '../../workbench/operatorHelpers'
 import { mowerReportMetrics } from '../../workbench/mowerReportMetrics'
+import ScheduleTimelineGantt from './ScheduleTimelineGantt.vue'
 
 const props = defineProps<{
   report: ScheduleSimulationReport | null
@@ -161,6 +162,9 @@ function exportJson(): void {
         <span>最大步长: <strong>{{ number(report.assumptions.maxStepHours * 60) }}</strong> 分钟</span>
         <span>总事件数: <strong>{{ report.events.length }}</strong></span>
       </div>
+
+      <!-- Gantt Chart Timeline Visualization -->
+      <ScheduleTimelineGantt :report="report" />
 
       <!-- Resource inflow/outflow balance table -->
       <section v-if="report.production" class="log-section">

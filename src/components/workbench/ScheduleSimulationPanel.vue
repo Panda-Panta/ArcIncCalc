@@ -10,6 +10,7 @@ import type {OwnedOperatorInput} from '../../domain/operatorInventory'
 import {getRoomDisplayName} from '../../workbench/operatorHelpers'
 import type {RosterWorkspace} from '../../workbench/model'
 import type {ScheduleSimulationReport} from '../../simulator/scheduleSimulation'
+import ScheduleTimelineGantt from './ScheduleTimelineGantt.vue'
 const props=defineProps<{workspace:RosterWorkspace}>()
 const sampleDays=ref(14),warmupDays=ref(7),step=ref(.25),warmupModel=ref<'continuous'|'hourly'>('continuous'),idleNames=ref('')
 const runOrderMode=ref<'ideal'>('ideal'),droneTarget=ref<'gold'|'exp'|'none'>('gold')
@@ -46,7 +47,7 @@ function run(targetWorkspace:RosterWorkspace=props.workspace,basis='当前排班
   worker.onmessage=event=>{if(worker!==currentWorker)return;report.value=event.data.report??null;error.value=event.data.error??'';cancel()}
   worker.onerror=event=>{if(worker!==currentWorker)return;error.value=event.message||'模拟执行失败';cancel()}
   const names=idleNames.value.split(/[,，\n]/).map(s=>s.trim()).filter(Boolean)
-  worker.postMessage({workspace:JSON.parse(JSON.stringify(targetWorkspace)),options:{...(inventory.value.enabled?{operatorInventory:JSON.parse(JSON.stringify(inventory.value.entries))}:{}),sampleHours:sampleDays.value*24,warmupHours:warmupDays.value*24,maxStepHours:step.value,warmupModel:warmupModel.value,production:JSON.parse(JSON.stringify(simulationProduction.value))},assumptions:{restingThreshold:.65,operationDurationHours:0,...(names.length?{idleOperators:names}:{})}})
+  worker.postMessage({workspace:JSON.parse(JSON.stringify(targetWorkspace)),options:{...(inventory.value.enabled?{operatorInventory:JSON.parse(JSON.stringify(inventory.value.entries))}:{}),sampleHours:sampleDays.value*24,warmupHours:warmupDays.value*24,maxStepHours:step.value,warmupModel:warmupModel.value,recordSegments:true,production:JSON.parse(JSON.stringify(simulationProduction.value))},assumptions:{restingThreshold:.65,operationDurationHours:0,...(names.length?{idleOperators:names}:{})}})
  }catch(e){error.value=e instanceof Error?e.message:String(e);cancel()}
 }
 function download(){if(!report.value)return;const url=URL.createObjectURL(new Blob([JSON.stringify(report.value,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='心情与产出模拟.json';a.click();URL.revokeObjectURL(url)}
@@ -95,6 +96,7 @@ const number=(n:number)=>n.toLocaleString('zh-CN',{maximumFractionDigits:2})
   <template v-if="report">
    <p class="simulation-note">正在查看：{{reportBasis}}</p>
    <p role="status">{{report.success?'模拟窗口已完成':'模拟未完成'}} · 实际采样 {{number(report.observedHours/24)}} 天 <button type="button" @click="download">导出明细 JSON</button></p>
+   <ScheduleTimelineGantt :report="report" @request-simulate="run()" />
    <details v-if="(report.events??[]).some(e=>e.type==='backup-plan')" data-test="backup-plan-events">
     <summary>副表切换记录（{{(report.events??[]).filter(e=>e.type==='backup-plan').length}} 次）</summary>
     <p>按实际心情和位置判断条件；下表显示采样期间的切换。完整任务记录可导出明细 JSON。</p>
