@@ -28,6 +28,7 @@ export interface RuntimeEvent {
 export interface RuntimeState {
   config: RuntimeConfig; time: number; occupants: Record<string, string>; morale: Record<string, number>
   bedOccupants: Record<string, string>; events: RuntimeEvent[]
+  backupBedOccupants?: Set<string>
   pendingRest?: string[]
   nextPlanningTime?: number
   nextFiammettaCheckTime?: number
@@ -78,6 +79,7 @@ export function nextCandidate(p: RuntimePosition, s: RuntimeState, reserved = ne
 function releaseRecoveredSubstitutes(s: RuntimeState): void {
   // Rested substitutes become available without occupying a work slot.
   for (const [bed, id] of Object.entries(s.bedOccupants)) {
+    if (s.backupBedOccupants?.has(id)) continue
     if ((s.morale[id] ?? 0) >= 24 - MORALE_EPSILON && !s.config.positions.some(p => p.primary === id && s.occupants[p.id] !== id)) delete s.bedOccupants[bed]
   }
 }
@@ -168,8 +170,10 @@ export function settleRoster(s: RuntimeState, rates?: RuntimeRates, retryDepth =
       const candidate = existingBed && current && p.candidates.includes(current) && !reserved.has(current) ? current : nextCandidate(p, s, reserved, beds)
       if (candidate && s.config.mowerPolicy) for (const [bedId, occupant] of Object.entries(beds)) if (occupant === candidate) delete beds[bedId]
       const bed = existingBed ?? freeBed(s, p, beds)
-      if (!candidate || !bed) break
-      reserved.add(candidate); beds[bed.id] = p.primary; swaps.push({ p, candidate, bed: bed.id })
+      const allowEmpty = p.candidates.length === 0 && (p.exhaustRequired || !p.group)
+      if ((!candidate && !allowEmpty) || !bed) break
+      if (candidate) reserved.add(candidate)
+      beds[bed.id] = p.primary; swaps.push({ p, candidate: candidate ?? '', bed: bed.id })
     }
     if (swaps.length !== ps.length && s.config.mowerPolicy && ps.some(p => p.exhaustRequired) && retryDepth < s.config.positions.length && preemptMowerRest(s,ps.length,rates)) { settleRoster(s,rates,retryDepth+1,onPhase); return }
     if (swaps.length !== ps.length) { rosterDiagnostic(s, 'group-blocked', `${key}: insufficient available candidates or beds; original occupants retained`); continue }

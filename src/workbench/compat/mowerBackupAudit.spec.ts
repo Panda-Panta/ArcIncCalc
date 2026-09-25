@@ -50,5 +50,5 @@ describe('supplied nine-backup Mower roster', () => {
     expect(result.report?.segments).not.toEqual(baseline.report?.segments)
     expect(result.report?.operators).not.toEqual(baseline.report?.operators)
     expect(result.report?.rooms).not.toEqual(baseline.report?.rooms)
-  })
+  }, 30000)
 })

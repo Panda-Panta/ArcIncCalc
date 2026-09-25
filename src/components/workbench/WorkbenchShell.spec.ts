@@ -696,6 +696,32 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
     expect(skillsPanel.find('[data-test="riic-skills-browser"]').exists()).toBe(true)
   })
 
+  // 19.5 Switch to backup-plans tab and render BackupPlanEditor
+  it('switches to backup-plans tab, displaying backup plan editor and updating badge', async () => {
+    const wrapper = mountWithPinia(WorkbenchShell)
+    expect(wrapper.vm.activeTab).toBe('workbench')
+
+    const vm = wrapper.vm as any
+    vm.store.workspace.compatibility.backupPlans = [
+      { name: 'Plan 1', trigger_timing: 'BEFORE_PLANNING', trigger: 'True' },
+    ]
+    await flushPromises()
+
+    const badge = wrapper.find('[data-test="backup-plans-tab-badge"]')
+    expect(badge.exists()).toBe(true)
+    expect(badge.text()).toBe('1')
+
+    const backupTabBtn = wrapper.find('[data-test="tab-backup-plans"]')
+    expect(backupTabBtn.exists()).toBe(true)
+
+    await backupTabBtn.trigger('click')
+    expect(wrapper.vm.activeTab).toBe('backup-plans')
+
+    const backupPanel = wrapper.find('[data-test="backup-plans-tab-panel"]')
+    expect(backupPanel.exists()).toBe(true)
+    expect(backupPanel.find('[data-test="backup-plan-editor"]').exists()).toBe(true)
+  })
+
   // 20. Smart roster config modal interaction and execution
   it('runs a custom configuration successfully with ideal run orders', async ({ annotate }) => {
     await annotate('同步排班前确认测试进度已送达')
