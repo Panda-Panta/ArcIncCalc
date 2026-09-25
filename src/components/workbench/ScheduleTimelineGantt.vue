@@ -23,10 +23,12 @@ const facilityFilter = ref<string>('all')
 const searchQuery = ref('')
 const showEventMarkers = ref(true)
 
-// Time window zoom
-const zoomPreset = ref<'24' | '48' | '72' | 'all'>('72')
+// Time window zoom & navigation
+const zoomPreset = ref<'24' | '48' | '72' | '168' | 'all'>('72')
 const customWindowStart = ref(0)
 const customWindowEnd = ref(72)
+const tracksContainerRef = ref<HTMLElement | null>(null)
+const isDraggingTimeline = ref(false)
 
 // Hover inspector state
 const hoveredInterval = ref<TimelineInterval | null>(null)
@@ -48,6 +50,8 @@ const dataset = computed(() => {
   return buildTimelineData(props.report)
 })
 
+const totalObservedHours = computed(() => dataset.value?.observedHours ?? 72)
+
 // Initialize zoom window based on report observed hours
 watch(
   () => dataset.value?.observedHours,
@@ -57,25 +61,216 @@ watch(
       if (zoomPreset.value === '24') customWindowEnd.value = Math.min(24, hours)
       else if (zoomPreset.value === '48') customWindowEnd.value = Math.min(48, hours)
       else if (zoomPreset.value === '72') customWindowEnd.value = Math.min(72, hours)
+      else if (zoomPreset.value === '168') customWindowEnd.value = Math.min(168, hours)
       else customWindowEnd.value = hours
     }
   },
   { immediate: true },
 )
 
-function setZoomPreset(preset: '24' | '48' | '72' | 'all'): void {
+function setZoomPreset(preset: '24' | '48' | '72' | '168' | 'all'): void {
   zoomPreset.value = preset
-  const maxH = dataset.value?.observedHours ?? 72
-  customWindowStart.value = 0
-  if (preset === '24') customWindowEnd.value = Math.min(24, maxH)
-  else if (preset === '48') customWindowEnd.value = Math.min(48, maxH)
-  else if (preset === '72') customWindowEnd.value = Math.min(72, maxH)
-  else customWindowEnd.value = maxH
+  const maxH = totalObservedHours.value
+  if (preset === 'all') {
+    customWindowStart.value = 0
+    customWindowEnd.value = maxH
+    return
+  }
+  const dur = Number(preset)
+  let start = customWindowStart.value
+  let end = start + dur
+  if (end > maxH) {
+    end = maxH
+    start = Math.max(0, maxH - dur)
+  }
+  customWindowStart.value = Math.round(start * 10) / 10
+  customWindowEnd.value = Math.round(end * 10) / 10
 }
 
 const windowDuration = computed(() => {
   return Math.max(0.1, customWindowEnd.value - customWindowStart.value)
 })
+
+// Pan window forward or backward by delta hours
+function panWindow(deltaHours: number): void {
+  const maxH = totalObservedHours.value
+  const dur = windowDuration.value
+  let newStart = customWindowStart.value + deltaHours
+  let newEnd = customWindowEnd.value + deltaHours
+
+  if (newStart < 0) {
+    newStart = 0
+    newEnd = Math.min(maxH, dur)
+  } else if (newEnd > maxH) {
+    newEnd = maxH
+    newStart = Math.max(0, maxH - dur)
+  }
+
+  customWindowStart.value = Math.round(newStart * 10) / 10
+  customWindowEnd.value = Math.round(newEnd * 10) / 10
+}
+
+function panWindowTo(targetStart: number): void {
+  const maxH = totalObservedHours.value
+  const dur = windowDuration.value
+  let start = Math.max(0, Math.min(maxH - dur, targetStart))
+  let end = Math.min(maxH, start + dur)
+  customWindowStart.value = Math.round(start * 10) / 10
+  customWindowEnd.value = Math.round(end * 10) / 10
+}
+
+function jumpToStart(): void {
+  const dur = windowDuration.value
+  customWindowStart.value = 0
+  customWindowEnd.value = Math.min(totalObservedHours.value, dur)
+}
+
+function jumpToEnd(): void {
+  const maxH = totalObservedHours.value
+  const dur = windowDuration.value
+  customWindowStart.value = Math.max(0, maxH - dur)
+  customWindowEnd.value = maxH
+}
+
+function onManualStartChange(e: Event): void {
+  const val = Number((e.target as HTMLInputElement).value)
+  if (!Number.isFinite(val) || val < 0) return
+  const maxH = totalObservedHours.value
+  const dur = windowDuration.value
+  const start = Math.max(0, Math.min(maxH - 1, val))
+  customWindowStart.value = Math.round(start * 10) / 10
+  if (customWindowEnd.value <= customWindowStart.value) {
+    customWindowEnd.value = Math.min(maxH, customWindowStart.value + dur)
+  }
+}
+
+function onManualEndChange(e: Event): void {
+  const val = Number((e.target as HTMLInputElement).value)
+  if (!Number.isFinite(val) || val <= customWindowStart.value) return
+  const maxH = totalObservedHours.value
+  const end = Math.min(maxH, Math.max(customWindowStart.value + 1, val))
+  customWindowEnd.value = Math.round(end * 10) / 10
+}
+
+// Cycle options for dropdown selector
+interface CycleOption {
+  index: number
+  label: string
+  start: number
+  end: number
+}
+
+const cycleOptions = computed<CycleOption[]>(() => {
+  const total = totalObservedHours.value
+  const dur = windowDuration.value
+  if (dur >= total - 0.01) return []
+
+  const cycles: CycleOption[] = []
+  const count = Math.ceil(total / dur)
+  for (let i = 0; i < count; i++) {
+    const s = i * dur
+    const e = Math.min(total, s + dur)
+    const isDayUnit = Math.abs(dur - 24) < 0.1
+    let label = ''
+    if (isDayUnit) {
+      label = `第 ${i + 1} 天 (T+${s.toFixed(0)}h ~ T+${e.toFixed(0)}h)`
+    } else {
+      label = `第 ${i + 1} 周期 (T+${s.toFixed(0)}h ~ T+${e.toFixed(0)}h)`
+    }
+    cycles.push({ index: i, label, start: s, end: e })
+  }
+  return cycles
+})
+
+const currentCycleIndex = computed(() => {
+  const dur = windowDuration.value
+  if (dur <= 0) return 0
+  return Math.max(0, Math.min(cycleOptions.value.length - 1, Math.floor((customWindowStart.value + dur * 0.2) / dur)))
+})
+
+function onCycleSelectChange(e: Event): void {
+  const idx = Number((e.target as HTMLSelectElement).value)
+  const option = cycleOptions.value[idx]
+  if (option) {
+    panWindowTo(option.start)
+  }
+}
+
+// Overview mini-map ticks
+interface OverviewDayTick {
+  day: number
+  percent: number
+  showLabel: boolean
+}
+
+const overviewDayTicks = computed<OverviewDayTick[]>(() => {
+  const total = totalObservedHours.value
+  if (total <= 0) return []
+  const totalDays = Math.ceil(total / 24)
+  const ticks: OverviewDayTick[] = []
+  const labelInterval = totalDays > 20 ? 5 : totalDays > 10 ? 2 : 1
+
+  for (let d = 1; d <= totalDays; d++) {
+    const t = d * 24
+    if (t > total) break
+    ticks.push({
+      day: d,
+      percent: (t / total) * 100,
+      showLabel: d % labelInterval === 0,
+    })
+  }
+  return ticks
+})
+
+function handleOverviewClick(e: MouseEvent): void {
+  const bar = (e.currentTarget as HTMLElement).closest('.overview-track')
+  if (!bar) return
+  const rect = bar.getBoundingClientRect()
+  const mouseX = Math.max(0, Math.min(rect.width, e.clientX - rect.left))
+  const frac = mouseX / rect.width
+  const clickHour = frac * totalObservedHours.value
+  panWindowTo(clickHour - windowDuration.value / 2)
+}
+
+// Drag & Wheel interactions
+let dragStartX = 0
+let dragStartWindowStart = 0
+
+function handleTimelineMouseDown(e: MouseEvent): void {
+  if (e.button !== 0) return
+  const target = e.target as HTMLElement
+  if (target.closest('button, a, input, select, textarea, .event-marker, .gantt-block')) return
+
+  isDraggingTimeline.value = true
+  dragStartX = e.clientX
+  dragStartWindowStart = customWindowStart.value
+
+  const onMouseMove = (moveEvent: MouseEvent) => {
+    if (!isDraggingTimeline.value) return
+    const dx = moveEvent.clientX - dragStartX
+    const containerWidth = tracksContainerRef.value?.clientWidth || 1000
+    const timeDelta = -(dx / containerWidth) * windowDuration.value
+    panWindowTo(dragStartWindowStart + timeDelta)
+  }
+
+  const onMouseUp = () => {
+    isDraggingTimeline.value = false
+    window.removeEventListener('mousemove', onMouseMove)
+    window.removeEventListener('mouseup', onMouseUp)
+  }
+
+  window.addEventListener('mousemove', onMouseMove)
+  window.addEventListener('mouseup', onMouseUp)
+}
+
+function handleTimelineWheel(e: WheelEvent): void {
+  if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+    const delta = e.deltaX !== 0 ? e.deltaX : e.deltaY
+    const step = (delta / 400) * windowDuration.value
+    panWindow(step)
+    e.preventDefault()
+  }
+}
 
 // Calculate percentage position and width on timeline
 function getOffsetPercent(time: number): number {
@@ -295,7 +490,7 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
         <div class="zoom-presets">
           <span class="ctrl-label">时间窗:</span>
           <button
-            v-for="p in ['24', '48', '72', 'all'] as const"
+            v-for="p in ['24', '48', '72', '168', 'all'] as const"
             :key="p"
             type="button"
             class="zoom-btn"
@@ -313,9 +508,164 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
         </label>
       </div>
 
+      <!-- Window Navigation Toolbar -->
+      <div class="gantt-window-nav-bar" data-test="gantt-window-nav-bar">
+        <div class="nav-btn-group">
+          <button
+            type="button"
+            class="nav-btn jump-btn"
+            title="移至最初 (T+0h)"
+            :disabled="customWindowStart <= 0.01"
+            data-test="nav-jump-start"
+            @click="jumpToStart"
+          >
+            ⏮ 最初
+          </button>
+          <button
+            type="button"
+            class="nav-btn step-btn"
+            :title="`后退半窗 (-${(windowDuration / 2).toFixed(0)}h)`"
+            :disabled="customWindowStart <= 0.01"
+            data-test="nav-step-back"
+            @click="panWindow(-windowDuration / 2)"
+          >
+            ‹ -{{ (windowDuration / 2).toFixed(0) }}h
+          </button>
+          <button
+            type="button"
+            class="nav-btn pan-btn"
+            title="上一周期"
+            :disabled="customWindowStart <= 0.01"
+            data-test="nav-prev-window"
+            @click="panWindow(-windowDuration)"
+          >
+            ◀ 上一周期
+          </button>
+
+          <!-- Cycle Dropdown Selector -->
+          <div v-if="cycleOptions.length > 1" class="cycle-picker-wrap">
+            <select
+              class="cycle-select"
+              data-test="cycle-select"
+              :value="currentCycleIndex"
+              @change="onCycleSelectChange"
+            >
+              <option v-for="c in cycleOptions" :key="c.index" :value="c.index">
+                {{ c.label }}
+              </option>
+            </select>
+          </div>
+
+          <button
+            type="button"
+            class="nav-btn pan-btn"
+            title="下一周期"
+            :disabled="customWindowEnd >= totalObservedHours - 0.01"
+            data-test="nav-next-window"
+            @click="panWindow(windowDuration)"
+          >
+            下一周期 ▶
+          </button>
+          <button
+            type="button"
+            class="nav-btn step-btn"
+            :title="`前进半窗 (+${(windowDuration / 2).toFixed(0)}h)`"
+            :disabled="customWindowEnd >= totalObservedHours - 0.01"
+            data-test="nav-step-forward"
+            @click="panWindow(windowDuration / 2)"
+          >
+            +{{ (windowDuration / 2).toFixed(0) }}h ›
+          </button>
+          <button
+            type="button"
+            class="nav-btn jump-btn"
+            :title="`移至最终 (T+${totalObservedHours.toFixed(0)}h)`"
+            :disabled="customWindowEnd >= totalObservedHours - 0.01"
+            data-test="nav-jump-end"
+            @click="jumpToEnd"
+          >
+            最终 ⏭
+          </button>
+        </div>
+
+        <!-- Direct numeric inputs -->
+        <div class="window-direct-inputs">
+          <span class="direct-label">精准定位:</span>
+          <label class="time-input-wrap">
+            <span>T+</span>
+            <input
+              type="number"
+              class="time-num-input"
+              data-test="input-window-start"
+              :value="Math.round(customWindowStart * 10) / 10"
+              :min="0"
+              :max="Math.max(0, totalObservedHours - 1)"
+              step="1"
+              @change="onManualStartChange"
+            />
+            <span>h</span>
+          </label>
+          <span class="range-separator">至</span>
+          <label class="time-input-wrap">
+            <span>T+</span>
+            <input
+              type="number"
+              class="time-num-input"
+              data-test="input-window-end"
+              :value="Math.round(customWindowEnd * 10) / 10"
+              :min="1"
+              :max="totalObservedHours"
+              step="1"
+              @change="onManualEndChange"
+            />
+            <span>h</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Overview Scrubber Track (visible when total > window) -->
+      <div
+        v-if="totalObservedHours > windowDuration"
+        class="gantt-overview-scrubber"
+        data-test="gantt-overview-scrubber"
+      >
+        <div class="overview-header-row">
+          <span class="overview-title">
+            全景概览（共 {{ totalObservedHours.toFixed(0) }}h / {{ (totalObservedHours / 24).toFixed(1) }} 天 · 点击任意位置可直接跳转视窗）：
+          </span>
+          <span class="overview-pct">
+            视窗覆盖 {{ ((windowDuration / totalObservedHours) * 100).toFixed(0) }}% ({{ windowDuration.toFixed(1) }}h)
+          </span>
+        </div>
+        <div class="overview-track" @click="handleOverviewClick">
+          <!-- Day divider lines -->
+          <div
+            v-for="d in overviewDayTicks"
+            :key="d.day"
+            class="overview-day-tick"
+            :style="{ left: `${d.percent}%` }"
+          >
+            <span v-if="d.showLabel" class="overview-tick-label">D{{ d.day }}</span>
+          </div>
+
+          <!-- Viewport highlight thumb -->
+          <div
+            class="overview-window-viewport"
+            :style="{
+              left: `${(customWindowStart / totalObservedHours) * 100}%`,
+              width: `${((customWindowEnd - customWindowStart) / totalObservedHours) * 100}%`,
+            }"
+          >
+            <span class="viewport-tag">
+              T+{{ customWindowStart.toFixed(0) }}h ~ T+{{ customWindowEnd.toFixed(0) }}h
+            </span>
+          </div>
+        </div>
+      </div>
+
       <!-- Time Window Info Bar -->
       <div class="time-window-info">
-        <span>当前视窗：<strong>T+{{ customWindowStart.toFixed(1) }}h</strong> 至 <strong>T+{{ customWindowEnd.toFixed(1) }}h</strong>（共 {{ windowDuration.toFixed(1) }} 小时 / {{ (windowDuration / 24).toFixed(1) }} 天）</span>
+        <span>当前视窗：<strong>T+{{ customWindowStart.toFixed(1) }}h</strong> 至 <strong>T+{{ customWindowEnd.toFixed(1) }}h</strong>（共 {{ windowDuration.toFixed(1) }} 小时 / {{ (windowDuration / 24).toFixed(1) }} 天 · 按住鼠标左键可拖拽时间轴平移）</span>
         <span v-if="cursorTime !== null" class="cursor-info">
           🎯 光标定位：<strong>T+{{ cursorTime.toFixed(2) }}h</strong>（第 {{ Math.floor(cursorTime / 24) + 1 }} 天 {{ String(Math.floor(cursorTime % 24)).padStart(2, '0') }}:{{ String(Math.floor((cursorTime % 1) * 60)).padStart(2, '0') }}）
         </span>
@@ -340,7 +690,12 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
           <div class="gantt-axis-label-col">
             <span class="axis-title">{{ viewMode === 'facility' ? '设施 / 槽位' : '干员名单' }}</span>
           </div>
-          <div class="gantt-timeline-track ruler-track" @mousemove="handleMouseMove" @mouseleave="handleMouseLeave">
+          <div
+            class="gantt-timeline-track ruler-track"
+            @mousemove="handleMouseMove"
+            @mouseleave="handleMouseLeave"
+            @mousedown="handleTimelineMouseDown"
+          >
             <!-- Ruler Ticks -->
             <div
               v-for="tick in rulerTicks"
@@ -377,7 +732,15 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
         </div>
 
         <!-- Tracks Body -->
-        <div class="gantt-tracks-body" @mousemove="handleMouseMove" @mouseleave="handleMouseLeave">
+        <div
+          ref="tracksContainerRef"
+          class="gantt-tracks-body"
+          :class="{ 'is-dragging': isDraggingTimeline }"
+          @mousemove="handleMouseMove"
+          @mouseleave="handleMouseLeave"
+          @mousedown="handleTimelineMouseDown"
+          @wheel.passive="handleTimelineWheel"
+        >
           <!-- Background Grid Lines -->
           <div class="gantt-grid-overlay">
             <div
@@ -756,6 +1119,213 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
   font-size: 11px;
   color: #8da5ac;
   cursor: pointer;
+}
+
+/* Window Navigation Toolbar */
+.gantt-window-nav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  margin-top: 6px;
+}
+
+.nav-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.nav-btn {
+  padding: 4px 9px;
+  font-size: 11px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #d1e2e7;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.nav-btn:hover:not(:disabled) {
+  background: rgba(66, 214, 199, 0.15);
+  border-color: #42d6c7;
+  color: #ffffff;
+}
+
+.nav-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.nav-btn.pan-btn {
+  background: rgba(66, 214, 199, 0.08);
+  color: #42d6c7;
+  font-weight: 600;
+}
+
+.nav-btn.step-btn {
+  color: #8da5ac;
+  font-size: 10px;
+  padding: 4px 6px;
+}
+
+.cycle-picker-wrap {
+  display: inline-flex;
+}
+
+.cycle-select {
+  padding: 3px 6px;
+  font-size: 11px;
+  font-weight: 500;
+  background: #141920;
+  border: 1px solid rgba(66, 214, 199, 0.4);
+  color: #42d6c7;
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+  max-width: 220px;
+}
+
+.cycle-select:focus {
+  border-color: #42d6c7;
+  box-shadow: 0 0 0 1px rgba(66, 214, 199, 0.3);
+}
+
+.window-direct-inputs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #8da5ac;
+}
+
+.direct-label {
+  color: #8da5ac;
+}
+
+.time-input-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: #b6c6d1;
+}
+
+.time-num-input {
+  width: 54px;
+  height: 22px;
+  padding: 0 4px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  color: #fff;
+  font-size: 11px;
+  text-align: center;
+  outline: none;
+}
+
+.time-num-input:focus {
+  border-color: #42d6c7;
+}
+
+.range-separator {
+  color: #8da5ac;
+}
+
+/* Overview Scrubber Track */
+.gantt-overview-scrubber {
+  margin: 6px 0 8px;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+}
+
+.overview-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  color: #8da5ac;
+  margin-bottom: 5px;
+}
+
+.overview-title {
+  color: #a4b9c0;
+}
+
+.overview-pct {
+  color: #42d6c7;
+}
+
+.overview-track {
+  position: relative;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.overview-day-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+}
+
+.overview-tick-label {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.35);
+  line-height: 1;
+}
+
+.overview-window-viewport {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(66, 214, 199, 0.25);
+  border: 1px solid #42d6c7;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  box-shadow: 0 0 6px rgba(66, 214, 199, 0.25);
+  min-width: 6px;
+  transition: background 0.15s;
+}
+
+.overview-window-viewport:hover {
+  background: rgba(66, 214, 199, 0.35);
+}
+
+.viewport-tag {
+  font-size: 9px;
+  color: #ffffff;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  padding: 0 4px;
+}
+
+.gantt-tracks-body.is-dragging {
+  cursor: grabbing !important;
+  user-select: none;
 }
 
 .time-window-info {

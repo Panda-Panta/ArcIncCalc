@@ -200,4 +200,90 @@ describe('ScheduleTimelineGantt.vue', () => {
     await btn24!.trigger('click')
     expect(wrapper.find('.time-window-info').text()).toContain('24.0h')
   })
+
+  it('navigates timeline windows forward and backward', async () => {
+    // Report has 48 hours total
+    const wrapper = mount(ScheduleTimelineGantt, {
+      props: { report: createSampleReport() },
+    })
+
+    // Switch to 24h window
+    const btn24 = wrapper.findAll('.zoom-btn').find((b) => b.text() === '24h')
+    await btn24!.trigger('click')
+
+    // Initial window: T+0.0h to T+24.0h
+    expect(wrapper.find('.time-window-info').text()).toContain('T+0.0h 至 T+24.0h')
+
+    // Next window button
+    const nextBtn = wrapper.find('[data-test="nav-next-window"]')
+    expect(nextBtn.attributes('disabled')).toBeUndefined()
+    await nextBtn.trigger('click')
+
+    // Should now be T+24.0h to T+48.0h
+    expect(wrapper.find('.time-window-info').text()).toContain('T+24.0h 至 T+48.0h')
+
+    // Next window button should now be disabled (reached end of 48h)
+    expect(nextBtn.attributes('disabled')).toBeDefined()
+
+    // Previous window button
+    const prevBtn = wrapper.find('[data-test="nav-prev-window"]')
+    expect(prevBtn.attributes('disabled')).toBeUndefined()
+    await prevBtn.trigger('click')
+
+    // Back to T+0.0h to T+24.0h
+    expect(wrapper.find('.time-window-info').text()).toContain('T+0.0h 至 T+24.0h')
+    expect(prevBtn.attributes('disabled')).toBeDefined()
+  })
+
+  it('jumps to start and end with jump buttons', async () => {
+    const wrapper = mount(ScheduleTimelineGantt, {
+      props: { report: createSampleReport() },
+    })
+
+    const btn24 = wrapper.findAll('.zoom-btn').find((b) => b.text() === '24h')
+    await btn24!.trigger('click')
+
+    // Jump to end
+    const jumpEndBtn = wrapper.find('[data-test="nav-jump-end"]')
+    await jumpEndBtn.trigger('click')
+    expect(wrapper.find('.time-window-info').text()).toContain('T+24.0h 至 T+48.0h')
+
+    // Jump to start
+    const jumpStartBtn = wrapper.find('[data-test="nav-jump-start"]')
+    await jumpStartBtn.trigger('click')
+    expect(wrapper.find('.time-window-info').text()).toContain('T+0.0h 至 T+24.0h')
+  })
+
+  it('switches window via cycle dropdown selector', async () => {
+    const wrapper = mount(ScheduleTimelineGantt, {
+      props: { report: createSampleReport() },
+    })
+
+    const btn24 = wrapper.findAll('.zoom-btn').find((b) => b.text() === '24h')
+    await btn24!.trigger('click')
+
+    const cycleSelect = wrapper.find('[data-test="cycle-select"]')
+    expect(cycleSelect.exists()).toBe(true)
+
+    // Select cycle 1 (second day, index 1)
+    await cycleSelect.setValue('1')
+    expect(wrapper.find('.time-window-info').text()).toContain('T+24.0h 至 T+48.0h')
+  })
+
+  it('updates window via direct numeric start and end inputs', async () => {
+    const wrapper = mount(ScheduleTimelineGantt, {
+      props: { report: createSampleReport() },
+    })
+
+    const startInput = wrapper.find('[data-test="input-window-start"]')
+    const endInput = wrapper.find('[data-test="input-window-end"]')
+
+    await startInput.setValue('10')
+    await startInput.trigger('change')
+    expect(wrapper.find('.time-window-info').text()).toContain('T+10.0h')
+
+    await endInput.setValue('35')
+    await endInput.trigger('change')
+    expect(wrapper.find('.time-window-info').text()).toContain('T+10.0h 至 T+35.0h')
+  })
 })
