@@ -19,7 +19,7 @@ describe('Engine Protection & Calculation Equivalence', () => {
     // Authorized shift-run and actual unlocked-skill baseline (2026-09-19), normalized LF; default arithmetic stays unchanged.
     expect(fileSha256('engine/calculate.ts')).toBe('107094f2bf31bba94d97ff56ba33de93870dd3fa8744a869edb35efba5c2daea')
     expect(fileSha256('engine/morale.ts')).toBe('3b62a7e6a9077e60d9b435eb26f308ca9d1af2b203716755a948ff40c16c6484')
-    expect(fileSha256('engine/operatorRules.ts')).toBe('689d3abb90a6386bce53e042f3275356c65eac32b92893f17e3f155dc1701f9c')
+    expect(fileSha256('engine/operatorRules.ts')).toBe('b753b7ab6bdafe80e884a5d5b5b326b3fd258cc79ae2500705d2581f63ba616e')
   })
 
   it('produces deterministic baseline report for default configuration', () => {

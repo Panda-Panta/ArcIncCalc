@@ -154,8 +154,9 @@ function orderLimitDelta(
   if (skill.buffId === 'trade_ord_limit&cost_P[020]') {
     return operatorNames?.has('伺夜') ? 2 : 0
   }
-  if (skill.buffId === 'trade_ord_limit&cost_P[001]') {
-    return operatorNames?.has('德克萨斯') ? 4 : 0
+  if (skill.buffId === 'trade_ord_limit&cost_P[001]' || skill.buffId === 'trade_ord_limit&cost_P[000]') {
+    const bonus = skill.buffId.endsWith('[001]') ? 4 : 2
+    return operatorNames?.has('德克萨斯') ? bonus : 0
   }
   const match = skill.description.match(/订单上限([+-])(\d+)/)
   if (!match) return 0
@@ -634,8 +635,8 @@ export function evaluateOperators(
         } else if (skill.buffId === 'manu_prod_spd&limit&bd[000]') {
           applied = 5 + globalContext.woodCatnip
           facilityDetail = '木天蓼 ' + globalContext.woodCatnip
-        } else if (skill.buffId === 'manu_formula_spd&bd[001]') {
-          const studentPartner = activeOperators.some(item => item.charId !== operator.charId && matchesRiicIdentity(item, 'teamId', 'student'))
+        } else if (skill.buffId === 'manu_formula_spd&bd[001]' || skill.buffId === 'manu_formula_spd&bd[000]') {
+          const studentPartner = skill.buffId.endsWith('[001]') && activeOperators.some(item => item.charId !== operator.charId && matchesRiicIdentity(item, 'teamId', 'student'))
           applied = room.product === 'exp' ? 30 + (studentPartner ? 10 : 0) : 0
         } else if (skill.buffId === 'manu_prod_spd_bd[400]') {
           applied = monsterCuisine
@@ -656,7 +657,7 @@ export function evaluateOperators(
         } else if (skill.buffId === 'manu_prod_spd_train&lv[000]') {
           applied = Math.min(30, config.facilities.training * 10)
           facilityBased = true
-        } else if (skill.buffId === 'manu_token_prod_spd[010]') {
+        } else if (skill.buffId === 'manu_token_prod_spd[010]' || skill.buffId === 'manu_token_prod_spd[000]') {
           const platformIds = new Set([
             'char_285_medic2',
             'char_286_cast3',
@@ -671,7 +672,8 @@ export function evaluateOperators(
             .filter((item) => item.type === 'power')
             .flatMap((item) => item.operatorIds)
             .filter((id) => platformIds.has(id) && activeInContext(id, config, activeOperatorIds)).length
-          applied = room.product === 'gold' ? count * 10 : 0
+          const rate = skill.buffId.endsWith('[010]') ? 10 : 5
+          applied = room.product === 'gold' ? count * rate : 0
           facilityBased = true
           facilityDetail = `work platforms ${count}`
         } else if (skill.buffId === 'manu_prod_spd&fraction[000]') {
@@ -703,9 +705,10 @@ export function evaluateOperators(
           // is not an additional productivity term and must not mark Minimalist unknown.
           applied = 0
           facilityDetail = `engineering robots ${globalContext.engineeringRobots}`
-        } else if (skill.buffId === 'manu_prod_spd_bd[110]') {
+        } else if (skill.buffId === 'manu_prod_spd_bd[110]' || skill.buffId === 'manu_prod_spd_bd[100]') {
           const robots = globalContext.engineeringRobots
-          applied = Math.floor(robots / 8) * 5
+          const divisor = skill.buffId.endsWith('[110]') ? 8 : 16
+          applied = Math.floor(robots / divisor) * 5
           facilityDetail = `engineering robots ${robots}`
         } else if (skill.buffId === 'manu_prod_spd_variable3[000]') {
           applied = activeOperators.reduce((sum, item) => {
@@ -721,8 +724,9 @@ export function evaluateOperators(
           facilityDetail = `warehouse capacity ${warehouseCapacity}`
         } else if (skill.buffId === 'manu_prod_spd_bd_n1[000]') {
           applied = 0
-        } else if (skill.buffId === 'manu_prod_spd_bd[010]') {
-          applied = manufacturePerceptionInformation
+        } else if (skill.buffId === 'manu_prod_spd_bd[010]' || skill.buffId === 'manu_prod_spd_bd[000]') {
+          const divisor = skill.buffId.endsWith('[010]') ? 1 : 2
+          applied = Math.floor(manufacturePerceptionInformation / divisor)
           facilityDetail = `perception information ${manufacturePerceptionInformation}`
         } else if (skill.buffId === 'manu_prod_spd_variable2[000]') {
           applied = 0 // Deferred until all colleague skills are resolved.
@@ -739,7 +743,9 @@ export function evaluateOperators(
         } else if (stableManufactureBonus(skill) !== null) {
           applied = temporalSkillBonus(skill.buffId, operator.charId, timeContext) ?? stableManufactureBonus(skill)
         } else if (
-          manufactureWarehouseCapacity(skill, room, operator, morale, globalContext, classCounts) !== 0 &&
+          (manufactureWarehouseCapacity(skill, room, operator, morale, globalContext, classCounts) !== 0 ||
+            skill.buffId === 'manu_skill_limit[000]' ||
+            /仓库(?:容量)?上限/.test(skill.description)) &&
           directManufactureBonus(skill, room) === null
         ) {
           applied = 0
@@ -783,8 +789,9 @@ export function evaluateOperators(
         })
         if (conditional) {
           applied = conditional.value
-        } else if (skill.buffId === 'trade_ord_spd&dorm&lv[010]') {
-          applied = config.facilities.dormitories.reduce((sum, level) => sum + level, 0) * 2
+        } else if (skill.buffId === 'trade_ord_spd&dorm&lv[010]' || skill.buffId === 'trade_ord_spd&dorm&lv[000]') {
+          const multiplier = skill.buffId.endsWith('[010]') ? 2 : 1
+          applied = config.facilities.dormitories.reduce((sum, level) => sum + level, 0) * multiplier
         } else if (skill.buffId === 'trade_ord_spd&meet[010]') {
           applied = Math.min(30, 15 + config.facilities.reception * 5)
         } else if (skill.buffId === 'trade_ord_par&per[001]') {
@@ -795,8 +802,11 @@ export function evaluateOperators(
             ...config.efficiencyResources.extraWorkplaceOperatorIds,
           ]).map(op => op.name))
           applied = 30 + (workplaceNames.has('伊内丝') ? 5 : 0) + (workplaceNames.has('W') ? 5 : 0)
-        } else if (skill.buffId === 'trade_ord_spd_ext[001]') {
-          applied = 30 + (globalContext.presentOperators.some(op => op.name === '乌尔比安') ? 10 : 0)
+        } else if (skill.buffId === 'trade_ord_spd_ext[001]' || skill.buffId === 'trade_ord_spd_ext[000]') {
+          const ulpianus = globalContext.presentOperators.some(op => op.name === '乌尔比安')
+          const base = skill.buffId.endsWith('[001]') ? 30 : 25
+          const extra = skill.buffId.endsWith('[001]') ? 10 : 5
+          applied = base + (ulpianus ? extra : 0)
 
         } else if (skill.buffId === 'trade_ord_spd&meet[000]') {
           applied = Math.min(40, 25 + config.facilities.reception * 5)
@@ -818,8 +828,9 @@ export function evaluateOperators(
           facilityDetail = `Sui facilities ${count}`
         } else if (skill.buffId === 'trade_ord_spd&share[000]') {
           applied = Math.max(0, staffCount - 1) * 15
-        } else if (skill.buffId === 'trade_ord_spd&share[002]') {
-          applied = Math.max(0, staffCount - 1) * 20
+        } else if (skill.buffId === 'trade_ord_spd&share[002]' || skill.buffId === 'trade_ord_spd&share[001]') {
+          const rate = skill.buffId.endsWith('[002]') ? 20 : 10
+          applied = Math.max(0, staffCount - 1) * rate
 
         } else if (skill.buffId === 'trade_ord_spd_bd[100]') {
           applied = monsterCuisine
@@ -839,8 +850,9 @@ export function evaluateOperators(
           facilityDetail = '最高阶段双技能在队友效率与容量求值后统一结算'
         } else if (skill.buffId === 'trade_ord_spd_bd_n1[000]') {
           applied = 0
-        } else if (skill.buffId === 'trade_ord_spd_bd[010]') {
-          applied = Math.floor(tradingPerceptionInformation / 2)
+        } else if (skill.buffId === 'trade_ord_spd_bd[010]' || skill.buffId === 'trade_ord_spd_bd[000]') {
+          const divisor = skill.buffId.endsWith('[010]') ? 2 : 4
+          applied = Math.floor(tradingPerceptionInformation / divisor)
           facilityDetail = `perception information ${tradingPerceptionInformation}`
         } else if (skill.buffId === 'trade_ord_spd&gold[100]') {
           applied = goldProductionLines * 5
@@ -850,8 +862,9 @@ export function evaluateOperators(
         } else if (skill.buffId === 'trade_ord_line_gold[010]') {
           applied = 5
           facilityDetail = `实体 ${globalContext.physicalGoldProductionLines}，绮良虚拟 +${kiraraGoldLines}`
-        } else if (skill.buffId === 'trade_ord_spd&gold[010]') {
-          applied = 5 + Math.floor(goldProductionLines / 2) * 15
+        } else if (skill.buffId === 'trade_ord_spd&gold[010]' || skill.buffId === 'trade_ord_spd&gold[000]') {
+          const divisor = skill.buffId.endsWith('[010]') ? 2 : 4
+          applied = 5 + Math.floor(goldProductionLines / divisor) * 15
           facilityDetail = `gold production lines ${goldProductionLines}`
         } else {
           applied = directTradingBonus(skill)
@@ -864,6 +877,7 @@ export function evaluateOperators(
         const isTradeCapacityOrMoraleOnly = [
           'trade_ord_limit&cost_P[020]',
           'trade_ord_limit&cost_P[001]',
+          'trade_ord_limit&cost_P[000]',
           'trade_ord_limit&cost_P[010]',
           'trade_ord_limit&trade&lv[000]',
           'trade_ord_limit&trade&lv[001]',
