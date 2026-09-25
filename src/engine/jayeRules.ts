@@ -27,9 +27,11 @@ export interface HighestPhaseJayeInput {
   snowsant?: { operatorId: string; cap: 25 | 35 }
   /** Must be true only when both independent Jaye skills are unlocked and active. */
   hasBothJayeSkills: boolean
+  /** When true, evaluates Jaye as Elite 0 (first skill only, 0 capacity deduction). */
+  isElite0?: boolean
   /** Shamare clearing removes the entire Jaye and Snowsant efficiency result. */
   clearedByShamare?: boolean
-  /** Optional runtime check; omission means ordinary legal queue state. */
+  /** Optional runtime check; omission means ordinary legal queue state (0 in shift-run). */
   queuedOrders?: number
 }
 
@@ -54,7 +56,7 @@ export type HighestPhaseJayeResult =
 
 /** Resolves only Jaye + optional Snowsant; caller adds colleagues/staff/room bonuses once. */
 export function evaluateHighestPhaseJaye(input: HighestPhaseJayeInput): HighestPhaseJayeResult {
-  if (!input.hasBothJayeSkills) {
+  if (!input.hasBothJayeSkills && !input.isElite0) {
     return { supported: false, reason: 'JAYE_REQUIRES_BOTH_ACTIVE_SKILLS', detail: '精零或失效孑不能使用双技能队列抵消公式。' }
   }
   if (!Number.isInteger(input.roomLevel) || input.roomLevel < 1 || input.roomLevel > 3 ||
@@ -86,12 +88,16 @@ export function evaluateHighestPhaseJaye(input: HighestPhaseJayeInput): HighestP
   const copiedSource = input.partners.reduce((sum, partner) => sum + partnerBaseCopyable(partner), 0)
   const snowsantEfficiency = input.snowsant ? Math.min(input.snowsant.cap, Math.floor(copiedSource / 5) * 5) : 0
   const otherEfficiency = input.partners.reduce((sum, partner) => sum + partnerBaseEff(partner), 0) + snowsantEfficiency
-  const capacityReduction = Math.floor(otherEfficiency / 10)
+  const capacityReduction = input.isElite0 ? 0 : Math.floor(otherEfficiency / 10)
   const effectiveOrderLimit = Math.max(1, TRADING_BASE_ORDER_LIMIT[input.roomLevel - 1]! +
     input.partners.reduce((sum, partner) => sum + partner.orderLimitDelta, 0) - capacityReduction)
   if (input.queuedOrders !== undefined && input.queuedOrders > effectiveOrderLimit) {
     return { supported: false, reason: 'JAYE_QUEUE_EXCEEDS_EFFECTIVE_LIMIT', detail: '现存订单超过换班后上限，双技能在该暂态下的钳制语义未验证。' }
   }
-  return { supported: true, jayeEfficiency: effectiveOrderLimit * 4, snowsantEfficiency,
+  const queued = input.queuedOrders ?? 0
+  const jayeEfficiency = input.isElite0
+    ? Math.max(0, effectiveOrderLimit - queued) * 4
+    : effectiveOrderLimit * 4
+  return { supported: true, jayeEfficiency, snowsantEfficiency,
     effectiveOrderLimit, capacityReduction, otherEfficiency }
 }

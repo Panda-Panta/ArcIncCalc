@@ -22,6 +22,7 @@ export interface CalculationDiagnostic {
 export interface CalculationBridgeOptions {
   engine?: CalculationEngineKind
   baseConfig?: AppConfig
+  jayeElite0?: boolean
   simulationOptions?: ScheduleSimulationOptions
   simulationAssumptions?: Partial<SimulationAssumptions>
 }
@@ -75,6 +76,7 @@ export function simulationReportToCalculationReport(
 
   const compiledConfig = compileMainPlanToAppConfig(workspace.mainPlan, workspace, baseConfig)
   if(simReport.inputs.options.operatorInventory)compiledConfig.operatorRecords=inventoryOperatorRecords(compileOperatorInventory(simReport.inputs.options.operatorInventory))
+  if(simReport.inputs.options.jayeElite0 || baseConfig.jayeElite0)compiledConfig.jayeElite0=true
   const legacyReport = calculate(compiledConfig)
 
   const summary: SummaryOutput = {
@@ -160,11 +162,13 @@ export function runCalculationBridge(
       cleanWorkspace,
       options.simulationOptions ? {
         ...options.simulationOptions,
+        jayeElite0: options.jayeElite0 ?? options.simulationOptions.jayeElite0 ?? options.baseConfig?.jayeElite0,
         production: options.simulationOptions.production ?? { outputMode: 'potential', runOrderMode: 'ideal', droneTarget: 'gold' },
       } : {
         warmupHours: 72,
         sampleHours: 168,
         warmupModel: 'hourly',
+        jayeElite0: options.jayeElite0 ?? options.baseConfig?.jayeElite0,
         production: {
           outputMode: 'potential',
           runOrderMode: 'ideal',
@@ -205,6 +209,9 @@ export function runCalculationBridge(
     workspace,
     options.baseConfig ?? createDefaultConfig(),
   )
+  if (options.jayeElite0 || options.baseConfig?.jayeElite0) {
+    compiledConfig.jayeElite0 = true
+  }
 
   const report = calculate(compiledConfig)
   return {

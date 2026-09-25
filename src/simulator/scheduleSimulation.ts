@@ -20,6 +20,7 @@ export interface ScheduleSimulationProgress {
 }
 export interface ScheduleSimulationOptions {
  operatorInventory?:OwnedOperatorInput[]
+ jayeElite0?:boolean
  production?:ProductionOptions
  sampleHours?:number; warmupHours?:number; maxStepHours?:number; maxEvents?:number
  warmupModel?:'continuous'|'hourly'; recordSegments?:boolean
@@ -259,7 +260,7 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
  let cachedBaseConfig: ReturnType<typeof projectScheduleState> | undefined, cachedBaseConfigRevision = -1
  const getBaseConfig = () => {
   if (!cachedBaseConfig || cachedBaseConfigRevision !== occupancyRevision) {
-   cachedBaseConfig = projectScheduleState(schedule, state); cachedBaseConfig.operatorRecords = operatorRecords; Object.assign(cachedBaseConfig.efficiencyResources, options.efficiencyResources)
+   cachedBaseConfig = projectScheduleState(schedule, state); cachedBaseConfig.operatorRecords = operatorRecords; cachedBaseConfig.jayeElite0 = options.jayeElite0; Object.assign(cachedBaseConfig.efficiencyResources, options.efficiencyResources)
    cachedBaseConfigRevision = occupancyRevision
   }
   return cachedBaseConfig

@@ -11,6 +11,7 @@ export interface SimulationSettings {
   droneTradingRoomId?: string
   droneRoomId?: string
   useOperatorInventory?: boolean
+  jayeElite0?: boolean
   fiammettaFool?: boolean
   restingThreshold?: number
 }
@@ -42,6 +43,14 @@ function updateField<K extends keyof SimulationSettings>(key: K, val: Simulation
       </div>
 
       <div class="sim-controls-grid">
+        <label class="control-item">
+          <span class="control-label">孑状态设置</span>
+          <select class="control-select" data-test="jaye-elite0-select" :value="String(settings.jayeElite0 ?? false)" @change="updateField('jayeElite0', ($event.target as HTMLSelectElement).value === 'true')">
+            <option value="false">默认（按干员库或精2最高技能）</option>
+            <option value="true">精0跑单（仅摊贩经济，满差额加成）</option>
+          </select>
+          <span class="control-hint">勾选精0跑单时，贸易站内队友效率不会削减订单上限，享受全额差额加成。</span>
+        </label>
         <label class="control-item">
           <span class="control-label">菲亚防呆</span>
           <select class="control-select" data-test="fiammetta-fool" :value="String(settings.fiammettaFool ?? true)" @change="updateField('fiammettaFool', ($event.target as HTMLSelectElement).value === 'true')">

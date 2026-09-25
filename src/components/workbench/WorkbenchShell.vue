@@ -51,6 +51,7 @@ const defaultSimSettings: SimulationSettings = {
   seed: -1,
   droneTarget: 'gold',
   droneTradingRoomId: '',
+  jayeElite0: false,
   fiammettaFool: true,
   restingThreshold: .65,
 }
@@ -425,9 +426,16 @@ function executeCalculation(): void {
         inventoryEntries = JSON.parse(JSON.stringify(toRaw(inventory.entries)))
       }
     }
+    if (simSettings.value.jayeElite0 && inventoryEntries) {
+      const jIdx = inventoryEntries.findIndex(e => e.operator === '孑' || e.operator === 'char_272_strong')
+      if (jIdx >= 0) {
+        inventoryEntries[jIdx] = { ...inventoryEntries[jIdx]!, elitePhase: 0, level: 1 }
+      }
+    }
 
     const options = {
       engine: 'simulation' as const,
+      jayeElite0: simSettings.value.jayeElite0 ?? false,
       simulationAssumptions: {
         fiammettaFool: simSettings.value.fiammettaFool ?? true,
         restingThreshold: simSettings.value.restingThreshold ?? .65,
@@ -437,6 +445,7 @@ function executeCalculation(): void {
         sampleHours: simSettings.value.sampleDays * 24,
         maxStepHours: simSettings.value.step,
         warmupModel: 'hourly' as const,
+        jayeElite0: simSettings.value.jayeElite0 ?? false,
         operatorInventory: inventoryEntries,
         production: {
           outputMode: 'potential' as const,

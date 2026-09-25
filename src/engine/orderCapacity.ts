@@ -30,7 +30,9 @@ export function evaluateTradeOrderCapacity(room:OutputRoom,config:AppConfig,acti
  const partners=operators.filter(op=>op!==jaye&&op!==snow)
  if(partners.some(op=>!evaluation.operatorContributions.some(c=>c.operatorId===op.charId)))return {limit:null,unquantified:['JAYE_PARTNER_CONTRIBUTION_MISSING']}
  const snowSkill=snow?.skills.find(s=>/^trade_ord_spd_variable2\[(000|001)\]$/.test(s.buffId))
- const result=evaluateHighestPhaseJaye({roomLevel:room.level,hasBothJayeSkills:jaye.skills.some(s=>s.buffId==='trade_ord_limit_count[000]'),clearedByShamare:operators.some(op=>op.name==='巫恋'),snowsant:snow&&snowSkill?{operatorId:snow.charId,cap:snowSkill.buffId.endsWith('[001]')?35:25}:undefined,
+ const hasCountSkill=jaye.skills.some(s=>s.buffId==='trade_ord_limit_count[000]')
+ const isElite0=Boolean(config.jayeElite0||!hasCountSkill)
+ const result=evaluateHighestPhaseJaye({roomLevel:room.level,hasBothJayeSkills:hasCountSkill&&!config.jayeElite0,isElite0,clearedByShamare:operators.some(op=>op.name==='巫恋'),snowsant:snow&&snowSkill?{operatorId:snow.charId,cap:snowSkill.buffId.endsWith('[001]')?35:25}:undefined,
    partners:partners.map(op=>{
     const contribution=evaluation.operatorContributions.find(c=>c.operatorId===op.charId)!
     const efficiency=contribution.skillBonus

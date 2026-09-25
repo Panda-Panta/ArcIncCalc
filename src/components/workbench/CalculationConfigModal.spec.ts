@@ -16,7 +16,7 @@ it('restores the saved target and drops a stale trading room when switching targ
     expect(wrapper.text()).toContain('B302')
     await wrapper.get('[data-test="calculation-drone-target"]').setValue('none')
     await wrapper.get('[data-test="confirm-calculation"]').trigger('click')
-    expect(wrapper.emitted('confirm')?.[0]).toEqual([{ droneTarget: 'none', droneTradingRoomId: '', droneRoomId: '', useOperatorInventory: true }])
+    expect(wrapper.emitted('confirm')?.[0]).toEqual([{ droneTarget: 'none', droneTradingRoomId: '', droneRoomId: '', useOperatorInventory: true, jayeElite0: false }])
     await wrapper.setProps({ open: false })
     await wrapper.setProps({ open: true, initial: { droneTarget: 'trading', droneTradingRoomId: 'room_1_3' } })
     expect(wrapper.get<HTMLSelectElement>('[data-test="calculation-drone-target"]').element.value).toBe('none')
@@ -29,6 +29,20 @@ it('selects a concrete manufacturing facility and can opt out of inventory', asy
   await wrapper.get('[data-test="calculation-drone-target"]').setValue('room_1_2')
   await wrapper.get('[data-test="calculation-use-inventory"]').setValue(false)
   await wrapper.get('[data-test="confirm-calculation"]').trigger('click')
-  expect(wrapper.emitted('confirm')?.[0]).toEqual([{droneTarget:'gold',droneRoomId:'room_1_2',droneTradingRoomId:'',useOperatorInventory:false}])
+  expect(wrapper.emitted('confirm')?.[0]).toEqual([{droneTarget:'gold',droneRoomId:'room_1_2',droneTradingRoomId:'',useOperatorInventory:false,jayeElite0:false}])
+ } finally { wrapper.unmount() }
+})
+
+it('can toggle jayeElite0 option in calculation config', async () => {
+ const wrapper = mount(CalculationConfigModal, {
+  props: { open: true, workspace: createDefaultWorkspace(), initial: { droneTarget: 'none', droneTradingRoomId: '', jayeElite0: true } },
+  global: { stubs: { teleport: true } },
+ })
+ try {
+  const checkbox = wrapper.get<HTMLInputElement>('[data-test="calculation-jaye-elite0"]')
+  expect(checkbox.element.checked).toBe(true)
+  await checkbox.setValue(false)
+  await wrapper.get('[data-test="confirm-calculation"]').trigger('click')
+  expect(wrapper.emitted('confirm')?.[0]).toEqual([{ droneTarget: 'none', droneRoomId: '', droneTradingRoomId: '', useOperatorInventory: true, jayeElite0: false }])
  } finally { wrapper.unmount() }
 })

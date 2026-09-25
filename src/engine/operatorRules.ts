@@ -1014,12 +1014,15 @@ export function evaluateOperators(
   const jaye = room.type === 'trading' ? activeOperators.find(op =>
     op.skills.some(skill => skill.buffId === 'trade_ord_limit_diff[000]')) : undefined
   if (jaye) {
+    const hasCountSkill = jaye.skills.some(skill => skill.buffId === 'trade_ord_limit_count[000]')
+    const isElite0 = Boolean(config.jayeElite0 || !hasCountSkill)
     const snowsant = activeOperators.find(op => op.skills.some(skill => /^trade_ord_spd_variable2\[(000|001)\]$/.test(skill.buffId)))
     const copySkill = snowsant?.skills.find(skill => /^trade_ord_spd_variable2\[(000|001)\]$/.test(skill.buffId))
     const partners = activeOperators.filter(op => op.charId !== jaye.charId && op.charId !== snowsant?.charId)
     const resolved = evaluateHighestPhaseJaye({
       roomLevel: room.level,
-      hasBothJayeSkills: jaye.skills.some(skill => skill.buffId === 'trade_ord_limit_count[000]'),
+      hasBothJayeSkills: hasCountSkill && !config.jayeElite0,
+      isElite0,
       clearedByShamare: shamareActive,
       snowsant: snowsant && copySkill ? { operatorId: snowsant.charId, cap: copySkill.buffId.endsWith('[001]') ? 35 : 25 } : undefined,
       partners: partners.map(op => {
@@ -1045,13 +1048,15 @@ export function evaluateOperators(
     })
     if (resolved.supported) {
       for (const [op, value, label] of [
-        [jaye, resolved.jayeEfficiency, '摊贩经济 / 市井之道'],
+        [jaye, resolved.jayeEfficiency, isElite0 ? '摊贩经济' : '摊贩经济 / 市井之道'],
         [snowsant, resolved.snowsantEfficiency, copySkill?.name ?? '天道酬勤'],
       ] as const) {
         if (!op || value === 0) continue
         const contribution = operatorContributions.find(item => item.operatorId === op.charId)!
         const name = op.name + '·' + label
-        const detail = op === jaye ? `订单上限 ${resolved.effectiveOrderLimit}，双技能队列项抵消` : '先复制第三人，再计入孑的容量折减'
+        const detail = op === jaye
+          ? (isElite0 ? `订单上限 ${resolved.effectiveOrderLimit}，精0跑单全额差额加成` : `订单上限 ${resolved.effectiveOrderLimit}，双技能队列项抵消`)
+          : (isElite0 ? '复制其他干员订单效率' : '先复制第三人，再计入孑的容量折减')
         contribution.items.push({ name, value, detail })
         contribution.skillBonus += value
         contribution.totalBonus += value
@@ -1059,7 +1064,11 @@ export function evaluateOperators(
         details.push(`${name}：+${value}%（${detail}）`)
       }
     } else {
-      unquantifiedSkills.push('孑·摊贩经济', '孑·市井之道')
+      if (isElite0) {
+        unquantifiedSkills.push('孑·摊贩经济')
+      } else {
+        unquantifiedSkills.push('孑·摊贩经济', '孑·市井之道')
+      }
       if (snowsant) unquantifiedSkills.push(snowsant.name + '·' + copySkill!.name)
       details.push(`${resolved.reason}：${resolved.detail}`)
     }
