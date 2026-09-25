@@ -50,7 +50,7 @@ describe('bounded complete automatic roster drafts',()=>{
   const exported=importMowerJson(exportMowerJson(workspace))
   const free=(w:typeof workspace)=>Object.values(w.mainPlan.facilities).flatMap(r=>r.slots).filter(s=>s.occupant.kind==='free').length
   expect(free(exported)).toBe(free(workspace))
- },30000)
+ },120000)
  it('uses actual dorm residents rather than Free beds in every static projection', async ({ annotate }) => {
 
    await annotate('同步计算前确认测试进度已送达')

@@ -5,10 +5,10 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AssemblyName>ArcIncCalc</AssemblyName>
-    <RootNamespace>ArcIncCalc.Desktop</RootNamespace>
+    <AssemblyName>R.I.I.C-Calculator</AssemblyName>
+    <RootNamespace>RIIC_Calculator.Desktop</RootNamespace>
     <AssemblyTitle>明日方舟基建排班与全动态模拟测算器</AssemblyTitle>
-    <Product>ArcIncCalc</Product>
+    <Product>R.I.I.C-Calculator</Product>
     <Version>0.1.0</Version>
     <SatelliteResourceLanguages>zh-Hans;en</SatelliteResourceLanguages>
     <ApplicationIcon>app.ico</ApplicationIcon>

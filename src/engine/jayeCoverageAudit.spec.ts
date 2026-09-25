@@ -104,10 +104,10 @@ describe('pure highest-phase Jaye integration helper', () => {
     expect(evaluateHighestPhaseJaye({ ...helperInput(), snowsant: { operatorId: id('雪雉'), cap: 35 } }))
       .toMatchObject({ supported: true, jayeEfficiency: 40, snowsantEfficiency: 0 })
   })
-  it('reports order-limit conversion dependency instead of guessing a fixed point', () => {
+  it('supports partner with order-limit conversion skill where order-limit bonus does not reduce Jaye capacity', () => {
     expect(evaluateHighestPhaseJaye(helperInput([
       { operatorId: id('琳琅诗怀雅'), efficiency: 20, orderLimitDelta: 0, snowsantCopyableEfficiency: 20, dependsOnOrderLimit: true },
-    ]))).toMatchObject({ supported: false, reason: 'JAYE_ORDER_LIMIT_EFFICIENCY_DEPENDENCY' })
+    ]))).toMatchObject({ supported: true, jayeEfficiency: 32, effectiveOrderLimit: 8, capacityReduction: 2 })
   })
   it('reports negative efficiency as unverified', () => {
     expect(evaluateHighestPhaseJaye(helperInput([
@@ -126,4 +126,133 @@ describe('pure highest-phase Jaye integration helper', () => {
     expect(evaluateHighestPhaseJaye({ ...helperInput(), clearedByShamare: true }))
       .toMatchObject({ supported: true, jayeEfficiency: 0, snowsantEfficiency: 0, effectiveOrderLimit: null })
   })
+  it('deducts only base efficiency when orderLimitDerivedEfficiency is provided', () => {
+    const result = evaluateHighestPhaseJaye(helperInput([
+      { operatorId: id('琳琅诗怀雅'), efficiency: 60, orderLimitDelta: 0, snowsantCopyableEfficiency: 60, dependsOnOrderLimit: true, orderLimitDerivedEfficiency: 40 },
+    ]))
+    // Base efficiency is 60 - 40 = 20, capacityReduction is floor(20/10) = 2.
+    // effectiveOrderLimit is 10 - 2 = 8, Jaye gets 8 * 4 = 32%.
+    expect(result).toMatchObject({
+      supported: true,
+      jayeEfficiency: 32,
+      effectiveOrderLimit: 8,
+      capacityReduction: 2,
+      otherEfficiency: 20,
+    })
+  })
 })
+
+describe('Elite 0 Jaye shift-run evaluation', () => {
+  it('supports Elite 0 Jaye without partner capacity deduction under shift-run', () => {
+    const result = evaluateHighestPhaseJaye({
+      ...helperInput([
+        { operatorId: id('能天使'), efficiency: 35, orderLimitDelta: 0, snowsantCopyableEfficiency: 35 },
+      ]),
+      hasBothJayeSkills: false,
+      isElite0: true,
+    })
+    expect(result).toMatchObject({
+      supported: true,
+      jayeEfficiency: 40,
+      snowsantEfficiency: 0,
+      effectiveOrderLimit: 10,
+      capacityReduction: 0,
+      otherEfficiency: 35,
+    })
+  })
+
+  it('applies partner order limit bonus directly to Elite 0 Jaye efficiency without capacity penalty', () => {
+    const result = evaluateHighestPhaseJaye({
+      ...helperInput([
+        { operatorId: id('银灰'), efficiency: 20, orderLimitDelta: 4, snowsantCopyableEfficiency: 20 },
+        { operatorId: id('崖心'), efficiency: 15, orderLimitDelta: 4, snowsantCopyableEfficiency: 15 },
+      ]),
+      hasBothJayeSkills: false,
+      isElite0: true,
+    })
+    // 10 base + 4 + 4 = 18 limit, capacityReduction = 0. Jaye: 18 * 4 = 72%.
+    expect(result).toMatchObject({
+      supported: true,
+      jayeEfficiency: 72,
+      snowsantEfficiency: 0,
+      effectiveOrderLimit: 18,
+      capacityReduction: 0,
+      otherEfficiency: 35,
+    })
+  })
+
+  it('supports Snowsant copying partner efficiency under Elite 0 Jaye without reducing capacity', () => {
+    const result = evaluateHighestPhaseJaye({
+      ...helperInput([
+        { operatorId: id('能天使'), efficiency: 35, orderLimitDelta: 0, snowsantCopyableEfficiency: 35 },
+      ]),
+      snowsant: { operatorId: id('雪雉'), cap: 35 },
+      hasBothJayeSkills: false,
+      isElite0: true,
+    })
+    expect(result).toMatchObject({
+      supported: true,
+      jayeEfficiency: 40,
+      snowsantEfficiency: 35,
+      effectiveOrderLimit: 10,
+      capacityReduction: 0,
+      otherEfficiency: 70,
+    })
+  })
+
+  it('deducts queued orders from Elite 0 Jaye efficiency when queuedOrders is specified', () => {
+    const result = evaluateHighestPhaseJaye({
+      ...helperInput([
+        { operatorId: id('能天使'), efficiency: 35, orderLimitDelta: 0, snowsantCopyableEfficiency: 35 },
+      ]),
+      hasBothJayeSkills: false,
+      isElite0: true,
+      queuedOrders: 3,
+    })
+    // limit 10, queue 3 -> diff 7 -> jayeEfficiency 28%
+    expect(result).toMatchObject({
+      supported: true,
+      jayeEfficiency: 28,
+      effectiveOrderLimit: 10,
+      capacityReduction: 0,
+    })
+  })
+
+  it('evaluates Elite 0 Jaye under config.jayeElite0 = true with Exusiai, gaining +12% over Elite 1', () => {
+    const { room, config } = setup(['孑', '能天使'])
+    config.jayeElite0 = true
+    const result = evaluateOperators(room, config)
+    expect(result.efficiencyPercent).toBe(177) // 100 + 2 (staff) + 35 (Exusiai) + 40 (Jaye)
+    expect(result.unquantifiedSkills).toEqual([])
+  })
+
+  it('evaluates Elite 0 Jaye under config.jayeElite0 = true with SilverAsh and Cliffheart, gaining +12% over Elite 1', () => {
+    const { room, config } = setup(['孑', '银灰', '崖心'])
+    config.jayeElite0 = true
+    const result = evaluateOperators(room, config)
+    expect(result.efficiencyPercent).toBe(210) // 100 + 3 (staff) + 35 (SA+Cliff) + 72 (Jaye)
+    expect(result.unquantifiedSkills).toEqual([])
+  })
+
+  it('evaluates Elite 0 Jaye with Snowsant and Exusiai, gaining +28% over Elite 1', () => {
+    const { room, config } = setup(['孑', '雪雉', '能天使'])
+    config.jayeElite0 = true
+    const result = evaluateOperators(room, config)
+    expect(result.efficiencyPercent).toBe(213) // 100 + 3 + 35 + 35 + 40
+    expect(result.unquantifiedSkills).toEqual([])
+  })
+
+  it('automatically evaluates Jaye as Elite 0 when Jaye in operatorRecords only has the first skill unlocked', async () => {
+    const { room, config } = setup(['孑', '能天使'])
+    const { compileOperatorInventory } = await import('../domain/operatorInventory')
+    const { inventoryOperatorRecords } = await import('../domain/operatorContext')
+    config.operatorRecords = inventoryOperatorRecords(compileOperatorInventory([
+      { operator: '孑', elitePhase: 0, level: 1 },
+      { operator: '能天使', elitePhase: 2, level: 1 },
+    ]))
+    const result = evaluateOperators(room, config)
+    expect(result.efficiencyPercent).toBe(177)
+    expect(result.unquantifiedSkills).toEqual([])
+  })
+})
+

@@ -224,6 +224,82 @@ export const useRosterWorkbenchStore = defineStore('rosterWorkbench', () => {
     }
   }
 
+  function addBackupPlan(plan?: unknown): number {
+    workspace.value.compatibility.backupPlans ??= []
+    const plans = workspace.value.compatibility.backupPlans
+    const newPlan = plan ? structuredClone(toRaw(plan)) : {
+      name: `副表 #${plans.length + 1}`,
+      trigger_timing: 'BEFORE_PLANNING',
+      trigger: 'True',
+      task: {},
+      plan: {},
+      conf: {
+        ling_xi: 1,
+        exhaust_require: '',
+        rest_in_full: '',
+        resting_priority: '',
+        workaholic: '',
+        free_blacklist: '',
+      },
+    }
+    plans.push(newPlan)
+    workspace.value.compatibility.importedHasBackupPlans = true
+    return plans.length - 1
+  }
+
+  function updateBackupPlan(index: number, patch: unknown): void {
+    workspace.value.compatibility.backupPlans ??= []
+    const plans = workspace.value.compatibility.backupPlans
+    if (index >= 0 && index < plans.length) {
+      plans[index] = structuredClone(toRaw(patch))
+      workspace.value.compatibility.importedHasBackupPlans = true
+    }
+  }
+
+  function removeBackupPlan(index: number): void {
+    workspace.value.compatibility.backupPlans ??= []
+    const plans = workspace.value.compatibility.backupPlans
+    if (index >= 0 && index < plans.length) {
+      plans.splice(index, 1)
+      workspace.value.compatibility.importedHasBackupPlans = true
+    }
+  }
+
+  function moveBackupPlan(fromIndex: number, toIndex: number): void {
+    workspace.value.compatibility.backupPlans ??= []
+    const plans = workspace.value.compatibility.backupPlans
+    if (
+      fromIndex >= 0 &&
+      fromIndex < plans.length &&
+      toIndex >= 0 &&
+      toIndex < plans.length &&
+      fromIndex !== toIndex
+    ) {
+      const [moved] = plans.splice(fromIndex, 1)
+      plans.splice(toIndex, 0, moved)
+      workspace.value.compatibility.importedHasBackupPlans = true
+    }
+  }
+
+  function duplicateBackupPlan(index: number): number {
+    workspace.value.compatibility.backupPlans ??= []
+    const plans = workspace.value.compatibility.backupPlans
+    if (index >= 0 && index < plans.length) {
+      const source = plans[index] as Record<string, unknown>
+      const clone = structuredClone(toRaw(source))
+      clone.name = `${source.name ?? '副表'} (副本)`
+      plans.splice(index + 1, 0, clone)
+      workspace.value.compatibility.importedHasBackupPlans = true
+      return index + 1
+    }
+    return -1
+  }
+
+  function clearBackupPlans(): void {
+    workspace.value.compatibility.backupPlans = []
+    workspace.value.compatibility.importedHasBackupPlans = true
+  }
+
   return {
     workspace,
     selectedRoomId,
@@ -244,6 +320,12 @@ export const useRosterWorkbenchStore = defineStore('rosterWorkbench', () => {
     inferLevels,
     resetWorkspace,
     clearAllOperators,
+    addBackupPlan,
+    updateBackupPlan,
+    removeBackupPlan,
+    moveBackupPlan,
+    duplicateBackupPlan,
+    clearBackupPlans,
   }
 })
 

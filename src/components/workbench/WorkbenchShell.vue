@@ -24,6 +24,7 @@ import OperatorSelectModal, { type OperatorSelectionPayload } from './OperatorSe
 import GlobalReplaceModal, { type GlobalReplacePayload } from './GlobalReplaceModal.vue'
 import SmartRosterConfigModal, { type SmartRosterConfig } from './SmartRosterConfigModal.vue'
 import RiicSkillsBrowser from './RiicSkillsBrowser.vue'
+import BackupPlanEditor from './BackupPlanEditor.vue'
 import { NConfigProvider } from 'naive-ui'
 import { darkTheme, darkThemeOverrides } from '../../theme'
 import '../../workbench/styles.css'
@@ -35,8 +36,12 @@ const baseMapRef = ref<InstanceType<typeof BaseMap> | null>(null)
 const facilityEditorSectionRef = ref<HTMLElement | null>(null)
 const policyEditorSectionRef = ref<HTMLElement | null>(null)
 
-// Sub-page navigation: workbench | skills | settings | logs
-const activeTab = ref<'workbench' | 'skills' | 'settings' | 'logs'>('workbench')
+// Sub-page navigation: workbench | backup-plans | skills | settings | logs
+const activeTab = ref<'workbench' | 'backup-plans' | 'skills' | 'settings' | 'logs'>('workbench')
+
+const backupPlansCount = computed(() => {
+  return store.workspace.compatibility.backupPlans?.length ?? 0
+})
 
 // Simulation settings state
 const defaultSimSettings: SimulationSettings = {
@@ -46,6 +51,7 @@ const defaultSimSettings: SimulationSettings = {
   seed: -1,
   droneTarget: 'gold',
   droneTradingRoomId: '',
+  jayeElite0: false,
   fiammettaFool: true,
   restingThreshold: .65,
 }
@@ -420,9 +426,16 @@ function executeCalculation(): void {
         inventoryEntries = JSON.parse(JSON.stringify(toRaw(inventory.entries)))
       }
     }
+    if (simSettings.value.jayeElite0 && inventoryEntries) {
+      const jIdx = inventoryEntries.findIndex(e => e.operator === '孑' || e.operator === 'char_272_strong')
+      if (jIdx >= 0) {
+        inventoryEntries[jIdx] = { ...inventoryEntries[jIdx]!, elitePhase: 0, level: 1 }
+      }
+    }
 
     const options = {
       engine: 'simulation' as const,
+      jayeElite0: simSettings.value.jayeElite0 ?? false,
       simulationAssumptions: {
         fiammettaFool: simSettings.value.fiammettaFool ?? true,
         restingThreshold: simSettings.value.restingThreshold ?? .65,
@@ -432,6 +445,7 @@ function executeCalculation(): void {
         sampleHours: simSettings.value.sampleDays * 24,
         maxStepHours: simSettings.value.step,
         warmupModel: 'hourly' as const,
+        jayeElite0: simSettings.value.jayeElite0 ?? false,
         operatorInventory: inventoryEntries,
         production: {
           outputMode: 'potential' as const,
@@ -666,6 +680,7 @@ defineExpose({
   simulationReport,
   simSettings,
   activeTab,
+  backupPlansCount,
   isCalculating,
   isGeneratingRoster,
   generationProgress,
@@ -722,6 +737,16 @@ defineExpose({
           @click="activeTab = 'workbench'"
         >
           基建排班
+        </button>
+        <button
+          type="button"
+          class="nav-tab"
+          :class="{ active: activeTab === 'backup-plans' }"
+          data-test="tab-backup-plans"
+          @click="activeTab = 'backup-plans'"
+        >
+          副表调度
+          <span v-if="backupPlansCount > 0" class="tab-badge" data-test="backup-plans-tab-badge">{{ backupPlansCount }}</span>
         </button>
         <button
           type="button"
@@ -977,6 +1002,11 @@ defineExpose({
         </section>
       </div>
 
+      <!-- Tab: 副表调度 (Backup Plans) -->
+      <div v-show="activeTab === 'backup-plans'" class="tab-panel backup-plans-tab-panel" data-test="backup-plans-tab-panel">
+        <BackupPlanEditor />
+      </div>
+
       <!-- Tab: 基建技能 (Riic Skills Browser) -->
       <div v-show="activeTab === 'skills'" class="tab-panel skills-tab-panel" data-test="skills-tab-panel">
         <RiicSkillsBrowser />
@@ -1170,6 +1200,27 @@ h1 small {
 
 .nav-tab.active .tab-indicator {
   color: #071015;
+}
+
+.tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(44, 181, 160, 0.2);
+  color: #2cb5a0;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0 6px;
+  min-width: 16px;
+  height: 16px;
+  line-height: 1;
+  margin-left: 4px;
+}
+
+.nav-tab.active .tab-badge {
+  background: #071015;
+  color: #42d6c7;
 }
 
 .tab-panel {

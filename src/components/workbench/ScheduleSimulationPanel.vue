@@ -64,7 +64,6 @@ const number=(n:number)=>n.toLocaleString('zh-CN',{maximumFractionDigits:2})
    <label>预热（天）<input v-model.number="warmupDays" type="number" min="0" step="1" /></label>
    <label>采样（天）<input v-model.number="sampleDays" data-test="sample-days" type="number" min="1" step="1" /></label>
    <label>暖机增长<select v-model="warmupModel"><option value="continuous">连续增长（假设）</option><option value="hourly">整小时跳变（假设）</option></select></label>
-   <label>最大步长<select v-model.number="step"><option :value=".25">15 分钟</option><option :value=".05">3 分钟</option><option :value=".01">36 秒</option></select></label>
    <button type="button" data-test="simulate-schedule" :disabled="running" @click="run()">{{running?'正在模拟…':'运行模拟'}}</button>
    <button v-if="running" type="button" @click="cancel">取消模拟</button>
   </div>

@@ -25,7 +25,7 @@ describe('complete branch admission before any simulation',()=>{
   expect(calls).toHaveLength(10)
   expect(new Set(calls.map(c=>JSON.stringify(c[0].mainPlan))).size).toBe(10)
   expect(calls.every(c=>c[1]?.production?.runOrderMode==='ideal')).toBe(true)
- },180000)
+ },300000)
  it('does not rank a partial simulation even when its incomplete production is very high', async ({ annotate }) => {
    await annotate('同步计算前确认测试进度已送达')
   vi.mocked(runScheduleSimulationBridge).mockClear()

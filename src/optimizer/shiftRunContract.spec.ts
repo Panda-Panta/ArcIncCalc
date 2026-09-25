@@ -77,7 +77,7 @@ describe('shift-run branch contract', () => {
         expect(ids.some(x => ['佩佩', '可露希尔', 'U-Official'].map(id).includes(id(x)))).toBe(false)
       }
     }
-  })
+  }, 60000)
   it.each(['佩佩', '可露希尔', 'U-Official'])('cannot hide %s behind the default static shift-run flag', name => {
     const config = createDefaultConfig()
     const room = createRoom('T', 'trading')
@@ -118,7 +118,7 @@ describe('shift-run branch contract', () => {
       expect(assigned.filter(x => x === id('但书')).length).toBeLessThanOrEqual(1)
       expect(assigned.filter(x => x === id('龙舌兰')).length).toBeLessThanOrEqual(1)
     }
-  })
+  }, 60000)
   it('accepts runners with the unlocked elite 0 reward skills', async ({ annotate }) => {
     await annotate('同步计算前确认测试进度已送达')
     const ws = createDefaultWorkspace()

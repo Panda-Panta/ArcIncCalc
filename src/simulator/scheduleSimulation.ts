@@ -20,6 +20,7 @@ export interface ScheduleSimulationProgress {
 }
 export interface ScheduleSimulationOptions {
  operatorInventory?:OwnedOperatorInput[]
+ jayeElite0?:boolean
  production?:ProductionOptions
  sampleHours?:number; warmupHours?:number; maxStepHours?:number; maxEvents?:number
  warmupModel?:'continuous'|'hourly'; recordSegments?:boolean
@@ -135,31 +136,41 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
  }catch(error){diagnostic('INVALID_RUNTIME',String(error));return report}
  const total=warmupHours+sampleHours,initial={...state.morale}
  const entered=new Map<string,{room:string;time:number}>()
+ let hasActiveTemporalSkills=false,hasActiveContinuousWarmup=false
+ const checkTemporalSkills=()=>{
+  hasActiveTemporalSkills=[...entered.keys()].some(id=>getTemporalSkillBoundaries(id,{operatorRecords}).length>0)
+  hasActiveContinuousWarmup=warmupModel==='continuous'&&hasActiveTemporalSkills
+ }
  const refreshSessions=(newEvents:RuntimeEvent[]=[])=>{
   const reset=new Set(newEvents.filter(e=>e.type==='fiammetta').map(e=>e.operators[1]))
   const working=new Map(state.config.positions.filter(p=>!p.dormitory&&state.occupants[p.id]).map(p=>[state.occupants[p.id]!,p.roomId]))
   for(const id of entered.keys())if(!working.has(id))entered.delete(id)
   for(const [id,room] of working)if(entered.get(id)?.room!==room||reset.has(id))entered.set(id,{room,time:state.time-(state.time===0&&!reset.has(id)?(options.initialWorkHours?.[id]??0):0)})
+  checkTemporalSkills()
  }
  refreshSessions()
  const stats=new Map(Object.keys(state.morale).map(id=>[id,{operatorId:id,operatorName:OPERATOR_MAP.get(id)?.name??id,mainWorkHours:0,substituteWorkHours:0,workHours:0,exhaustedHours:0,restHours:0,idleHours:0,permanentPrimaryOccupancyHours:0,workFraction:0,workRestRatio:null,initialMorale:initial[id]!,finalMorale:initial[id]!} as SimulatedOperator]))
  const roomStats=new Map(projectScheduleState(schedule,state).rooms.map(r=>[r.id,{roomId:r.id,roomType:r.type,averageEfficiencyPercent:0,efficiencyPercentHours:0,occupiedHours:0,teams:[]} as SimulatedRoom]))
  // Rates are queried repeatedly within the same immutable time slice. Track actual
  // map writes (including same-time Fiammetta/swaps) instead of serializing all operators per query.
- let rateRevision=0,cachedRevision=-1,cachedTime=NaN
+ let rateRevision=0,cachedRevision=-1,cachedTime=NaN,occupancyRevision=0
  let cachedWork:Record<string,number>={},cachedRecovery:Record<string,number>={}
+ const trackOccupancyMap=<T extends string|number>(map:Record<string,T>):Record<string,T>=>new Proxy(map,{
+  set(target,key,value){if(target[String(key)]!==value){rateRevision++;occupancyRevision++}return Reflect.set(target,key,value)},
+  deleteProperty(target,key){if(Object.prototype.hasOwnProperty.call(target,key)){rateRevision++;occupancyRevision++}return Reflect.deleteProperty(target,key)},
+ })
  const trackRateMap=<T extends string|number>(map:Record<string,T>):Record<string,T>=>new Proxy(map,{
   set(target,key,value){if(target[String(key)]!==value)rateRevision++;return Reflect.set(target,key,value)},
   deleteProperty(target,key){if(Object.prototype.hasOwnProperty.call(target,key))rateRevision++;return Reflect.deleteProperty(target,key)},
  })
- state.morale=trackRateMap(state.morale);state.occupants=trackRateMap(state.occupants);state.bedOccupants=trackRateMap(state.bedOccupants)
+ state.morale=trackRateMap(state.morale);state.occupants=trackOccupancyMap(state.occupants);state.bedOccupants=trackOccupancyMap(state.bedOccupants)
  let trackedMorale=state.morale,trackedOccupants=state.occupants,trackedBeds=state.bedOccupants,trackedConfig=state.config
  const updateRates=()=>{
-  if(state.config!==trackedConfig){trackedConfig=state.config;rateRevision++}
+  if(state.config!==trackedConfig){trackedConfig=state.config;rateRevision++;occupancyRevision++}
   // Runtime replaces the bed map atomically after group reservations/reordering.
   if(state.morale!==trackedMorale){state.morale=trackedMorale=trackRateMap(state.morale);rateRevision++}
-  if(state.occupants!==trackedOccupants){state.occupants=trackedOccupants=trackRateMap(state.occupants);rateRevision++}
-  if(state.bedOccupants!==trackedBeds){state.bedOccupants=trackedBeds=trackRateMap(state.bedOccupants);rateRevision++}
+  if(state.occupants!==trackedOccupants){state.occupants=trackedOccupants=trackOccupancyMap(state.occupants);rateRevision++;occupancyRevision++}
+  if(state.bedOccupants!==trackedBeds){state.bedOccupants=trackedBeds=trackOccupancyMap(state.bedOccupants);rateRevision++;occupancyRevision++}
   if(cachedRevision===rateRevision&&cachedTime===state.time)return
   cachedRevision=rateRevision;cachedTime=state.time
   const c=projectScheduleState(schedule,state);c.operatorRecords=operatorRecords;Object.assign(c.efficiencyResources,options.efficiencyResources)
@@ -246,14 +257,36 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
   if(backupFailed)return
   try{settleUnsafe()}catch(error){backupFailed=true;diagnostic('BACKUP_EXECUTION_FAILED',error instanceof Error?error.message:String(error))}
  }
+ let cachedBaseConfig: ReturnType<typeof projectScheduleState> | undefined, cachedBaseConfigRevision = -1
+ const getBaseConfig = () => {
+  if (!cachedBaseConfig || cachedBaseConfigRevision !== occupancyRevision) {
+   cachedBaseConfig = projectScheduleState(schedule, state); cachedBaseConfig.operatorRecords = operatorRecords; cachedBaseConfig.jayeElite0 = options.jayeElite0; Object.assign(cachedBaseConfig.efficiencyResources, options.efficiencyResources)
+   cachedBaseConfigRevision = occupancyRevision
+  }
+  return cachedBaseConfig
+ }
+ let cachedEvalVersion=-1,cachedZeroMorale='',cachedHour=-1
+ let cachedEvaluations:ProductionFrame['evaluations']|undefined
  const frameAt=(offset:number):ProductionFrame=>{
-  const c=projectScheduleState(schedule,state);c.operatorRecords=operatorRecords;Object.assign(c.efficiencyResources,options.efficiencyResources)
-  for(const id of Object.keys(c.operatorMorale))c.operatorMorale[id]=Math.max(0,Math.min(24,c.operatorMorale[id]!+moraleDerivative(state,id,rates)*offset))
+  const base=getBaseConfig()
+  const c={...base,operatorMorale:{...state.morale}}
+  if(offset!==0){for(const id of Object.keys(c.operatorMorale))c.operatorMorale[id]=Math.max(0,Math.min(24,c.operatorMorale[id]!+moraleDerivative(state,id,rates)*offset))}
   c.zeroMoraleOperatorIds=state.config.positions.filter(p=>!p.dormitory&&(c.operatorMorale[state.occupants[p.id]!]??0)<=0).map(p=>state.occupants[p.id]!)
+  const zeroMoraleKey=c.zeroMoraleOperatorIds.join(',')
+  const currentHour=Math.floor(state.time+offset)
   const morale=new Map(Object.entries(c.operatorMorale)),active=new Set(Object.keys(state.morale).filter(id=>!c.zeroMoraleOperatorIds.includes(id)))
-  const context=buildRiicGlobalContext(c,active,morale),workHoursByOperator=new Map([...entered].map(([id,s])=>[id,Math.max(0,state.time+offset-s.time)]))
-  const evaluations:ProductionFrame['evaluations']={}
-  for(const room of c.rooms){const result=evaluateOperators(room,c,active,morale,context,{workHoursByOperator,warmupModel});evaluations[room.id]=result;for(const text of result.unquantifiedSkills)diagnostic('UNQUANTIFIED_EFFICIENCY',`${room.id}: ${text}`)}
+  let evaluations=cachedEvaluations
+  if(!evaluations||occupancyRevision!==cachedEvalVersion||zeroMoraleKey!==cachedZeroMorale||(hasActiveTemporalSkills&&(hasActiveContinuousWarmup||currentHour!==cachedHour))){
+   const context=buildRiicGlobalContext(c,active,morale),workHoursByOperator=new Map([...entered].map(([id,s])=>[id,Math.max(0,state.time+offset-s.time)]))
+   if(!evaluations||occupancyRevision!==cachedEvalVersion||zeroMoraleKey!==cachedZeroMorale){
+    evaluations={}
+    for(const room of c.rooms){const result=evaluateOperators(room,c,active,morale,context,{workHoursByOperator,warmupModel});evaluations[room.id]=result;for(const text of result.unquantifiedSkills)diagnostic('UNQUANTIFIED_EFFICIENCY',`${room.id}: ${text}`)}
+   }else{
+    evaluations={...evaluations}
+    for(const room of c.rooms){if(room.operatorIds.some(id=>getTemporalSkillBoundaries(id,{operatorRecords}).length>0)){evaluations[room.id]=evaluateOperators(room,c,active,morale,context,{workHoursByOperator,warmupModel})}}
+   }
+   cachedEvalVersion=occupancyRevision;cachedZeroMorale=zeroMoraleKey;cachedHour=currentHour;cachedEvaluations=evaluations
+  }
   return {time:state.time+offset,config:c,active,morale,evaluations}
  }
  const efficiencies=(frame:ProductionFrame)=>Object.fromEntries(Object.entries(frame.evaluations).map(([id,r])=>[id,r.efficiencyPercent]))
@@ -275,6 +308,27 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
    onProgress({phase,elapsedHours:state.time,totalHours:total,warmupHours})
   }
  }
+ let statsOccRevision=-1
+ const cachedOccupantToPos=new Map<string,typeof state.config.positions[0]>()
+ const cachedRestingSet=new Set<string>()
+ const cachedRoomTeams=new Map<string,{team:SimulatedRoom['teams'][0];hasOccupants:boolean}>()
+ const updateStatsIndex=()=>{
+  if(statsOccRevision===occupancyRevision)return
+  statsOccRevision=occupancyRevision
+  cachedOccupantToPos.clear();for(const p of state.config.positions){const occ=state.occupants[p.id];if(occ)cachedOccupantToPos.set(occ,p)}
+  cachedRestingSet.clear();for(const b of Object.values(state.bedOccupants))cachedRestingSet.add(b)
+  for(const p of state.config.positions)if(p.dormitory){const occ=state.occupants[p.id];if(occ)cachedRestingSet.add(occ)}
+  cachedRoomTeams.clear()
+  for(const [id,r] of roomStats){
+   const ids:string[]=[]
+   for(const p of state.config.positions)if(p.roomId===id){const occ=state.occupants[p.id];if(occ)ids.push(occ)}
+   ids.sort()
+   const hasOccupants=ids.length>0,idKey=ids.join(',')
+   let team=r.teams.find(t=>t.operatorIds.join(',')===idKey)
+   if(!team){team={operatorIds:ids,hours:0,fraction:0};r.teams.push(team)}
+   cachedRoomTeams.set(id,{team,hasOccupants})
+  }
+ }
  while(state.time<total-EPS&&!backupFailed){
   reportProgress()
   if(steps++>=maxEvents){diagnostic('SIMULATION_EVENT_LIMIT',`达到 ${maxEvents} 个积分区间，结果未完成`);break}
@@ -289,27 +343,40 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
    }))
    moraleStep={end:state.time+dt,morale,actionAt:state.time+action}
   }
+  const hasActiveContinuousWarmup=warmupModel==='continuous'&&[...entered.keys()].some(id=>getTemporalSkillBoundaries(id,{operatorRecords}).length>0)
   const frames=new Map<number,ProductionFrame>()
-  const frame=(offset:number)=>{let value=frames.get(offset);if(!value){value=frameAt(offset);frames.set(offset,value)}return value}
+  let zeroFrame:ProductionFrame|undefined
+  const frame=(offset:number)=>{
+   if(offset===0&&zeroFrame)return zeroFrame
+   let value=frames.get(offset)
+   if(!value){
+    if(zeroFrame&&!hasActiveContinuousWarmup){
+     value={time:state.time+offset,config:zeroFrame.config,active:zeroFrame.active,morale:zeroFrame.morale,evaluations:zeroFrame.evaluations}
+    }else{
+     value=frameAt(offset)
+    }
+    frames.set(offset,value)
+    if(offset===0)zeroFrame=value
+   }
+   return value
+  }
   if(production)dt=production.nextStep(dt,frame)
   if(!Number.isFinite(dt)||dt<=0||state.time+dt===state.time){diagnostic('SIMULATION_STALLED','无法确定下一个正长度区间');break}
   const observed=state.time>=warmupHours-EPS
   if(observed){
    const eff=efficiencies(frame(dt/2))
+   updateStatsIndex()
    for(const [id,s] of stats){
-    const p=state.config.positions.find(p=>state.occupants[p.id]===id)
-    const resting=Object.values(state.bedOccupants).includes(id)||p?.dormitory
+    const p=cachedOccupantToPos.get(id),resting=cachedRestingSet.has(id)
     if(!resting&&p?.permanent&&p.primary===id)s.permanentPrimaryOccupancyHours!+=dt
     if(resting)s.restHours+=dt
-    else if(p){if((state.morale[id]??0)<=0 && moraleDerivative(state,id,rates)<=0)s.exhaustedHours+=dt;else{s.workHours+=dt;if(p.primary===id)s.mainWorkHours+=dt;else s.substituteWorkHours+=dt}}
+    else if(p){if((state.morale[id]??0)<=0&&moraleDerivative(state,id,rates)<=0)s.exhaustedHours+=dt;else{s.workHours+=dt;if(p.primary===id)s.mainWorkHours+=dt;else s.substituteWorkHours+=dt}}
     else s.idleHours+=dt
    }
    for(const [id,r] of roomStats){
     r.efficiencyPercentHours+=eff[id]!*dt
-    const ids=state.config.positions.filter(p=>p.roomId===id).map(p=>state.occupants[p.id]!).filter(Boolean).sort()
-    if(ids.length)r.occupiedHours+=dt
-    let team=r.teams.find(t=>JSON.stringify(t.operatorIds)===JSON.stringify(ids))
-    if(!team){team={operatorIds:ids,hours:0,fraction:0};r.teams.push(team)}team.hours+=dt
+    const cached=cachedRoomTeams.get(id)
+    if(cached){if(cached.hasOccupants)r.occupiedHours+=dt;cached.team.hours+=dt}
    }
    report.observedHours+=dt
    if(options.recordSegments)report.segments.push({start:state.time,end:state.time+dt,occupants:{...state.occupants},bedOccupants:{...state.bedOccupants},morale:{...state.morale},efficiencyPercent:eff})

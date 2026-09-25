@@ -64,6 +64,8 @@ export interface FacilityOperatorAssignments {
 export interface AppConfig {
   /** Ephemeral, actual unlocked skill snapshots for this calculation only. */
   operatorRecords?: Readonly<Record<string, import('./operators').OperatorRecord>>
+  /** Force Jaye (孑) to Elite 0 state (first skill only, under shift-run / empty queue). */
+  jayeElite0?: boolean
   schemaVersion: 7
   planName: string
   hours: number

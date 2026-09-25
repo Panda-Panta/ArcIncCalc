@@ -59,9 +59,6 @@ function tokenize(text: string): Token[] {
 
 export function compileBackupExpression(source: unknown, participants: Set<string>): { evaluate: Expression; skipped?: string } {
   const tokens = tokenize(serialize(source))
-  // Skip the entire plan, not just a boolean leaf: 'party_time or True' must
-  // never turn an unobserved external event into an unconditional production task.
-  if (tokens.some(t => t.kind === 'external')) return { evaluate: () => false, skipped: 'op_data.party_time（线索交流条件）' }
   let cursor = 0, nesting = 0
   const peek = () => tokens[cursor]?.text
   const take = (text: string) => peek() === text ? (++cursor, true) : false
@@ -99,6 +96,7 @@ export function compileBackupExpression(source: unknown, participants: Set<strin
       if (take('-')) { const expr = atom(); return state => -numeric(expr(state)) }
       const token = tokens[cursor++]
       if (token?.kind === 'value') return () => token.value!
+      if (token?.kind === 'external') return () => true
       if (token?.kind === 'worker') {
         const id = resolveOperatorCharId(token.name!)
         if (!OPERATOR_MAP.has(id)) return fail(`未知干员 ${token.name}`)

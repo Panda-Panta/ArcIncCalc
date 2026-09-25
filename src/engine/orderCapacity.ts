@@ -30,8 +30,19 @@ export function evaluateTradeOrderCapacity(room:OutputRoom,config:AppConfig,acti
  const partners=operators.filter(op=>op!==jaye&&op!==snow)
  if(partners.some(op=>!evaluation.operatorContributions.some(c=>c.operatorId===op.charId)))return {limit:null,unquantified:['JAYE_PARTNER_CONTRIBUTION_MISSING']}
  const snowSkill=snow?.skills.find(s=>/^trade_ord_spd_variable2\[(000|001)\]$/.test(s.buffId))
- const result=evaluateHighestPhaseJaye({roomLevel:room.level,hasBothJayeSkills:jaye.skills.some(s=>s.buffId==='trade_ord_limit_count[000]'),clearedByShamare:operators.some(op=>op.name==='巫恋'),snowsant:snow&&snowSkill?{operatorId:snow.charId,cap:snowSkill.buffId.endsWith('[001]')?35:25}:undefined,
-  partners:partners.map(op=>{const efficiency=evaluation.operatorContributions.find(c=>c.operatorId===op.charId)!.skillBonus;return {operatorId:op.charId,efficiency,snowsantCopyableEfficiency:efficiency,orderLimitDelta:delta(op),dependsOnOrderLimit:op.skills.some(s=>['trade_ord_spd_variable[000]','trade_ord_spd_variable3[000]'].includes(s.buffId))}})})
+ const hasCountSkill=jaye.skills.some(s=>s.buffId==='trade_ord_limit_count[000]')
+ const isElite0=Boolean(config.jayeElite0||!hasCountSkill)
+ const result=evaluateHighestPhaseJaye({roomLevel:room.level,hasBothJayeSkills:hasCountSkill&&!config.jayeElite0,isElite0,clearedByShamare:operators.some(op=>op.name==='巫恋'),snowsant:snow&&snowSkill?{operatorId:snow.charId,cap:snowSkill.buffId.endsWith('[001]')?35:25}:undefined,
+   partners:partners.map(op=>{
+    const contribution=evaluation.operatorContributions.find(c=>c.operatorId===op.charId)!
+    const efficiency=contribution.skillBonus
+    const orderLimitSkills=op.skills.filter(s=>['trade_ord_spd_variable[000]','trade_ord_spd_variable3[000]'].includes(s.buffId))
+    const orderLimitDerivedEfficiency=orderLimitSkills.reduce((sum,skill)=>{
+      const item=contribution.items.find(i=>i.name===op.name+'·'+skill.name||i.name===skill.name)
+      return sum+(item?item.value:0)
+    },0)
+    return {operatorId:op.charId,efficiency,snowsantCopyableEfficiency:efficiency,orderLimitDelta:delta(op),dependsOnOrderLimit:orderLimitSkills.length>0,orderLimitDerivedEfficiency}
+   })})
  if(!result.supported)return {limit:null,unquantified:[result.reason]}
  return result.effectiveOrderLimit===null?{limit:null,unquantified:['JAYE_SHAMARE_CAPACITY_UNVERIFIED']}:{limit:result.effectiveOrderLimit,unquantified:[]}
 }

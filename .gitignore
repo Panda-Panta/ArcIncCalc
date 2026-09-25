@@ -21,4 +21,5 @@ __pycache__/
 /CHANGELOG*.md
 /docs/*
 !/docs/用户说明书.md
+!/docs/UPDATE_*.md
 /一键排班算法实施计划.md

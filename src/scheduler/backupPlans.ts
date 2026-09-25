@@ -161,6 +161,23 @@ export function createBackupPlanController(base: CompiledSchedule, state: Runtim
     // bed, rather than inventing capacity or silently forgetting that group member.
     const pendingRest = [...new Set([...(state.pendingRest ?? []), ...resting])].filter((id): id is string => Boolean(id) && primaries.includes(id!) && !Object.values(occupants).includes(id!) && !Object.values(beds).includes(id!))
     unique(occupants, beds)
+    const activeBackupBeds = new Set<string>()
+    for (const [i, plan] of plans.entries()) {
+      if (next[i] && Object.keys(plan.task).length) {
+        for (const [room, slots] of Object.entries(plan.task)) {
+          if (room.startsWith('dormitory')) {
+            slots.forEach((agent, index) => {
+              if (agent !== 'Current' && agent !== 'Free') {
+                activeBackupBeds.add(agent)
+                const key = `${room}_${index}`
+                if (config.beds.some(b => b.id === key) && !beds[key]) beds[key] = agent
+              }
+            })
+          }
+        }
+      }
+    }
+    state.backupBedOccupants = activeBackupBeds
     state.config = config; state.occupants = occupants; state.bedOccupants = beds; state.pendingRest = pendingRest
     state.returnDeadlines = {}; state.timingSignature = undefined
     effective = compiled

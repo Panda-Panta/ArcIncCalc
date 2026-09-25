@@ -375,20 +375,18 @@ function controlGlobalBonus(
       }
     }
 
-    if (controlOperators.some(operator => hasOperatorSkill(config, operator.charId, 'control_mp_aegir2[000]'))) {
-      unquantifiedSkills.push('歌蕾蒂娅·集群狩猎初级技能尚未量化；未套用精英2联动')
-    }
-
-    if (controlOperators.some((operator) => operator.name === '歌蕾蒂娅' && hasOperatorSkill(config,operator.charId,'control_mp_aegir2[010]')) &&
-      !roomOperators.some(operator => operator.skills.some(isAutomationSkill))) {
+    const gladiiaInControl = controlOperators.find(op => op.name === '歌蕾蒂娅')
+    const gladiiaSkill = gladiiaInControl?.skills.find(s => s.buffId === 'control_mp_aegir2[010]' || s.buffId === 'control_mp_aegir2[000]')
+    if (gladiiaSkill && !roomOperators.some(operator => operator.skills.some(isAutomationSkill))) {
       // cc.c.abyssal2_2 and 2_3: manufacturing presence only, 90% per-room cap;
       // automation wins, and the grant must not be copied by Waai Fu.
+      const multiplier = gladiiaSkill.buffId === 'control_mp_aegir2[010]' ? 10 : 5
       const manufacturingAbyssalCount = new Set(
         config.rooms.filter(r => r.type === 'manufacture').flatMap(r => r.operatorIds)
           .filter(id => { const operator = OPERATOR_MAP.get(id); return operator !== undefined && matchesRiicIdentity(operator, 'groupId', 'abyssal') }),
       ).size
       const abyssalInRoom = roomOperators.filter(operator => matchesRiicIdentity(operator, 'groupId', 'abyssal'))
-      const value = Math.min(90, manufacturingAbyssalCount * abyssalInRoom.length * 10)
+      const value = Math.min(90, manufacturingAbyssalCount * abyssalInRoom.length * multiplier)
       if (value > 0) {
         bonus += value
         const perBeneficiaryValue = value / abyssalInRoom.length
@@ -684,6 +682,12 @@ export function evaluateOperators(
             .flatMap((item) => selectedOperators(config, item.operatorIds))
             .some((item) => item.name === '古米')
           applied = room.product === 'exp' && gummyInTrading ? 35 : 0
+        } else if (skill.buffId === 'manu_bd_to_bd[000]') {
+          applied = 0
+          facilityDetail = `巫术结晶 ${Math.floor(worldlyFireworks / 5)}`
+        } else if (skill.buffId === 'manu_prod_spd_bd[200]') {
+          applied = Math.floor(worldlyFireworks / 5) * 1
+          facilityDetail = `worldly fireworks ${worldlyFireworks}`
         } else if (skill.buffId === 'manu_prod_spd_bd[201]') {
           applied = Math.floor(worldlyFireworks / 5) * 2
           facilityDetail = `worldly fireworks ${worldlyFireworks}`
@@ -857,7 +861,16 @@ export function evaluateOperators(
             ? (activeOperators.some(op => hasRiicTag(op, 'exusiai')) ? 25 : 0)
             : sameRoomTargetBonus(skill, operatorNames, room.type)
         if (target !== null) applied = (applied ?? 0) + target
-        if (skill.buffId === 'trade_ord_limit&cost_P[020]') applied = 0 // Capacity/morale are evaluated in their own layers.
+        const isTradeCapacityOrMoraleOnly = [
+          'trade_ord_limit&cost_P[020]',
+          'trade_ord_limit&cost_P[001]',
+          'trade_ord_limit&cost_P[010]',
+          'trade_ord_limit&trade&lv[000]',
+          'trade_ord_limit&trade&lv[001]',
+          'trade_ord_limit&cost[000]',
+          'trade_cost[000]',
+        ].includes(skill.buffId)
+        if (isTradeCapacityOrMoraleOnly) applied = 0 // Capacity/morale are evaluated in their own layers.
         if (/高品质|特别订单|独占订单|违约订单|赤金交付数/.test(skill.description)) {
           applied = applied ?? 0
         }
@@ -907,15 +920,15 @@ export function evaluateOperators(
             : 0
         } else if (skill.buffId === 'power_rec_spd_ext&tag[000]') {
           applied = otherPowerOperators.some((item) => workPlatformIds.has(item.charId)) ? 5 : 0
+        } else if (['power_rec_spd&cost[010]', 'power_rec_spd&cost[000]'].includes(skill.buffId)) {
+          applied = 0 // Mood drain reduction evaluated in morale layer.
         } else if (skill.buffId === 'power_rec_spd_P[001]') {
           const logosPresent = globalContext.trainingOperatorIds.some(
-            id => id === '逻各斯' || OPERATOR_MAP.get(id)?.name === '逻各斯',
+            id => id === 'char_4121_logos' || id === '逻各斯' || OPERATOR_MAP.get(id)?.name === '逻各斯',
           )
-          applied = 0
+          applied = logosPresent ? 5 : 0
           if (logosPresent) {
-            unquantifiedSkills.push(operator.name + '·' + skill.name)
-            facilityDetail = '训练名单未区分协助位与受训位，额外5%尚不能确定'
-            details.push(`${operator.name}·${skill.name}：${facilityDetail}`)
+            facilityDetail = '逻各斯进驻训练室协助位 +5%'
           }
         } else {
           applied = directPowerBonus(skill)
@@ -1001,12 +1014,15 @@ export function evaluateOperators(
   const jaye = room.type === 'trading' ? activeOperators.find(op =>
     op.skills.some(skill => skill.buffId === 'trade_ord_limit_diff[000]')) : undefined
   if (jaye) {
+    const hasCountSkill = jaye.skills.some(skill => skill.buffId === 'trade_ord_limit_count[000]')
+    const isElite0 = Boolean(config.jayeElite0 || !hasCountSkill)
     const snowsant = activeOperators.find(op => op.skills.some(skill => /^trade_ord_spd_variable2\[(000|001)\]$/.test(skill.buffId)))
     const copySkill = snowsant?.skills.find(skill => /^trade_ord_spd_variable2\[(000|001)\]$/.test(skill.buffId))
     const partners = activeOperators.filter(op => op.charId !== jaye.charId && op.charId !== snowsant?.charId)
     const resolved = evaluateHighestPhaseJaye({
       roomLevel: room.level,
-      hasBothJayeSkills: jaye.skills.some(skill => skill.buffId === 'trade_ord_limit_count[000]'),
+      hasBothJayeSkills: hasCountSkill && !config.jayeElite0,
+      isElite0,
       clearedByShamare: shamareActive,
       snowsant: snowsant && copySkill ? { operatorId: snowsant.charId, cap: copySkill.buffId.endsWith('[001]') ? 35 : 25 } : undefined,
       partners: partners.map(op => {
@@ -1015,20 +1031,32 @@ export function evaluateOperators(
         let capacity = skills.reduce((sum, skill) => sum + orderLimitDelta(skill, room, operatorNames), 0)
         if (gnosisInControl && matchesRiicIdentity(op, 'nationId', 'kjerag')) capacity += 6
         if (wisdelInControl && op.name === '赫德雷') capacity += 2
-        return { operatorId: op.charId, efficiency: contribution.skillBonus,
-          snowsantCopyableEfficiency: contribution.skillBonus, orderLimitDelta: capacity,
-          dependsOnOrderLimit: skills.some(skill => ['trade_ord_spd_variable[000]', 'trade_ord_spd_variable3[000]'].includes(skill.buffId)) }
+        const orderLimitSkills = skills.filter(skill => ['trade_ord_spd_variable[000]', 'trade_ord_spd_variable3[000]'].includes(skill.buffId))
+        const orderLimitDerivedEfficiency = orderLimitSkills.reduce((sum, skill) => {
+          const item = contribution.items.find(i => i.name === `${op.name}·${skill.name}`)
+          return sum + (item ? item.value : 0)
+        }, 0)
+        return {
+          operatorId: op.charId,
+          efficiency: contribution.skillBonus,
+          snowsantCopyableEfficiency: contribution.skillBonus,
+          orderLimitDelta: capacity,
+          dependsOnOrderLimit: orderLimitSkills.length > 0,
+          orderLimitDerivedEfficiency,
+        }
       }),
     })
     if (resolved.supported) {
       for (const [op, value, label] of [
-        [jaye, resolved.jayeEfficiency, '摊贩经济 / 市井之道'],
+        [jaye, resolved.jayeEfficiency, isElite0 ? '摊贩经济' : '摊贩经济 / 市井之道'],
         [snowsant, resolved.snowsantEfficiency, copySkill?.name ?? '天道酬勤'],
       ] as const) {
         if (!op || value === 0) continue
         const contribution = operatorContributions.find(item => item.operatorId === op.charId)!
         const name = op.name + '·' + label
-        const detail = op === jaye ? `订单上限 ${resolved.effectiveOrderLimit}，双技能队列项抵消` : '先复制第三人，再计入孑的容量折减'
+        const detail = op === jaye
+          ? (isElite0 ? `订单上限 ${resolved.effectiveOrderLimit}，精0跑单全额差额加成` : `订单上限 ${resolved.effectiveOrderLimit}，双技能队列项抵消`)
+          : (isElite0 ? '复制其他干员订单效率' : '先复制第三人，再计入孑的容量折减')
         contribution.items.push({ name, value, detail })
         contribution.skillBonus += value
         contribution.totalBonus += value
@@ -1036,7 +1064,11 @@ export function evaluateOperators(
         details.push(`${name}：+${value}%（${detail}）`)
       }
     } else {
-      unquantifiedSkills.push('孑·摊贩经济', '孑·市井之道')
+      if (isElite0) {
+        unquantifiedSkills.push('孑·摊贩经济')
+      } else {
+        unquantifiedSkills.push('孑·摊贩经济', '孑·市井之道')
+      }
       if (snowsant) unquantifiedSkills.push(snowsant.name + '·' + copySkill!.name)
       details.push(`${resolved.reason}：${resolved.detail}`)
     }

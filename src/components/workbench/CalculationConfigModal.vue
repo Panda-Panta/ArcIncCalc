@@ -4,6 +4,7 @@ export interface CalculationConfig {
   droneTradingRoomId: string
   droneRoomId?: string
   useOperatorInventory?: boolean
+  jayeElite0?: boolean
 }
 </script>
 <script setup lang="ts">
@@ -16,6 +17,7 @@ const props = defineProps<{ open: boolean; workspace: RosterWorkspace; initial: 
 const emit = defineEmits<{ close: []; confirm: [config: CalculationConfig] }>()
 const room = ref('none')
 const useOperatorInventory = ref(true)
+const jayeElite0 = ref(false)
 const facilities = computed(() => droneFacilities(props.workspace))
 watch(() => props.open, open => {
   if (!open) return
@@ -24,6 +26,7 @@ watch(() => props.open, open => {
     facilities.value.find(f => f.roomId === saved)?.roomId ??
     (saved ? 'none' : facilities.value.find(f => f.target === props.initial.droneTarget)?.roomId ?? 'none')
   useOperatorInventory.value = props.initial.useOperatorInventory ?? true
+  jayeElite0.value = props.initial.jayeElite0 ?? false
 }, { immediate: true })
 function confirm() {
   const selected = facilities.value.find(f => f.roomId === room.value)
@@ -32,6 +35,7 @@ function confirm() {
     droneRoomId: selected?.roomId ?? '',
     droneTradingRoomId: selected?.target === 'trading' ? selected.roomId : '',
     useOperatorInventory: useOperatorInventory.value,
+    jayeElite0: jayeElite0.value,
   })
 }
 </script>
@@ -49,6 +53,10 @@ function confirm() {
       <label class="inventory-choice">
         <span><input v-model="useOperatorInventory" type="checkbox" data-test="calculation-use-inventory" /> 使用当前干员库配置</span>
         <small>取消勾选则按全部干员满配计算。</small>
+      </label>
+      <label class="inventory-choice">
+        <span><input v-model="jayeElite0" type="checkbox" data-test="calculation-jaye-elite0" /> 孑使用精0状态（跑单满差额加成）</span>
+        <small>勾选后，孑将按精0（仅解锁摊贩经济）计算，不受队友效率扣减订单上限，享受全额差额加成。</small>
       </label>
     </div>
     <template #footer>
