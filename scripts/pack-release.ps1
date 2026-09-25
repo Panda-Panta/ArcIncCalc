@@ -1,5 +1,9 @@
 $ErrorActionPreference = "Stop"
 
+Write-Host ">>> Ensuring running instances of R.I.I.C-Calculator are closed before packing..."
+Get-Process "R.I.I.C-Calculator", "ArcIncCalc" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+Start-Sleep -Milliseconds 500
+
 Write-Host ">>> [1/5] Building Vue 3 Frontend (npm run build)..."
 npm run build
 
@@ -20,6 +24,22 @@ Write-Host ">>> [5/5] Compressing portable ZIP archive..."
 $zipPath = "../R.I.I.C-Calculator-Windows-x64-Portable.zip"
 if (Test-Path $zipPath) { Remove-Item -Force $zipPath }
 tar.exe -a -cf $zipPath -C release R.I.I.C-Calculator
+
+$arcIncZipPath = "../ArcIncCalc-Windows-x64-Portable.zip"
+Copy-Item $zipPath $arcIncZipPath -Force
+
+function Get-Sha256([string]$filePath) {
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    $stream = [System.IO.File]::OpenRead((Resolve-Path $filePath))
+    $bytes = $sha256.ComputeHash($stream)
+    $stream.Close()
+    return (-join ($bytes | ForEach-Object { "{0:x2}" -f $_ }))
+}
+
+$hash = Get-Sha256 $zipPath
+$hashArc = Get-Sha256 $arcIncZipPath
+$sumsPath = "../SHA256SUMS.txt"
+"$hash  R.I.I.C-Calculator-Windows-x64-Portable.zip`r`n$hashArc  ArcIncCalc-Windows-x64-Portable.zip" | Set-Content -Path $sumsPath -Encoding utf8
 
 $targetSyncDir = if (Test-Path "D:\Tools\R.I.I.C-Calculator") { "D:\Tools\R.I.I.C-Calculator" } elseif (Test-Path "D:\Tools\ArcIncCalc") { "D:\Tools\ArcIncCalc" } else { "" }
 if ($targetSyncDir -ne "") {

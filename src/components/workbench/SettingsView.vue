@@ -91,20 +91,6 @@ function updateField<K extends keyof SimulationSettings>(key: K, val: Simulation
           />
         </label>
 
-        <!-- 最大步长 -->
-        <label class="control-item">
-          <span class="control-label">计算步长</span>
-          <select
-            class="control-select"
-            :value="settings.step"
-            @change="updateField('step', Number(($event.target as HTMLSelectElement).value))"
-          >
-            <option :value="0.25">15 分钟（推荐，平滑平衡）</option>
-            <option :value="0.05">3 分钟（高精度）</option>
-            <option :value="0.01">36 秒（极高精度）</option>
-          </select>
-        </label>
-
         <!-- 随机种子 -->
         <label class="control-item">
           <span class="control-label">随机种子 (Seed)</span>
