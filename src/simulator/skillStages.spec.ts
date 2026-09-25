@@ -70,4 +70,63 @@ describe('actual unlocked skills per calculation', () => {
     expect(display.summary!.virtualGoldCount).toBeCloseTo(orders.filter(o => o.kind === 'tequila').length * .5 / (30 / 24))
     expect(orders.every(o => o.kind === 'tequila' ? o.lmdReward === 2250 : o.lmdReward === o.goldCost * 500 && [3, 4].includes(o.goldCost))).toBe(true)
   })
+
+  it('correctly quantifies composite skills across E0 and E2 stages', () => {
+    // 1. Archetto (空弦) E0 (+1% per dorm level) vs E2 (+2% per dorm level)
+    const archLow = config([owned('空弦', 0)]), archHigh = config([owned('空弦', 2)])
+    for (const c of [archLow, archHigh]) {
+      c.facilities.dormitories = [5, 5, 5, 5]
+      const trade = c.rooms.find(r => r.type === 'trading')!
+      trade.operatorIds = [id('空弦')]; trade.operatorCount = 1
+    }
+    expect(evaluateOperators(archLow.rooms.find(r => r.type === 'trading')!, archLow).skillBonus).toBe(20)
+    expect(evaluateOperators(archHigh.rooms.find(r => r.type === 'trading')!, archHigh).skillBonus).toBe(40)
+
+    // 2. Rosmontis (迷迭香) E0 (+1% per 2 thought chain) vs E2 (+1% per 1 thought chain)
+    const rosLow = config([owned('迷迭香', 0)]), rosHigh = config([owned('迷迭香', 2)])
+    for (const c of [rosLow, rosHigh]) {
+      c.facilityOperatorIds.dormitories = [[id('杜林'), id('黑角'), id('夜刀'), id('巡林者'), id('12F')]]
+      c.dormitoryOccupantCount = 5
+      const manu = c.rooms.find(r => r.type === 'manufacture')!
+      manu.operatorIds = [id('迷迭香')]; manu.operatorCount = 1; manu.product = 'gold'
+    }
+    expect(evaluateOperators(rosLow.rooms.find(r => r.type === 'manufacture')!, rosLow).skillBonus).toBe(2) // floor(5 / 2) = 2
+    expect(evaluateOperators(rosHigh.rooms.find(r => r.type === 'manufacture')!, rosHigh).skillBonus).toBe(5) // floor(5 / 1) = 5
+
+    // 3. Minimalist (至简) E0 (5% per 16 robots) vs E2 (5% per 8 robots)
+    const minLow = config([owned('至简', 0)]), minHigh = config([owned('至简', 2)])
+    for (const c of [minLow, minHigh]) {
+      const manu = c.rooms.find(r => r.type === 'manufacture')!
+      manu.operatorIds = [id('至简')]; manu.operatorCount = 1; manu.product = 'gold'
+    }
+    const lowRobots = evaluateOperators(minLow.rooms.find(r => r.type === 'manufacture')!, minLow)
+    const highRobots = evaluateOperators(minHigh.rooms.find(r => r.type === 'manufacture')!, minHigh)
+    expect(highRobots.skillBonus).toBeGreaterThanOrEqual(lowRobots.skillBonus)
+
+    // 4. Jixing (吉星) E0 (+10% per other colleague) vs E2 (+20% per other colleague)
+    const jixLow = config([owned('吉星', 0), owned('德克萨斯', 2), owned('能天使', 2)])
+    const jixHigh = config([owned('吉星', 2), owned('德克萨斯', 2), owned('能天使', 2)])
+    for (const c of [jixLow, jixHigh]) {
+      const trade = c.rooms.find(r => r.type === 'trading')!
+      trade.operatorIds = [id('吉星'), id('德克萨斯'), id('能天使')]; trade.operatorCount = 3
+    }
+    // 2 colleagues * 10% = 20% vs 2 * 20% = 40% (ignoring other operator skill additions)
+    const jixLowBonus = evaluateOperators(jixLow.rooms.find(r => r.type === 'trading')!, jixLow).operatorContributions.find(b => b.operatorId === id('吉星'))!.skillBonus
+    const jixHighBonus = evaluateOperators(jixHigh.rooms.find(r => r.type === 'trading')!, jixHigh).operatorContributions.find(b => b.operatorId === id('吉星'))!.skillBonus
+    expect(jixLowBonus).toBe(20)
+    expect(jixHighBonus).toBe(40)
+
+    // 5. Alanna (阿兰娜) E0 (+5% per platform in power) vs E2 (+10% per platform in power)
+    const alaLow = config([owned('阿兰娜', 0), owned('Lancet-2', 0)])
+    const alaHigh = config([owned('阿兰娜', 2), owned('Lancet-2', 0)])
+    for (const c of [alaLow, alaHigh]) {
+      const power = c.rooms.find(r => r.type === 'power')!
+      power.operatorIds = [id('Lancet-2')]; power.operatorCount = 1
+      const manu = c.rooms.find(r => r.type === 'manufacture')!
+      manu.operatorIds = [id('阿兰娜')]; manu.operatorCount = 1; manu.product = 'gold'
+    }
+    expect(evaluateOperators(alaLow.rooms.find(r => r.type === 'manufacture')!, alaLow).skillBonus).toBe(5)
+    expect(evaluateOperators(alaHigh.rooms.find(r => r.type === 'manufacture')!, alaHigh).skillBonus).toBe(10)
+  })
 })
+
