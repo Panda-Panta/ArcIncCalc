@@ -19,7 +19,7 @@
           ghost
           @click="onPickMain"
         >
-          <img v-if="slot.occupant.kind === 'operator' && !avatarFailed" :src="`/avatar/${encodeURI(operatorButtonText)}.webp`" :alt="operatorButtonText" class="main-operator-avatar" @error="avatarFailed = true" />
+          <img v-if="slot.occupant.kind === 'operator' && !avatarFailed" :src="getOperatorAvatarUrl(operatorButtonText)" :alt="operatorButtonText" class="main-operator-avatar" @error="avatarFailed = true" />
           <span>{{ operatorButtonText }}</span>
         </n-button>
       </div>
@@ -64,6 +64,7 @@ import { computed, ref, watch } from 'vue'
 import { NButton, NInput, NSelect } from 'naive-ui'
 import ReplacementList from './ReplacementList.vue'
 import { useRosterWorkbenchStore } from '../../workbench/store'
+import { getOperatorAvatarUrl } from '../../workbench/operatorHelpers'
 import { OPERATOR_MAP } from '../../domain/operators'
 import type { MowerRoomId, MowerSlot } from '../../workbench/model'
 

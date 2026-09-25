@@ -99,6 +99,7 @@
 import { computed, h, toRaw, type VNode } from 'vue'
 import { NAvatar, NButton, NSelect, NSpace, type SelectOption } from 'naive-ui'
 import SlotRow from './SlotRow.vue'
+import { resolveAssetUrl } from '../../workbench/operatorHelpers'
 import { useRosterWorkbenchStore } from '../../workbench/store'
 import {
   MOWER_OUTPUT_ROOM_IDS,
@@ -216,15 +217,15 @@ const productOptions = computed(() => {
   if (!selectedRoom.value) return []
   if (selectedRoom.value.type === 'manufacture') {
     return [
-      { label: '赤金', value: 'gold', icon: '/product/gold.png' },
-      { label: '中级作战记录', value: 'exp', icon: '/product/exp3.png' },
-      { label: '源石碎片', value: 'fragment', icon: '/product/orirock.png' },
+      { label: '赤金', value: 'gold', icon: resolveAssetUrl('product/gold.png') },
+      { label: '中级作战记录', value: 'exp', icon: resolveAssetUrl('product/exp3.png') },
+      { label: '源石碎片', value: 'fragment', icon: resolveAssetUrl('product/orirock.png') },
     ]
   }
   if (selectedRoom.value.type === 'trading') {
     return [
-      { label: '赤金订单', value: 'money', icon: '/product/lmd.png' },
-      { label: '合成玉订单', value: 'orundum', icon: '/product/orundum.png' },
+      { label: '赤金订单', value: 'money', icon: resolveAssetUrl('product/lmd.png') },
+      { label: '合成玉订单', value: 'orundum', icon: resolveAssetUrl('product/orundum.png') },
     ]
   }
   return []
@@ -233,11 +234,11 @@ const productOptions = computed(() => {
 function renderProductLabel(option: SelectOption): VNode {
   let iconSrc = typeof option.icon === 'string' ? option.icon : undefined
   if (!iconSrc) {
-    if (option.value === 'gold') iconSrc = '/product/gold.png'
-    else if (option.value === 'exp') iconSrc = '/product/exp3.png'
-    else if (option.value === 'fragment') iconSrc = '/product/orirock.png'
-    else if (option.value === 'money') iconSrc = '/product/lmd.png'
-    else if (option.value === 'orundum') iconSrc = '/product/orundum.png'
+    if (option.value === 'gold') iconSrc = resolveAssetUrl('product/gold.png')
+    else if (option.value === 'exp') iconSrc = resolveAssetUrl('product/exp3.png')
+    else if (option.value === 'fragment') iconSrc = resolveAssetUrl('product/orirock.png')
+    else if (option.value === 'money') iconSrc = resolveAssetUrl('product/lmd.png')
+    else if (option.value === 'orundum') iconSrc = resolveAssetUrl('product/orundum.png')
   }
 
   return h(

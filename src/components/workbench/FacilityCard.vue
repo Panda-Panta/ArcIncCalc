@@ -89,6 +89,7 @@
 
 import { computed, ref } from 'vue'
 import { OPERATOR_MAP } from '../../domain/operators'
+import { getOperatorAvatarUrl, resolveAssetUrl } from '../../workbench/operatorHelpers'
 import {
   MOWER_OUTPUT_ROOM_IDS,
   type MowerFacility,
@@ -179,7 +180,7 @@ const productUrl = computed(() => {
   else if (p === 'fragment' || p === 'orirock') filename = 'orirock'
   else if (p === 'money' || p === 'lmd') filename = 'lmd'
   else if (p === 'orundum') filename = 'orundum'
-  return `/product/${filename}.png`
+  return resolveAssetUrl(`product/${filename}.png`)
 })
 
 const displayedSlots = computed(() => {
@@ -188,13 +189,10 @@ const displayedSlots = computed(() => {
 })
 
 function getAvatarSrc(occupant: MowerOccupant): string {
-  if (occupant.kind === 'free') return '/avatar/Free.webp'
-  if (occupant.kind === 'current') return '/avatar/Current.webp'
+  if (occupant.kind === 'free') return getOperatorAvatarUrl('Free')
+  if (occupant.kind === 'current') return getOperatorAvatarUrl('Current')
   if (occupant.kind === 'operator') {
-    const rawId = occupant.operatorId
-    const op = OPERATOR_MAP.get(rawId)
-    const chineseName = op ? op.name : rawId
-    return `/avatar/${encodeURI(chineseName)}.webp`
+    return getOperatorAvatarUrl(occupant.operatorId)
   }
   return ''
 }

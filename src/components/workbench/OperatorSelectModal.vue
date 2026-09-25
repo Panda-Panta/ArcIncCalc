@@ -43,7 +43,7 @@
           @click="selectSpecial('free')"
         >
           <img
-            src="/avatar/Free.webp"
+            :src="getOperatorAvatarUrl('Free')"
             alt="Free"
             width="24"
             height="24"
@@ -59,7 +59,7 @@
           @click="selectSpecial('current')"
         >
           <img
-            src="/avatar/Current.webp"
+            :src="getOperatorAvatarUrl('Current')"
             alt="Current"
             width="24"
             height="24"

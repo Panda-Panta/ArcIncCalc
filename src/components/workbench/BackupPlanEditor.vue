@@ -969,7 +969,7 @@ function renderOptionLabel(option: SelectOption): VNode {
       src: getOperatorAvatarUrl(val),
       round: true,
       size: 22,
-      fallbackSrc: '/avatar/Free.webp',
+      fallbackSrc: getOperatorAvatarUrl('Free'),
       style: { flexShrink: 0 },
     }),
     h('span', null, String(option.label || '')),

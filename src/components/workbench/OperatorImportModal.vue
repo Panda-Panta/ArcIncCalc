@@ -18,6 +18,7 @@ import {
   type OperatorImportSummary,
 } from '../../domain/operatorImport'
 import { parseOperatorInventory, type OwnedOperatorInput } from '../../domain/operatorInventory'
+import { getOperatorAvatarUrl } from '../../workbench/operatorHelpers'
 
 const props = defineProps<{
   open: boolean
@@ -352,7 +353,7 @@ function handleImport(): void {
             >
               <img
                 class="chip-avatar"
-                :src="'/avatar/' + encodeURIComponent(op.operator) + '.webp'"
+                :src="getOperatorAvatarUrl(op.operator)"
                 :alt="op.operator"
                 @error="($event.target as HTMLElement).style.display = 'none'"
               />

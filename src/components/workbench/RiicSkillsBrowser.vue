@@ -256,6 +256,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import rawOperatorsData from '../../data/riic-skills-database.json'
+import { getOperatorAvatarUrl, resolveAssetUrl } from '../../workbench/operatorHelpers'
 
 interface SkillSynergyFaction {
   name: string
@@ -477,8 +478,8 @@ const totalFilteredSkills = computed(() => {
 })
 
 // URLs
-const getAvatarUrl = (name: string) => `/avatar/${encodeURI(name)}.webp`
-const getSkillIcon = (iconName: string) => `/building_skill/${encodeURI(iconName)}.webp`
+const getAvatarUrl = (name: string) => getOperatorAvatarUrl(name)
+const getSkillIcon = (iconName: string) => resolveAssetUrl(`building_skill/${encodeURI(iconName)}.webp`)
 
 const onAvatarError = (event: Event, _name?: string) => {
   const img = event.target as HTMLImageElement
@@ -509,7 +510,7 @@ const formatRichDesc = (desc: string, synergy: SkillSynergy | null): string => {
       const memberHtml = f.members
         .map((m) => {
           return `<span class="popover-op-chip">
-            <img class="popover-chip-avatar" src="/avatar/${encodeURI(m)}.webp" onerror="this.style.display='none'" />
+            <img class="popover-chip-avatar" src="${getAvatarUrl(m)}" onerror="this.style.display='none'" />
             <span>${m}</span>
           </span>`
         })
@@ -523,7 +524,7 @@ const formatRichDesc = (desc: string, synergy: SkillSynergy | null): string => {
   // 2. Highlight Synergy Operators
   if (synergy?.operators && synergy.operators.length > 0) {
     for (const opName of synergy.operators) {
-      const opTag = `<span class="tag-op-wrap"><span class="tag-op"><img class="chip-avatar-inline" src="/avatar/${encodeURI(opName)}.webp" onerror="this.style.display='none'" /><span>@${opName}</span></span></span>`
+      const opTag = `<span class="tag-op-wrap"><span class="tag-op"><img class="chip-avatar-inline" src="${getAvatarUrl(opName)}" onerror="this.style.display='none'" /><span>@${opName}</span></span></span>`
       html = html.split(opName).join(opTag)
     }
   }

@@ -64,6 +64,7 @@
 import { ref } from 'vue'
 import { NButton } from 'naive-ui'
 import { useRosterWorkbenchStore } from '../../workbench/store'
+import { getOperatorAvatarUrl } from '../../workbench/operatorHelpers'
 import { OPERATOR_MAP } from '../../domain/operators'
 import type { MowerRoomId } from '../../workbench/model'
 
@@ -92,9 +93,7 @@ function getOpName(identifier: string): string {
 }
 
 function getAvatarSrc(identifier: string): string {
-  if (!identifier) return ''
-  const name = getOpName(identifier)
-  return `/avatar/${encodeURI(name)}.webp`
+  return getOperatorAvatarUrl(identifier)
 }
 
 function onDragStart(event: DragEvent, index: number): void {

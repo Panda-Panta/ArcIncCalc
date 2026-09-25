@@ -7,6 +7,8 @@
 import { match, pinyin } from 'pinyin-pro'
 import { OPERATOR_MAP, OPERATORS, type OperatorRecord } from '../domain/operators'
 import type { MowerFacilityType, MowerMainConf, MowerMainPlan, MowerRoomId } from './model'
+import { resolveAssetUrl } from '../utils/assets'
+export { resolveAssetUrl }
 
 export interface OperatorSearchItem extends OperatorRecord {
   fullPinyin: string
@@ -131,11 +133,11 @@ export function searchOperators(
 
 export function getOperatorAvatarUrl(identifier: string): string {
   if (!identifier) return ''
-  if (identifier === 'Free') return '/avatar/Free.webp'
-  if (identifier === 'Current') return '/avatar/Current.webp'
+  if (identifier === 'Free') return resolveAssetUrl('avatar/Free.webp')
+  if (identifier === 'Current') return resolveAssetUrl('avatar/Current.webp')
   const op = OPERATOR_MAP.get(identifier)
   const name = op ? op.name : identifier
-  return `/avatar/${encodeURI(name)}.webp`
+  return resolveAssetUrl(`avatar/${encodeURI(name)}.webp`)
 }
 
 const FACILITY_TYPE_NAMES: Record<string, string> = {
