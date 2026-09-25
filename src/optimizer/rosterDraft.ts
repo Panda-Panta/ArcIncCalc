@@ -239,6 +239,8 @@ export function improveBackups(draft:RosterWorkspace,inventory:OperatorInventory
   for(const p of positions){
    const room=draft.mainPlan.facilities[p.roomId],slot=room.slots[p.slotIndex]!
    if(room.type==='dormitory'||slot.occupant.kind!=='operator')continue
+   // Self-contained singletons without colleague synergies (manufacture, power) cannot improve from unassigned pool
+   if(room.type==='manufacture'||room.type==='power')continue
    const index=slot.replacements.findIndex(id=>!isShiftRunOperator(id))
    if(index<0)continue
    const current=resolveId(slot.replacements[index]!)
@@ -247,7 +249,7 @@ export function improveBackups(draft:RosterWorkspace,inventory:OperatorInventory
    const pool=inventory.operators.filter(o=>!excluded.has(o.charId)&&!reserved.has(o.charId)&&!isShiftRunOperator(o.charId)&&o.name!=='菲亚梅塔'&&(room.type!=='trading'||!isUnsupportedTradeOperator(o.charId))&&o.skills.some(s=>s.roomType===roomTypes.get(room.type)))
    const best=rankStaffingCandidates(draft,inventory,p,[current,...pool.map(o=>o.charId)],'backup')[0]
    if(best&&best!==current){slot.replacements[index]=best;changed=true}
-   else if(!best&&(room.type==='manufacture'||room.type==='trading')){slot.replacements.splice(index,1);changed=true}
+   else if(!best&&room.type==='trading'){slot.replacements.splice(index,1);changed=true}
   }
   if(!changed)break
  }

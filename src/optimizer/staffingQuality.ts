@@ -24,7 +24,18 @@ function assignmentContexts(workspace: RosterWorkspace, position: StaffingPositi
     .flatMap(r => r.slots.map((slot, index) => key(r.roomId, index, slot)))
   const scenarios: Set<string>[] = []
   // Enumerate local mixed shifts, plus all other groups resting for cross-room dependencies.
-  for (let mask = 0; mask < (theoretical ? 1 : 2 ** peers.length); mask++) {
+  const masks: number[] = []
+  if (theoretical) {
+    masks.push(0)
+  } else if (peers.length <= 2) {
+    for (let mask = 0; mask < 2 ** peers.length; mask++) masks.push(mask)
+  } else {
+    // For large rooms (like 5-slot central), test: all on-duty, each individual peer resting, and all peers resting
+    masks.push(0)
+    for (let i = 0; i < peers.length; i++) masks.push(1 << i)
+    masks.push((1 << peers.length) - 1)
+  }
+  for (const mask of masks) {
     scenarios.push(new Set([...peers.filter((_, i) => mask & (1 << i)), ...(role === 'backup' ? [target] : [])]))
   }
   if (!theoretical) scenarios.push(new Set(allGroups.filter(group => role === 'backup' || group !== target)))
@@ -75,12 +86,44 @@ function insertOperator(config: AppConfig, workspace: RosterWorkspace, position:
   if (type === 'train') config.efficiencyResources.trainingOperatorIds = [...config.facilityOperatorIds.training]
 }
 
+function removeOperator(config: AppConfig, workspace: RosterWorkspace, position: StaffingPosition, insertionIndex: number, previousPowerStaffed = false) {
+  const type = workspace.mainPlan.facilities[position.roomId].type
+  if (['manufacture', 'trading', 'power'].includes(type)) {
+    const outputIndex = MOWER_OUTPUT_ROOM_IDS.findIndex(roomId => roomId === position.roomId)
+    const room = config.rooms.find(r => r.id === `B${outputIndex + 1}`)
+    if (outputIndex < 0 || !room) return
+    room.operatorIds.splice(insertionIndex, 1)
+    room.operatorCount = room.operatorIds.length
+    if (room.type === 'power') room.powerStaffed = previousPowerStaffed
+    return
+  }
+  if (type === 'central') { config.controlOperatorIds.splice(insertionIndex, 1); return }
+  const auxiliary = { contact: 'office', meeting: 'reception', factory: 'workshop', train: 'training' } as const
+  if (type in auxiliary) config.facilityOperatorIds[auxiliary[type as keyof typeof auxiliary]].splice(insertionIndex, 1)
+  if (type === 'train') config.efficiencyResources.trainingOperatorIds = [...config.facilityOperatorIds.training]
+}
+
+const qualityCache = new Map<string, Quality>()
+
+function qualityKey(c: AppConfig): string {
+  return `${c.controlOperatorIds.join(',')}|${c.rooms.map(r => r.operatorIds.join(',')).join(';')}|${c.facilityOperatorIds.training.join(',')}|${c.facilityOperatorIds.office.join(',')}|${c.facilityOperatorIds.reception.join(',')}|${c.facilityOperatorIds.workshop.join(',')}`
+}
+
 function quality(config: AppConfig): Quality {
+  const key = qualityKey(config)
+  const cached = qualityCache.get(key)
+  if (cached) return cached
   // A short relief shift cannot be assumed to have completed 5/10/12 hours of warm-up.
   const present = [...config.controlOperatorIds, ...config.rooms.flatMap(r => r.operatorIds)]
   const projection = projectControlOutput(config, { timeContext: { workHoursByOperator: new Map(present.map(id => [id, 0])) } })
   const consumption = Object.values(currentMoraleRates(config).rates).reduce((sum, rate) => sum + rate, 0)
-  return { output: projection.daily.score, power: projection.powerBonusPercent, consumption }
+  const result: Quality = { output: projection.daily.score, power: projection.powerBonusPercent, consumption }
+  qualityCache.set(key, result)
+  return result
+}
+
+export function clearQualityCache() {
+  qualityCache.clear()
 }
 
 /** Actual conditional skills and global dependencies replace inventory-order backup selection. */
@@ -93,7 +136,7 @@ export function rankStaffingCandidates(
   const production = type === 'manufacture' || type === 'trading'
   if (!production && candidates.length < 2) return [...candidates]
   const records = inventoryOperatorRecords(inventory)
-  const contexts = assignmentContexts(workspace, position, role, production)
+  const contexts = assignmentContexts(workspace, position, role, production || role === 'main')
   if (production) {
     // The first snapshot is the relevant main/relief team. Ordinary production
     // candidates are ordered by their own theoretical skill, not whole-base gain.
@@ -102,31 +145,37 @@ export function rankStaffingCandidates(
     const allowed = new Set(productionSingletonNames(workspace, position.roomId).map(resolveId))
     const owned = new Set(inventory.operators.map(o => o.charId))
     const neutral = (id: string) => options.allowNeutral && !records[id]?.skills.some(s => s.roomType === (type === 'manufacture' ? 'MANUFACTURE' : 'TRADING'))
+    const cfg = context.config
+    cfg.operatorRecords = records
+    const outputIndex = MOWER_OUTPUT_ROOM_IDS.findIndex(roomId => roomId === position.roomId)
+    const targetRoom = outputIndex >= 0 ? cfg.rooms.find(r => r.id === `B${outputIndex + 1}`) : undefined
     return [...new Set(candidates.map(resolveId))].filter(id => owned.has(id) &&
       (allowed.has(id) || isSelfOnlyProductionFallback(records[id]?.skills ?? [], type) || neutral(id))).flatMap(id => {
-      const config: AppConfig = structuredClone(context.config)
-      config.operatorRecords = records
-      insertOperator(config, workspace, position, context.insertionIndex, id)
-      let efficiency = singletonTheory(config, position.roomId, id)
+      insertOperator(cfg, workspace, position, context.insertionIndex, id)
+      let efficiency = singletonTheory(cfg, position.roomId, id)
       // Initial matching constructs a complete relief team. Do not eliminate
       // count-based 吉星 just because her future colleagues are not assigned yet.
       // improveBackups re-evaluates the resulting team with actual occupants.
       if (role === 'backup' && options.completingReliefTeam && records[id]?.skills.some(s => s.buffId === 'trade_ord_spd&share[002]')) {
-        const room = config.rooms.find(r => r.id === productionRoomId(position.roomId))!
-        const cleared = room.operatorIds.some(other => records[other]?.skills.some(s => s.buffId === 'trade_ord_vodfox[000]'))
+        const room = targetRoom ?? cfg.rooms.find(r => r.id === productionRoomId(position.roomId))!
+        const cleared = room.operatorIds.some(other => other !== id && records[other]?.skills.some(s => s.buffId === 'trade_ord_vodfox[000]'))
         if (!cleared) efficiency = Math.max(0, workspace.mainPlan.facilities[position.roomId].slots.filter(s => s.occupant.kind === 'operator').length - 1) * 20
       }
+      removeOperator(cfg, workspace, position, context.insertionIndex)
       return efficiency !== undefined && (efficiency > 0 || options.allowNeutral && efficiency === 0) ? [{ id, efficiency, preferred: allowed.has(id) }] : []
     }).sort((a, b) => Number(b.efficiency > 0) - Number(a.efficiency > 0) || Number(b.preferred) - Number(a.preferred) || b.efficiency - a.efficiency).map(item => item.id)
   }
   if (!contexts.length) return [...candidates]
-  const baselines = contexts.map(({ config }) => { config.operatorRecords = records; return quality(config) })
+  contexts.forEach(({ config }) => { config.operatorRecords = records })
+  const baselines = contexts.map(({ config }) => quality(config))
   const ranked = [...new Set(candidates.map(resolveId))].map(id => {
-    const deltas = contexts.map(({ config: context, insertionIndex }, index) => {
-      const config: AppConfig = structuredClone({ ...context, operatorRecords: undefined })
-      config.operatorRecords = records
-      insertOperator(config, workspace, position, insertionIndex, id)
-      const value = quality(config), baseline = baselines[index]!
+    const deltas = contexts.map(({ config: contextCfg, insertionIndex }, index) => {
+      const outputIndex = MOWER_OUTPUT_ROOM_IDS.findIndex(roomId => roomId === position.roomId)
+      const room = outputIndex >= 0 ? contextCfg.rooms.find(r => r.id === `B${outputIndex + 1}`) : undefined
+      const prevPower = room?.powerStaffed ?? false
+      insertOperator(contextCfg, workspace, position, insertionIndex, id)
+      const value = quality(contextCfg), baseline = baselines[index]!
+      removeOperator(contextCfg, workspace, position, insertionIndex, prevPower)
       return { output: value.output - baseline.output, power: value.power - baseline.power, consumption: value.consumption - baseline.consumption }
     })
     return { id, worst: Math.min(...deltas.map(d => d.output)), mean: deltas.reduce((n, d) => n + d.output, 0) / deltas.length,

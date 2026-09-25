@@ -190,7 +190,7 @@ describe('operator combination rules', () => {
     expect(evaluateOperators(room, config).skillBonus).toBe(90)
   })
 
-  it('does not infer the training assistant role from mere presence', () => {
+  it('quantifies PhonoR-0 resonant chant when Logos is present in training room', () => {
     const config = createDefaultConfig()
     const operatorId = (name: string) => OPERATORS.find((operator) => operator.name === name)!.charId
     const linkedPowerOperator = OPERATORS.find((operator) =>
@@ -201,8 +201,8 @@ describe('operator combination rules', () => {
     const withoutLogos = evaluateOperators(powerRoom, config).efficiencyPercent
     config.facilityOperatorIds.training = [operatorId('逻各斯')]
 
-    expect(evaluateOperators(powerRoom, config).efficiencyPercent).toBe(withoutLogos)
-    expect(evaluateOperators(powerRoom, config).unquantifiedSkills).toContain('PhonoR-0·咒文共鸣')
+    expect(evaluateOperators(powerRoom, config).efficiencyPercent).toBe(withoutLogos + 5)
+    expect(evaluateOperators(powerRoom, config).unquantifiedSkills).not.toContain('PhonoR-0·咒文共鸣')
   })
 
   it('converts the whole room warehouse capacity for the Vermeil Scene Ceobe team', () => {
