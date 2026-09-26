@@ -1,10 +1,15 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ScheduleTimelineGantt from './ScheduleTimelineGantt.vue'
 import type { ScheduleSimulationReport } from '../../simulator/scheduleSimulation'
+
+vi.mock('html-to-image', () => ({
+  toPng: vi.fn().mockResolvedValue('data:image/png;base64,mockpng'),
+  toBlob: vi.fn().mockResolvedValue(new Blob(['mock'])),
+}))
 
 function createSampleReport(): ScheduleSimulationReport {
   return {
@@ -270,21 +275,58 @@ describe('ScheduleTimelineGantt.vue', () => {
     expect(wrapper.find('.time-window-info').text()).toContain('T+24.0h 至 T+48.0h')
   })
 
-  it('updates window via direct numeric start and end inputs', async () => {
+  it('controls window duration via range slider from 6h to total hours', async () => {
     const wrapper = mount(ScheduleTimelineGantt, {
       props: { report: createSampleReport() },
     })
 
-    const startInput = wrapper.find('[data-test="input-window-start"]')
-    const endInput = wrapper.find('[data-test="input-window-end"]')
+    const slider = wrapper.find('[data-test="window-size-slider"]')
+    expect(slider.exists()).toBe(true)
+    expect(slider.attributes('min')).toBe('6')
+    expect(slider.attributes('max')).toBe('48')
 
-    await startInput.setValue('10')
-    await startInput.trigger('change')
-    expect(wrapper.find('.time-window-info').text()).toContain('T+10.0h')
+    // Slide window to 12h
+    await slider.setValue('12')
+    expect(wrapper.find('.time-window-info').text()).toContain('共 12.0 小时')
 
-    await endInput.setValue('35')
-    await endInput.trigger('change')
-    expect(wrapper.find('.time-window-info').text()).toContain('T+10.0h 至 T+35.0h')
+    // Slide window to minimum 6h
+    await slider.setValue('6')
+    expect(wrapper.find('.time-window-info').text()).toContain('共 6.0 小时')
+  })
+
+  it('supports interactive dragging on overview track', async () => {
+    const wrapper = mount(ScheduleTimelineGantt, {
+      props: { report: createSampleReport() },
+    })
+
+    // Set window to 12h so overview scrubber is rendered
+    const slider = wrapper.find('[data-test="window-size-slider"]')
+    await slider.setValue('12')
+
+    const scrubber = wrapper.find('[data-test="gantt-overview-scrubber"]')
+    expect(scrubber.exists()).toBe(true)
+    expect(scrubber.text()).toContain('支持拖拽滑块实时滑动预览')
+  })
+
+  it('opens export modal for 12h facility swimlane gantt chart and handles download', async () => {
+    const wrapper = mount(ScheduleTimelineGantt, {
+      props: { report: createSampleReport() },
+    })
+
+    const exportBtn = wrapper.find('[data-test="export-gantt-btn"]')
+    expect(exportBtn.exists()).toBe(true)
+
+    await exportBtn.trigger('click')
+    const modal = wrapper.find('[data-test="gantt-export-modal"]')
+    expect(modal.exists()).toBe(true)
+    expect(modal.text()).toContain('导出设施甘特图 (12h标准视窗)')
+
+    const windowSelect = wrapper.find('[data-test="export-window-select"]')
+    expect(windowSelect.exists()).toBe(true)
+
+    const downloadBtn = wrapper.find('[data-test="download-gantt-btn"]')
+    expect(downloadBtn.exists()).toBe(true)
+    await downloadBtn.trigger('click')
   })
 
   it('renders backup plan event markers and allows jumping to backup events', async () => {

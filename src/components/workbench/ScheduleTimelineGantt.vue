@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { toPng, toBlob } from 'html-to-image'
 import type { ScheduleSimulationReport } from '../../simulator/scheduleSimulation'
 import {
   buildTimelineData,
@@ -24,11 +25,26 @@ const searchQuery = ref('')
 const showEventMarkers = ref(true)
 
 // Time window zoom & navigation
-const zoomPreset = ref<'24' | '48' | '72' | '168' | 'all'>('72')
+const zoomPreset = ref<'6' | '12' | '24' | '48' | '72' | '168' | 'all'>('72')
 const customWindowStart = ref(0)
 const customWindowEnd = ref(72)
 const tracksContainerRef = ref<HTMLElement | null>(null)
 const isDraggingTimeline = ref(false)
+
+// Overview scrubber dragging state
+const overviewTrackRef = ref<HTMLElement | null>(null)
+const isDraggingOverview = ref(false)
+let overviewDragStartX = 0
+let overviewDragStartWindowStart = 0
+
+// Export modal and state
+const showExportModal = ref(false)
+const isExporting = ref(false)
+const exportStatus = ref<{ type: 'success' | 'error'; message: string } | null>(null)
+const exportCanvasRef = ref<HTMLDivElement | null>(null)
+const exportWindowStart = ref(0)
+const exportWindowDuration = 12
+const exportWindowEnd = computed(() => exportWindowStart.value + exportWindowDuration)
 
 // Hover inspector state
 const hoveredInterval = ref<TimelineInterval | null>(null)
@@ -58,25 +74,20 @@ watch(
   (hours) => {
     if (hours && hours > 0) {
       customWindowStart.value = 0
-      if (zoomPreset.value === '24') customWindowEnd.value = Math.min(24, hours)
-      else if (zoomPreset.value === '48') customWindowEnd.value = Math.min(48, hours)
-      else if (zoomPreset.value === '72') customWindowEnd.value = Math.min(72, hours)
-      else if (zoomPreset.value === '168') customWindowEnd.value = Math.min(168, hours)
-      else customWindowEnd.value = hours
+      const initialDur = Math.min(72, hours)
+      customWindowEnd.value = Math.max(6, initialDur)
     }
   },
   { immediate: true },
 )
 
-function setZoomPreset(preset: '24' | '48' | '72' | '168' | 'all'): void {
-  zoomPreset.value = preset
+const windowDuration = computed(() => {
+  return Math.max(0.1, customWindowEnd.value - customWindowStart.value)
+})
+
+function setWindowDuration(targetDur: number): void {
   const maxH = totalObservedHours.value
-  if (preset === 'all') {
-    customWindowStart.value = 0
-    customWindowEnd.value = maxH
-    return
-  }
-  const dur = Number(preset)
+  const dur = Math.max(6, Math.min(maxH, targetDur))
   let start = customWindowStart.value
   let end = start + dur
   if (end > maxH) {
@@ -87,8 +98,37 @@ function setZoomPreset(preset: '24' | '48' | '72' | '168' | 'all'): void {
   customWindowEnd.value = Math.round(end * 10) / 10
 }
 
-const windowDuration = computed(() => {
-  return Math.max(0.1, customWindowEnd.value - customWindowStart.value)
+function onWindowSliderInput(e: Event): void {
+  const val = Number((e.target as HTMLInputElement).value)
+  if (!Number.isFinite(val)) return
+  setWindowDuration(val)
+}
+
+function setZoomPreset(preset: '6' | '12' | '24' | '48' | '72' | '168' | 'all'): void {
+  zoomPreset.value = preset
+  if (preset === 'all') {
+    setWindowDuration(totalObservedHours.value)
+  } else {
+    setWindowDuration(Number(preset))
+  }
+}
+
+interface QuickPreset {
+  key: string
+  val: number
+  label: string
+}
+
+const quickWindowPresets = computed<QuickPreset[]>(() => {
+  const maxH = totalObservedHours.value
+  const list: QuickPreset[] = [
+    { key: '6', val: 6, label: '6h' },
+    { key: '12', val: 12, label: '12h' },
+    { key: '24', val: 24, label: '24h' },
+    { key: '48', val: 48, label: '48h' },
+    { key: 'all', val: maxH, label: '全周期' },
+  ]
+  return list.filter((p) => p.val <= maxH || p.key === 'all')
 })
 
 // Pan window forward or backward by delta hours
@@ -130,26 +170,6 @@ function jumpToEnd(): void {
   const dur = windowDuration.value
   customWindowStart.value = Math.max(0, maxH - dur)
   customWindowEnd.value = maxH
-}
-
-function onManualStartChange(e: Event): void {
-  const val = Number((e.target as HTMLInputElement).value)
-  if (!Number.isFinite(val) || val < 0) return
-  const maxH = totalObservedHours.value
-  const dur = windowDuration.value
-  const start = Math.max(0, Math.min(maxH - 1, val))
-  customWindowStart.value = Math.round(start * 10) / 10
-  if (customWindowEnd.value <= customWindowStart.value) {
-    customWindowEnd.value = Math.min(maxH, customWindowStart.value + dur)
-  }
-}
-
-function onManualEndChange(e: Event): void {
-  const val = Number((e.target as HTMLInputElement).value)
-  if (!Number.isFinite(val) || val <= customWindowStart.value) return
-  const maxH = totalObservedHours.value
-  const end = Math.min(maxH, Math.max(customWindowStart.value + 1, val))
-  customWindowEnd.value = Math.round(end * 10) / 10
 }
 
 // Cycle options for dropdown selector
@@ -222,14 +242,194 @@ const overviewDayTicks = computed<OverviewDayTick[]>(() => {
   return ticks
 })
 
-function handleOverviewClick(e: MouseEvent): void {
-  const bar = (e.currentTarget as HTMLElement).closest('.overview-track')
-  if (!bar) return
-  const rect = bar.getBoundingClientRect()
+// Overview scrubber dragging
+function handleOverviewThumbMouseDown(e: MouseEvent): void {
+  if (e.button !== 0) return
+  e.stopPropagation()
+  e.preventDefault()
+
+  isDraggingOverview.value = true
+  overviewDragStartX = e.clientX
+  overviewDragStartWindowStart = customWindowStart.value
+
+  const trackEl = overviewTrackRef.value
+  const trackWidth = trackEl ? trackEl.getBoundingClientRect().width : 800
+
+  const onMouseMove = (moveEv: MouseEvent) => {
+    if (!isDraggingOverview.value) return
+    const dx = moveEv.clientX - overviewDragStartX
+    const timeDelta = (dx / trackWidth) * totalObservedHours.value
+    panWindowTo(overviewDragStartWindowStart + timeDelta)
+  }
+
+  const onMouseUp = () => {
+    isDraggingOverview.value = false
+    window.removeEventListener('mousemove', onMouseMove)
+    window.removeEventListener('mouseup', onMouseUp)
+  }
+
+  window.addEventListener('mousemove', onMouseMove)
+  window.addEventListener('mouseup', onMouseUp)
+}
+
+function handleOverviewTrackMouseDown(e: MouseEvent): void {
+  if (e.button !== 0) return
+  const trackEl = overviewTrackRef.value
+  if (!trackEl) return
+  const rect = trackEl.getBoundingClientRect()
   const mouseX = Math.max(0, Math.min(rect.width, e.clientX - rect.left))
   const frac = mouseX / rect.width
   const clickHour = frac * totalObservedHours.value
   panWindowTo(clickHour - windowDuration.value / 2)
+
+  isDraggingOverview.value = true
+  overviewDragStartX = e.clientX
+  overviewDragStartWindowStart = customWindowStart.value
+  const trackWidth = rect.width
+
+  const onMouseMove = (moveEv: MouseEvent) => {
+    if (!isDraggingOverview.value) return
+    const dx = moveEv.clientX - overviewDragStartX
+    const timeDelta = (dx / trackWidth) * totalObservedHours.value
+    panWindowTo(overviewDragStartWindowStart + timeDelta)
+  }
+
+  const onMouseUp = () => {
+    isDraggingOverview.value = false
+    window.removeEventListener('mousemove', onMouseMove)
+    window.removeEventListener('mouseup', onMouseUp)
+  }
+
+  window.addEventListener('mousemove', onMouseMove)
+  window.addEventListener('mouseup', onMouseUp)
+}
+
+// Export 12h facility gantt helpers
+interface ExportWindowOption {
+  start: number
+  label: string
+}
+
+const exportWindowOptions = computed<ExportWindowOption[]>(() => {
+  const total = totalObservedHours.value
+  const options: ExportWindowOption[] = []
+  const count = Math.ceil(total / 12)
+  for (let i = 0; i < count; i++) {
+    const s = i * 12
+    const e = Math.min(total, s + 12)
+    const day = Math.floor(s / 24) + 1
+    const period = s % 24 < 12 ? '前半天' : '后半天'
+    options.push({
+      start: s,
+      label: `第 ${day} 天 ${period} (T+${s}h ~ T+${e}h)`,
+    })
+  }
+  return options
+})
+
+function getExportOffsetPercent(time: number): number {
+  const rel = time - exportWindowStart.value
+  return Math.max(0, Math.min(100, (rel / exportWindowDuration) * 100))
+}
+
+function getExportWidthPercent(start: number, end: number): number {
+  const s = Math.max(exportWindowStart.value, start)
+  const e = Math.min(exportWindowEnd.value, end)
+  if (e <= s) return 0
+  return ((e - s) / exportWindowDuration) * 100
+}
+
+function isExportIntervalVisible(interval: TimelineInterval): boolean {
+  return interval.end > exportWindowStart.value && interval.start < exportWindowEnd.value
+}
+
+const exportRulerTicks = computed<RulerTick[]>(() => {
+  const start = exportWindowStart.value
+  const end = exportWindowEnd.value
+  const ticks: RulerTick[] = []
+  const step = 2
+  const firstTick = Math.ceil(start / step) * step
+  for (let t = firstTick; t <= end; t += step) {
+    const isMajor = t % 24 === 0
+    const day = Math.floor(t / 24) + 1
+    const hourInDay = t % 24
+    let label = `${t}h`
+    if (isMajor) {
+      label = `D${day} 00:00`
+    } else {
+      label = `${hourInDay < 10 ? '0' + hourInDay : hourInDay}:00`
+    }
+    ticks.push({
+      time: t,
+      percent: getExportOffsetPercent(t),
+      label,
+      isMajorDay: isMajor,
+    })
+  }
+  return ticks
+})
+
+function openExportModal(): void {
+  viewMode.value = 'facility'
+  const cur = customWindowStart.value
+  const snapped = Math.floor(cur / 12) * 12
+  const maxStart = Math.max(0, totalObservedHours.value - 12)
+  exportWindowStart.value = Math.min(maxStart, snapped)
+  exportStatus.value = null
+  showExportModal.value = true
+}
+
+function closeExportModal(): void {
+  showExportModal.value = false
+  exportStatus.value = null
+}
+
+async function handleDownloadGanttImage(): Promise<void> {
+  if (!exportCanvasRef.value || isExporting.value) return
+  isExporting.value = true
+  exportStatus.value = null
+  try {
+    const dataUrl = await toPng(exportCanvasRef.value, {
+      pixelRatio: 2,
+      cacheBust: true,
+      backgroundColor: '#0e1319',
+    })
+    const link = document.createElement('a')
+    link.download = `基建排班甘特图_设施分道_T+${exportWindowStart.value}h-${exportWindowEnd.value}h.png`
+    link.href = dataUrl
+    link.click()
+    exportStatus.value = { type: 'success', message: '甘特图已成功导出下载！' }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    exportStatus.value = { type: 'error', message: `导出失败: ${msg}` }
+  } finally {
+    isExporting.value = false
+  }
+}
+
+async function handleCopyGanttImage(): Promise<void> {
+  if (!exportCanvasRef.value || isExporting.value) return
+  isExporting.value = true
+  exportStatus.value = null
+  try {
+    const blob = await toBlob(exportCanvasRef.value, {
+      pixelRatio: 2,
+      cacheBust: true,
+      backgroundColor: '#0e1319',
+    })
+    if (!blob) throw new Error('无法生成图片数据')
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.write) {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+      exportStatus.value = { type: 'success', message: '已成功将甘特图图片复制到剪贴板！' }
+    } else {
+      throw new Error('当前浏览器不支持直接写入剪贴板图片')
+    }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    exportStatus.value = { type: 'error', message: `复制失败: ${msg}` }
+  } finally {
+    isExporting.value = false
+  }
 }
 
 // Drag & Wheel interactions
@@ -304,7 +504,9 @@ const rulerTicks = computed<RulerTick[]>(() => {
   const ticks: RulerTick[] = []
 
   let step = 6
-  if (dur <= 24) step = 3
+  if (dur <= 6) step = 1
+  else if (dur <= 12) step = 2
+  else if (dur <= 24) step = 3
   else if (dur <= 48) step = 6
   else if (dur <= 120) step = 12
   else step = 24
@@ -445,25 +647,36 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
           <h4 class="gantt-title">排班甘特图 / 时间轴可视化</h4>
           <span class="gantt-subtitle">多周期离散事件演化、干员轮换在岗时段与实时工休轨迹</span>
         </div>
-        <div class="view-mode-toggle">
+        <div class="gantt-title-actions">
           <button
             type="button"
-            class="toggle-btn"
-            :class="{ active: viewMode === 'facility' }"
-            data-test="view-mode-facility"
-            @click="viewMode = 'facility'"
+            class="export-gantt-btn"
+            data-test="export-gantt-btn"
+            title="以标准 12h 视窗导出设施分道甘特图高清图片"
+            @click="openExportModal"
           >
-            🏢 设施分道
+            📷 导出设施甘特图
           </button>
-          <button
-            type="button"
-            class="toggle-btn"
-            :class="{ active: viewMode === 'operator' }"
-            data-test="view-mode-operator"
-            @click="viewMode = 'operator'"
-          >
-            👤 干员分道
-          </button>
+          <div class="view-mode-toggle">
+            <button
+              type="button"
+              class="toggle-btn"
+              :class="{ active: viewMode === 'facility' }"
+              data-test="view-mode-facility"
+              @click="viewMode = 'facility'"
+            >
+              🏢 设施分道
+            </button>
+            <button
+              type="button"
+              class="toggle-btn"
+              :class="{ active: viewMode === 'operator' }"
+              data-test="view-mode-operator"
+              @click="viewMode = 'operator'"
+            >
+              👤 干员分道
+            </button>
+          </div>
         </div>
       </div>
 
@@ -502,19 +715,34 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
           <button v-if="searchQuery" type="button" class="search-clear-btn" @click="searchQuery = ''">✕</button>
         </div>
 
-        <!-- Zoom Presets -->
-        <div class="zoom-presets">
+        <!-- Window Size Slider Group (Req 1) -->
+        <div class="window-slider-group" data-test="window-slider-group">
           <span class="ctrl-label">时间窗:</span>
-          <button
-            v-for="p in ['24', '48', '72', '168', 'all'] as const"
-            :key="p"
-            type="button"
-            class="zoom-btn"
-            :class="{ active: zoomPreset === p }"
-            @click="setZoomPreset(p)"
-          >
-            {{ p === 'all' ? '全周期' : `${p}h` }}
-          </button>
+          <input
+            type="range"
+            class="window-size-slider"
+            data-test="window-size-slider"
+            :min="6"
+            :max="totalObservedHours"
+            :step="1"
+            :value="windowDuration"
+            @input="onWindowSliderInput"
+          />
+          <span class="slider-val-badge">
+            {{ windowDuration >= totalObservedHours - 0.05 ? `全周期 (${totalObservedHours.toFixed(0)}h)` : `${windowDuration.toFixed(0)}h` }}
+          </span>
+          <div class="slider-quick-chips">
+            <button
+              v-for="p in quickWindowPresets"
+              :key="p.key"
+              type="button"
+              class="zoom-btn zoom-chip"
+              :class="{ active: Math.abs(windowDuration - p.val) < 0.5 }"
+              @click="setZoomPreset(p.key as any)"
+            >
+              {{ p.label }}
+            </button>
+          </div>
         </div>
 
         <!-- Event markers toggle -->
@@ -615,43 +843,9 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
             最终 ⏭
           </button>
         </div>
-
-        <!-- Direct numeric inputs -->
-        <div class="window-direct-inputs">
-          <span class="direct-label">精准定位:</span>
-          <label class="time-input-wrap">
-            <span>T+</span>
-            <input
-              type="number"
-              class="time-num-input"
-              data-test="input-window-start"
-              :value="Math.round(customWindowStart * 10) / 10"
-              :min="0"
-              :max="Math.max(0, totalObservedHours - 1)"
-              step="1"
-              @change="onManualStartChange"
-            />
-            <span>h</span>
-          </label>
-          <span class="range-separator">至</span>
-          <label class="time-input-wrap">
-            <span>T+</span>
-            <input
-              type="number"
-              class="time-num-input"
-              data-test="input-window-end"
-              :value="Math.round(customWindowEnd * 10) / 10"
-              :min="1"
-              :max="totalObservedHours"
-              step="1"
-              @change="onManualEndChange"
-            />
-            <span>h</span>
-          </label>
-        </div>
       </div>
 
-      <!-- Overview Scrubber Track (visible when total > window) -->
+      <!-- Overview Scrubber Track (visible when total > window, Req 4) -->
       <div
         v-if="totalObservedHours > windowDuration"
         class="gantt-overview-scrubber"
@@ -659,13 +853,18 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
       >
         <div class="overview-header-row">
           <span class="overview-title">
-            全景概览（共 {{ totalObservedHours.toFixed(0) }}h / {{ (totalObservedHours / 24).toFixed(1) }} 天 · 点击任意位置可直接跳转视窗）：
+            全景概览（共 {{ totalObservedHours.toFixed(0) }}h / {{ (totalObservedHours / 24).toFixed(1) }} 天 · 支持拖拽滑块实时滑动预览）：
           </span>
           <span class="overview-pct">
             视窗覆盖 {{ ((windowDuration / totalObservedHours) * 100).toFixed(0) }}% ({{ windowDuration.toFixed(1) }}h)
           </span>
         </div>
-        <div class="overview-track" @click="handleOverviewClick">
+        <div
+          ref="overviewTrackRef"
+          class="overview-track"
+          :class="{ 'is-dragging': isDraggingOverview }"
+          @mousedown="handleOverviewTrackMouseDown"
+        >
           <!-- Day divider lines -->
           <div
             v-for="d in overviewDayTicks"
@@ -676,13 +875,15 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
             <span v-if="d.showLabel" class="overview-tick-label">D{{ d.day }}</span>
           </div>
 
-          <!-- Viewport highlight thumb -->
+          <!-- Viewport highlight thumb (draggable) -->
           <div
             class="overview-window-viewport"
+            :class="{ 'is-dragging': isDraggingOverview }"
             :style="{
               left: `${(customWindowStart / totalObservedHours) * 100}%`,
               width: `${((customWindowEnd - customWindowStart) / totalObservedHours) * 100}%`,
             }"
+            @mousedown.stop="handleOverviewThumbMouseDown"
           >
             <span class="viewport-tag">
               T+{{ customWindowStart.toFixed(0) }}h ~ T+{{ customWindowEnd.toFixed(0) }}h
@@ -970,6 +1171,176 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
         <p class="event-desc">{{ hoveredEvent.description }}</p>
       </div>
     </div>
+
+    <!-- Export Modal for Facility Swimlane Gantt (12h window) -->
+    <div
+      v-if="showExportModal"
+      class="gantt-export-modal-overlay"
+      data-test="gantt-export-modal"
+      @click.self="closeExportModal"
+    >
+      <div class="gantt-export-modal-card">
+        <div class="export-modal-header">
+          <div class="export-header-left">
+            <h3 class="export-modal-title">📷 导出设施甘特图 (12h标准视窗)</h3>
+            <span class="export-modal-subtitle">以 12 小时黄金视窗比例渲染并导出高清晰度设施分道排班图</span>
+          </div>
+          <div class="export-header-actions">
+            <label class="export-select-label">
+              <span>选择 12h 时段：</span>
+              <select
+                v-model.number="exportWindowStart"
+                class="export-select"
+                data-test="export-window-select"
+              >
+                <option
+                  v-for="opt in exportWindowOptions"
+                  :key="opt.start"
+                  :value="opt.start"
+                >
+                  {{ opt.label }}
+                </option>
+              </select>
+            </label>
+
+            <button
+              type="button"
+              class="export-action-btn primary"
+              :disabled="isExporting"
+              data-test="download-gantt-btn"
+              @click="handleDownloadGanttImage"
+            >
+              {{ isExporting ? '生成中...' : '📥 下载 PNG 图片' }}
+            </button>
+            <button
+              type="button"
+              class="export-action-btn secondary"
+              :disabled="isExporting"
+              data-test="copy-gantt-btn"
+              @click="handleCopyGanttImage"
+            >
+              📋 复制图片
+            </button>
+            <button type="button" class="export-close-btn" @click="closeExportModal">✕</button>
+          </div>
+        </div>
+
+        <div v-if="exportStatus" class="export-status-alert" :class="exportStatus.type">
+          {{ exportStatus.message }}
+        </div>
+
+        <div class="export-modal-body">
+          <div ref="exportCanvasRef" class="export-canvas">
+            <div class="export-banner">
+              <div class="banner-title-group">
+                <h2 class="banner-title">罗德岛基建排班甘特图 · 设施分道</h2>
+                <span class="banner-time-badge">
+                  时段：T+{{ exportWindowStart.toFixed(1) }}h 至 T+{{ exportWindowEnd.toFixed(1) }}h（第 {{ Math.floor(exportWindowStart / 24) + 1 }} 天）· 12h 视窗
+                </span>
+              </div>
+              <div class="banner-legend">
+                <span class="legend-item"><span class="legend-dot status-working" />在岗工作</span>
+                <span class="legend-item"><span class="legend-dot status-resting" />宿舍休整</span>
+                <span class="legend-item"><span class="legend-dot status-exhausted" />疲劳溢出</span>
+              </div>
+            </div>
+
+            <!-- 12h Ruler -->
+            <div class="export-ruler-row">
+              <div class="export-axis-col">
+                <span>设施 / 槽位</span>
+              </div>
+              <div class="export-timeline-track">
+                <div
+                  v-for="tick in exportRulerTicks"
+                  :key="tick.time"
+                  class="ruler-tick"
+                  :class="{ 'major-day': tick.isMajorDay }"
+                  :style="{ left: `${tick.percent}%` }"
+                >
+                  <div class="tick-line" />
+                  <span class="tick-label">{{ tick.label }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 12h Tracks Body -->
+            <div class="export-tracks-body">
+              <div class="gantt-grid-overlay">
+                <div
+                  v-for="tick in exportRulerTicks"
+                  :key="tick.time"
+                  class="grid-line"
+                  :class="{ 'major-grid': tick.isMajorDay }"
+                  :style="{ left: `${tick.percent}%` }"
+                />
+              </div>
+
+              <!-- Facilities -->
+              <div
+                v-for="facility in filteredFacilityTracks"
+                :key="facility.roomId"
+                class="facility-group"
+                :class="`room-${facility.roomType}`"
+              >
+                <div class="facility-group-header">
+                  <div class="group-title-col">
+                    <span class="facility-tag" :class="facility.roomType">{{ facility.roomType }}</span>
+                    <span class="facility-name">{{ facility.roomName }}</span>
+                    <span class="facility-eff">+{{ facility.averageEfficiency.toFixed(1) }}%</span>
+                  </div>
+                  <div class="group-track-spacer" />
+                </div>
+
+                <div
+                  v-for="slot in facility.slots"
+                  :key="slot.slotKey"
+                  class="track-row"
+                >
+                  <div class="track-label-col slot-label-col">
+                    <span class="slot-badge">槽位 {{ slot.slotIndex + 1 }}</span>
+                    <span v-if="slot.role === 'dorm-keeper'" class="role-badge keeper">宿管</span>
+                    <span v-else-if="slot.role === 'fiammetta'" class="role-badge fiammetta">互换</span>
+                  </div>
+
+                  <div class="track-content-lane">
+                    <div
+                      v-for="interval in slot.intervals.filter(isExportIntervalVisible)"
+                      :key="interval.id"
+                      class="gantt-block"
+                      :class="getStatusBadgeClass(interval.status, interval.roomType)"
+                      :style="{
+                        left: `${getExportOffsetPercent(interval.start)}%`,
+                        width: `${getExportWidthPercent(interval.start, interval.end)}%`,
+                      }"
+                    >
+                      <div class="block-content">
+                        <img
+                          v-if="interval.avatarUrl"
+                          :src="interval.avatarUrl"
+                          :alt="interval.operatorName"
+                          class="block-avatar"
+                          onerror="this.style.display='none'"
+                        />
+                        <span class="block-name">{{ interval.operatorName || '空置' }}</span>
+                        <span v-if="interval.duration >= 1" class="block-duration">
+                          {{ formatHour(interval.duration) }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="export-canvas-footer">
+              <span>明日方舟基建排班与全动态模拟测算器 · R.I.I.C-Calculator</span>
+              <span>导出标准：12 小时视窗</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -999,6 +1370,36 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
   flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 12px;
+}
+
+.gantt-title-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.export-gantt-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: linear-gradient(135deg, rgba(66, 214, 199, 0.15), rgba(38, 166, 154, 0.22));
+  border: 1px solid rgba(66, 214, 199, 0.45);
+  border-radius: 4px;
+  color: #42d6c7;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.export-gantt-btn:hover {
+  background: linear-gradient(135deg, rgba(66, 214, 199, 0.25), rgba(38, 166, 154, 0.35));
+  border-color: #42d6c7;
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(66, 214, 199, 0.3);
 }
 
 .gantt-title {
@@ -1112,10 +1513,59 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
   font-size: 10px;
 }
 
-.zoom-presets {
+.window-slider-group {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
+  background: #141b24;
+  padding: 3px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.window-size-slider {
+  width: 120px;
+  accent-color: #42d6c7;
+  cursor: pointer;
+  height: 4px;
+}
+
+.slider-val-badge {
+  font-size: 11px;
+  color: #42d6c7;
+  font-weight: 600;
+  min-width: 48px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.slider-quick-chips {
+  display: flex;
+  gap: 3px;
+  margin-left: 4px;
+}
+
+.zoom-chip {
+  padding: 2px 6px;
+  font-size: 10px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #8da5ac;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.zoom-chip:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.zoom-chip.active {
+  background: rgba(66, 214, 199, 0.18);
+  color: #42d6c7;
+  border-color: rgba(66, 214, 199, 0.4);
+  font-weight: 600;
 }
 
 .ctrl-label {
@@ -1134,9 +1584,9 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
 }
 
 .zoom-btn.active {
-  background: rgba(240, 189, 91, 0.2);
-  border-color: #f0bd5b;
-  color: #f0bd5b;
+  background: rgba(66, 214, 199, 0.2);
+  border-color: #42d6c7;
+  color: #42d6c7;
   font-weight: 600;
 }
 
@@ -1227,45 +1677,6 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
   box-shadow: 0 0 0 1px rgba(66, 214, 199, 0.3);
 }
 
-.window-direct-inputs {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: #8da5ac;
-}
-
-.direct-label {
-  color: #8da5ac;
-}
-
-.time-input-wrap {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  color: #b6c6d1;
-}
-
-.time-num-input {
-  width: 54px;
-  height: 22px;
-  padding: 0 4px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 3px;
-  color: #fff;
-  font-size: 11px;
-  text-align: center;
-  outline: none;
-}
-
-.time-num-input:focus {
-  border-color: #42d6c7;
-}
-
-.range-separator {
-  color: #8da5ac;
-}
 
 /* Overview Scrubber Track */
 .gantt-overview-scrubber {
@@ -1303,6 +1714,11 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
   overflow: hidden;
 }
 
+.overview-track.is-dragging {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
 .overview-day-tick {
   position: absolute;
   top: 0;
@@ -1335,6 +1751,11 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
   box-shadow: 0 0 6px rgba(66, 214, 199, 0.25);
   min-width: 6px;
   transition: background 0.15s;
+}
+
+.overview-window-viewport.is-dragging {
+  cursor: grabbing !important;
+  background: rgba(66, 214, 199, 0.45);
 }
 
 .overview-window-viewport:hover {
@@ -1428,6 +1849,14 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
   position: relative;
   overflow-x: auto;
   overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.gantt-container::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .gantt-scroll-wrapper {
@@ -1944,5 +2373,288 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
   background: rgba(139, 92, 246, 0.35);
   border-color: #8b5cf6;
   color: #fff;
+}
+
+/* Export Modal & Canvas Styles (Req 3) */
+.gantt-export-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.gantt-export-modal-card {
+  width: 96vw;
+  max-width: 1440px;
+  max-height: 92vh;
+  background: #11171f;
+  border: 1px solid rgba(66, 214, 199, 0.35);
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.export-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #161f2a;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.export-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.export-modal-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.export-modal-subtitle {
+  font-size: 11px;
+  color: #8da5ac;
+}
+
+.export-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.export-select-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #8da5ac;
+}
+
+.export-select {
+  padding: 4px 8px;
+  font-size: 11px;
+  background: #0f141b;
+  border: 1px solid rgba(66, 214, 199, 0.4);
+  color: #42d6c7;
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+}
+
+.export-action-btn {
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  user-select: none;
+}
+
+.export-action-btn.primary {
+  background: #42d6c7;
+  color: #0c1f1c;
+  font-weight: 600;
+}
+
+.export-action-btn.primary:hover:not(:disabled) {
+  background: #5eead4;
+  box-shadow: 0 0 10px rgba(66, 214, 199, 0.4);
+}
+
+.export-action-btn.secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e9f2f4;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.export-action-btn.secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: #42d6c7;
+  color: #42d6c7;
+}
+
+.export-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.export-close-btn {
+  background: transparent;
+  border: none;
+  color: #8da5ac;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.export-close-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.export-status-alert {
+  padding: 8px 20px;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.export-status-alert.success {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border-bottom: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.export-status-alert.error {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border-bottom: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.export-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  background: #090c10;
+  display: flex;
+  justify-content: center;
+}
+
+.export-canvas {
+  width: 1320px;
+  min-width: 1320px;
+  background: #0e1319;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  padding: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  color: #e9f2f4;
+  box-sizing: border-box;
+}
+
+.export-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 16px;
+}
+
+.banner-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.banner-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+}
+
+.banner-time-badge {
+  font-size: 12px;
+  color: #42d6c7;
+  font-weight: 500;
+}
+
+.banner-legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 11px;
+  color: #8da5ac;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.legend-dot.status-working {
+  background: #1e3a36;
+  border: 1px solid #42d6c7;
+}
+
+.legend-dot.status-resting {
+  background: #172d3e;
+  border: 1px solid #38bdf8;
+}
+
+.legend-dot.status-exhausted {
+  background: #3b1f24;
+  border: 1px solid #f87171;
+}
+
+.export-ruler-row {
+  display: flex;
+  height: 38px;
+  background: #131a22;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: none;
+}
+
+.export-axis-col {
+  width: 190px;
+  min-width: 190px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 11px;
+  color: #8da5ac;
+  font-weight: 600;
+  background: #131a22;
+}
+
+.export-timeline-track {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+}
+
+.export-tracks-body {
+  position: relative;
+  background: #111720;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.export-canvas-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 14px;
+  margin-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 11px;
+  color: #64748b;
 }
 </style>
