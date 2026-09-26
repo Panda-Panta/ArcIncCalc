@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 Write-Host ">>> Ensuring running instances of R.I.I.C-Calculator are closed before sync..."
-Get-Process "R.I.I.C-Calculator", "ArcIncCalc" -ErrorAction SilentlyContinue | Stop-Process -Force
+Get-Process "R.I.I.C-Calculator", "ArcIncCalc" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 Start-Sleep -Milliseconds 500
 
 Write-Host ">>> Building Vue 3 Frontend (npm run build)..."
@@ -14,6 +14,7 @@ if (-not (Test-Path $targetSyncDir)) {
 if (Test-Path $targetSyncDir) {
     Write-Host ">>> Syncing dist assets into $targetSyncDir\dist..."
     robocopy dist "$targetSyncDir\dist" /MIR /NFL /NDL /NJH /NJS /nc /ns /np | Out-Null
+    if ($LASTEXITCODE -lt 8) { $global:LASTEXITCODE = 0 }
 
     Write-Host ">>> Publishing .NET Desktop Runner (win-x64 single file)..."
     dotnet publish desktop/R.I.I.C-Calculator.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o "$targetSyncDir"
