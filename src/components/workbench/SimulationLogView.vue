@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import type { ScheduleSimulationReport } from '../../simulator/scheduleSimulation'
 import { getRoomDisplayName } from '../../workbench/operatorHelpers'
 import { mowerReportMetrics } from '../../workbench/mowerReportMetrics'
+import { downloadReportJson, serializeReportJson, type ExportReportMode } from '../../workbench/reportExport'
 import ScheduleTimelineGantt from './ScheduleTimelineGantt.vue'
 
 const props = defineProps<{
@@ -80,7 +81,7 @@ const filteredEvents = computed<LogEventItem[]>(() => {
 async function copyLogs(): Promise<void> {
   if (!props.report) return
   try {
-    const text = JSON.stringify(props.report, null, 2)
+    const text = serializeReportJson(props.report, 'summary')
     await navigator.clipboard.writeText(text)
     copySuccess.value = true
     setTimeout(() => {
@@ -91,15 +92,9 @@ async function copyLogs(): Promise<void> {
   }
 }
 
-function exportJson(): void {
+function exportJson(mode: ExportReportMode = 'summary'): void {
   if (!props.report) return
-  const blob = new Blob([JSON.stringify(props.report, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `基建动态模拟日志_${new Date().toISOString().slice(0, 10)}.json`
-  a.click()
-  URL.revokeObjectURL(url)
+  downloadReportJson(props.report, mode)
 }
 </script>
 
@@ -116,23 +111,40 @@ function exportJson(): void {
           type="button"
           class="log-btn copy-btn"
           :disabled="!report"
+          title="复制轻量产出报表 JSON（已剔除轨迹切片，可安全存入剪贴板）"
+          data-test="copy-logs-btn"
           @click="copyLogs"
         >
           <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
             <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
           </svg>
-          {{ copySuccess ? '已复制日志！' : '一键复制完整日志' }}
+          {{ copySuccess ? '已复制报表 JSON！' : '复制报表 JSON' }}
         </button>
         <button
           type="button"
-          class="log-btn export-btn"
+          class="log-btn export-btn summary-btn"
           :disabled="!report"
-          @click="exportJson"
+          title="导出轻量产出收益报表（包含工效、工时、收支及诊断，~50KB）"
+          data-test="export-summary-btn"
+          @click="exportJson('summary')"
         >
           <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
             <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
           </svg>
-          导出日志 JSON
+          导出产出报表 (轻量)
+        </button>
+        <button
+          type="button"
+          class="log-btn export-btn debug-btn"
+          :disabled="!report"
+          title="导出包含全量时间切片、干员心情与工位占用原始轨迹的完整日志（文件较大，通常在 20MB~50MB）"
+          data-test="export-full-btn"
+          @click="exportJson('full')"
+        >
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+            <path d="M20 8h-2.81c-.45-.78-1.07-1.45-1.82-1.96L17 4.41 15.59 3l-2.17 2.17C12.96 5.06 12.49 5 12 5c-.49 0-.96.06-1.41.17L8.41 3 7 4.41l1.62 1.63C7.88 6.55 7.26 7.22 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20V8zm-6 8h-4v-2h4v2zm0-4h-4v-2h4v2z"/>
+          </svg>
+          导出全量轨迹 (Debug)
         </button>
       </div>
     </div>
@@ -305,7 +317,7 @@ function exportJson(): void {
             </span>
           </div>
           <div v-if="filteredEvents.length > 500" class="more-events-hint">
-            仅展示前 500 条事件，完整记录请点击右上角「导出日志 JSON」
+            仅展示前 500 条事件，完整记录请点击右上角「导出产出报表」或「导出全量轨迹」
           </div>
         </div>
       </section>
@@ -383,6 +395,26 @@ function exportJson(): void {
 .copy-btn {
   border-color: rgba(66, 214, 199, 0.4);
   color: #42d6c7;
+}
+
+.summary-btn {
+  border-color: rgba(66, 214, 199, 0.4);
+  background: rgba(66, 214, 199, 0.12);
+  color: #42d6c7;
+}
+
+.summary-btn:hover:not(:disabled) {
+  background: rgba(66, 214, 199, 0.22);
+}
+
+.debug-btn {
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #a8bcc2;
+}
+
+.debug-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
 }
 
 .log-empty-state {

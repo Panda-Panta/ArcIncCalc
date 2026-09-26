@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import SimulationLogView from './SimulationLogView.vue'
 import type { ScheduleSimulationReport } from '../../simulator/scheduleSimulation'
@@ -89,5 +89,58 @@ describe('SimulationLogView.vue', () => {
     expect(wrapper.find('[data-test="schedule-timeline-gantt"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('模拟运行过程与计算日志')
     expect(wrapper.text()).toContain('德克萨斯')
+    expect(wrapper.find('[data-test="copy-logs-btn"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="export-summary-btn"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="export-full-btn"]').exists()).toBe(true)
+  })
+
+  it('triggers lightweight summary export and full debug export on button clicks', async () => {
+    const report = createSampleReport()
+    const wrapper = mount(SimulationLogView, {
+      props: { report },
+    })
+
+    const createObjectURL = vi.fn().mockReturnValue('blob:mock-url')
+    const revokeObjectURL = vi.fn()
+    window.URL.createObjectURL = createObjectURL
+    window.URL.revokeObjectURL = revokeObjectURL
+
+    let clickedDownload = ''
+    const originalCreateElement = document.createElement.bind(document)
+    vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      const el = originalCreateElement(tag)
+      if (tag === 'a') {
+        el.click = () => {
+          clickedDownload = (el as HTMLAnchorElement).download
+        }
+      }
+      return el
+    })
+
+    await wrapper.find('[data-test="export-summary-btn"]').trigger('click')
+    expect(clickedDownload).toContain('基建产出报表_')
+
+    await wrapper.find('[data-test="export-full-btn"]').trigger('click')
+    expect(clickedDownload).toContain('基建全量模拟轨迹_')
+  })
+
+  it('copies lightweight summary report to clipboard on copy button click', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, {
+      clipboard: { writeText },
+    })
+
+    const report = createSampleReport()
+    const wrapper = mount(SimulationLogView, {
+      props: { report },
+    })
+
+    await wrapper.find('[data-test="copy-logs-btn"]').trigger('click')
+    expect(writeText).toHaveBeenCalledTimes(1)
+    const firstCall = writeText.mock.calls[0]
+    expect(firstCall).toBeDefined()
+    const copiedJson = JSON.parse(firstCall?.[0] as string)
+    expect(copiedJson.segments).toEqual([])
+    expect(copiedJson.operators?.[0]?.operatorName).toBe('德克萨斯')
   })
 })
