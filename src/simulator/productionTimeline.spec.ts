@@ -17,9 +17,13 @@ describe('joint production event clock',()=>{
  it('carries drone work across manufacturing batch boundaries without charging it twice',()=>{
   const s=emptyBase();s.rooms=s.rooms.filter(r=>r.roomId==='room_1_1')
   const r=simulateSchedule(s,{sampleHours:.03,production:{droneTarget:'gold',initialResources:{drone:234.75}}})
-  expect(r.production!.manufacturing[0]!.completedItems).toBe(8)
-  expect(r.production!.manufacturing[0]!.remainingBaseMinutes).toBeCloseTo(1.2,7)
-  expect(r.production!.drones.consumed).toBe(215)
+  expect(r.production!.manufacturing[0]!.completedItems).toBe(9)
+  expect(r.production!.manufacturing[0]!.remainingBaseMinutes).toBeCloseTo(13.2,7)
+  expect(r.production!.drones.consumed).toBe(235)
+  const rReserve=simulateSchedule(s,{sampleHours:.03,production:{droneTarget:'gold',droneReserve:20,initialResources:{drone:234.75}}})
+  expect(rReserve.production!.manufacturing[0]!.completedItems).toBe(8)
+  expect(rReserve.production!.manufacturing[0]!.remainingBaseMinutes).toBeCloseTo(1.2,7)
+  expect(rReserve.production!.drones.consumed).toBe(215)
  })
  it('crosses coincident roster and fractional manufacturing endpoints in the real 252 fixture',()=>{
   const ws=importMowerJson(readFileSync('src/workbench/compat/fixtures/mower-252-2gold.json','utf8'))
@@ -60,5 +64,39 @@ describe('joint production event clock',()=>{
    const l=a.production!.ledger,k=key as keyof typeof l.balances
    expect(v).toBeCloseTo((l.initial[k]??0)+(l.inflows[k]??0)-(l.outflows[k]??0),8)
   }
+ })
+ it('thoroughly clears drones daily at 24h intervals to ensure calculation stability across days',()=>{
+  const s=emptyBase();s.rooms=s.rooms.filter(r=>r.roomId==='room_1_1')
+  const r1=simulateSchedule(s,{sampleHours:24,production:{outputMode:'potential',droneTarget:'gold'}})
+  const r2=simulateSchedule(s,{sampleHours:48,production:{outputMode:'potential',droneTarget:'gold'}})
+  const r3=simulateSchedule(s,{sampleHours:72,production:{outputMode:'potential',droneTarget:'gold'}})
+  expect(r1.production!.drones.consumed).toBe(240)
+  expect(r1.production!.drones.stock).toBeCloseTo(0,7)
+  expect(r2.production!.drones.consumed).toBe(480)
+  expect(r2.production!.drones.stock).toBeCloseTo(0,7)
+  expect(r3.production!.drones.consumed).toBe(720)
+  expect(r3.production!.drones.stock).toBeCloseTo(0,7)
+  expect(r2.production!.manufacturing[0]!.completedItems/2).toBe(r1.production!.manufacturing[0]!.completedItems)
+  expect(r3.production!.manufacturing[0]!.completedItems/3).toBe(r1.production!.manufacturing[0]!.completedItems)
+ })
+ it('thoroughly clears drones daily when power station buffs increase drone generation',()=>{
+  const w=createDefaultWorkspace()
+  for(const r of Object.values(w.mainPlan.facilities))if(r.type==='manufacture')r.product='gold'
+  w.mainPlan.facilities.room_1_3.slots[0]={occupant:{kind:'operator',operatorId:'char_253_greyy'},groupId:null,replacements:[]}
+  w.mainPlan.conf.workaholic=['char_253_greyy']
+  const s=compileRosterSchedule(w)
+  const r=simulateSchedule(s,{sampleHours:24,production:{outputMode:'potential',droneTarget:'gold'}})
+  expect(r.production!.drones.generated).toBeCloseTo(300,5)
+  expect(r.production!.drones.consumed).toBe(300)
+  expect(r.production!.drones.stock).toBeCloseTo(0,7)
+ })
+ it('spends drone budget across consecutive orders in trading post until stock is cleared',()=>{
+  const s=emptyBase();s.rooms=s.rooms.filter(r=>r.roomId==='room_3_1')
+  const r=simulateSchedule(s,{sampleHours:24,production:{outputMode:'potential',droneTarget:'trading',droneTradingRoomId:'room_3_1'}})
+  expect(r.production!.drones.consumed).toBe(240)
+  expect(r.production!.drones.stock).toBeCloseTo(0,7)
+  const droneEvents=r.production!.events.filter(e=>e.type==='trade-drone')
+  expect(droneEvents.length).toBeGreaterThan(1)
+  expect(droneEvents.reduce((sum,e)=>sum+(e.amount??0),0)).toBe(240)
  })
 })

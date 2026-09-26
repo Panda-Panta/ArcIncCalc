@@ -51,7 +51,7 @@ export function createProductionTimeline(schedule:CompiledSchedule,state:Runtime
  assertRunOrderMode(options.runOrderMode)
  const outputMode=options.outputMode??'settled',potential=outputMode==='potential'
  if(!['settled','potential'].includes(outputMode))throw new Error('Invalid output mode')
- const seed=options.seed??1,mode=options.runOrderMode??'ideal',lead=mode==='ideal'?0:options.runOrderLeadSeconds??180,target=options.droneTarget??'gold',reserve=options.droneReserve??20,interval=potential?0:options.collectionIntervalHours??schedule.assumptions.collectionIntervalHours
+ const seed=options.seed??1,mode=options.runOrderMode??'ideal',lead=mode==='ideal'?0:options.runOrderLeadSeconds??180,target=options.droneTarget??'gold',reserve=options.droneReserve??0,interval=potential?0:options.collectionIntervalHours??schedule.assumptions.collectionIntervalHours
  if(!Number.isSafeInteger(seed)||seed<0||seed>0xffffffff||!['ideal','drone'].includes(mode)||!['gold','exp','none','trading'].includes(target))throw new Error('Invalid production strategy/seed')
  if(![lead,reserve,interval].every(x=>Number.isFinite(x)&&x>=0)||(mode!=='ideal'&&lead<=0)||!Number.isInteger(reserve)||reserve>=235)throw new Error('Invalid production timing/reserve')
  const initial={gold:schedule.assumptions.initialGold,fragment:schedule.assumptions.initialFragments,drone:schedule.assumptions.initialDrones,...options.initialResources,...(potential?{gold:0,fragment:0,lmd:0,exp:0,orundum:0,orirock:0,device:0}:{})}
@@ -166,9 +166,13 @@ export function createProductionTimeline(schedule:CompiledSchedule,state:Runtime
   }
  }
  const chargeRate=(f:ProductionFrame)=>Math.max(0,1+f.config.rooms.filter(r=>r.type==='power').reduce((n,r)=>n+(f.evaluations[r.id]!.efficiencyPercent-100)/100,0))/6
+ let nextDailyClear=24
   const spendSurplus=()=>{
-   if(target==='none'||drones.stock<drones.capacity-EPS)return
+   const isDailyClear=state.time>=nextDailyClear-EPS
+   const isCapacityReached=drones.stock>=drones.capacity-EPS
+   if(target==='none'||(!isCapacityReached&&!isDailyClear))return
    let budget=Math.max(0,Math.floor(drones.stock)-reserve)
+   if(budget<=0)return
    if(target==='trading'){
     const targetTrade=(options.droneRoomId||options.droneTradingRoomId)?trades.get((options.droneRoomId||options.droneTradingRoomId)!):[...trades.values()][0]
     if(targetTrade?.active&&targetTrade.active.remainingBaseMinutes>EPS){
@@ -186,7 +190,11 @@ export function createProductionTimeline(schedule:CompiledSchedule,state:Runtime
    for(const m of manufactures.values()){
     if(options.droneRoomId ? m.roomId!==options.droneRoomId : m.state.formula.product!==target)continue
     // Whole drones supply base work; excess crosses a paid, capacity-checked batch boundary.
-    while(budget>0){fund(m);const remaining=nextManufacturingEvent(m.state);if(remaining===null)break;const n=Math.min(budget,Math.ceil((remaining-EPS)/3));if(n<=0)break
+    while(budget>0){
+     fund(m);let remaining=nextManufacturingEvent(m.state);if(remaining===null)break
+     if(remaining<=EPS){const p=advanceManufacturing(m.state,remaining+EPS);m.state=p.state;if(interval===0)collect(m.roomId);fund(m);remaining=nextManufacturingEvent(m.state);if(remaining===null)break}
+     const n=Math.min(budget,Math.max(1,Math.ceil((remaining-EPS)/3)))
+     if(n<=0)break
      const spent=spendDrones(drones,n);drones=spent.state;transact({drone:-n},'manufacture-drone');budget-=n
      let remainingWork=spent.baseMinutes
      while(remainingWork>EPS){
@@ -206,9 +214,15 @@ export function createProductionTimeline(schedule:CompiledSchedule,state:Runtime
    if(interval===0||state.time>=nextCollection-EPS){collect();if(interval>0)nextCollection=(Math.floor((state.time+EPS)/interval)+1)*interval}
    frame=getFrame();synchronize(frame);openWork(frame);tryRun(frame)
    if(mode==='drone'&&run){finish(getFrame());frame=getFrame();synchronize(frame);openWork(frame)}
-   const beforeSpending=serial
-   if(!run)spendSurplus()
-   if(serial!==beforeSpending){finish(getFrame());collect();openWork(getFrame())}
+   while(!run){
+    const beforeSpending=serial
+    spendSurplus()
+    if(serial===beforeSpending)break
+    finish(getFrame());collect();openWork(getFrame())
+   }
+   if(state.time>=nextDailyClear-EPS){
+    nextDailyClear=(Math.floor((state.time+EPS)/24)+1)*24
+   }
    markObservation()
   }
   const nextStep=(maximum:number,getFrame:(offset:number)=>ProductionFrame)=>{
@@ -217,7 +231,10 @@ export function createProductionTimeline(schedule:CompiledSchedule,state:Runtime
    // Capped charging is an event; smaller numerical steps must not change spending policy.
    const targetTrade=(options.droneRoomId||options.droneTradingRoomId)?trades.get((options.droneRoomId||options.droneTradingRoomId)!):[...trades.values()][0]
    const rate=chargeRate(zero),canSpend=target==='trading'?(targetTrade?.active!==null&&targetTrade?.active!==undefined):(target!=='none'&&[...manufactures.values()].some(m=>(options.droneRoomId?m.roomId===options.droneRoomId:m.state.formula.product===target)&&nextManufacturingEvent(m.state)!==null))
-   if(canSpend&&rate>0&&drones.stock<drones.capacity-EPS)dt=Math.min(dt,(drones.capacity-drones.stock)/rate/60)
+   if(target!=='none'){
+    if(canSpend&&rate>0&&drones.stock<drones.capacity-EPS)dt=Math.min(dt,(drones.capacity-drones.stock)/rate/60)
+    if(nextDailyClear>state.time+EPS)dt=Math.min(dt,nextDailyClear-state.time)
+   }
    const crosses=(h:number)=>{const f=getFrame(h/2)
     for(const m of manufactures.values()){const n=nextManufacturingEvent(m.state);if(n!==null&&h*60*f.evaluations[m.roomId]!.efficiencyPercent/100>=n)return true}
     for(const t of trades.values())if(t.active){const factor=t.active.base.efficiencyAffected?f.evaluations[t.roomId]!.efficiencyPercent/100:1
@@ -247,7 +264,7 @@ export function createProductionTimeline(schedule:CompiledSchedule,state:Runtime
   if(potential)diagnostic('POTENTIAL_OUTPUT_MODEL','直观产出模式：忽略赤金、原料、收取和存仓约束，完成即计产出；账本为测算辅助，不代表实际到账。无人机仍按所选策略及实际生成量使用。')
   if(mode==='ideal')diagnostic('IDEAL_RUN_ORDER_ASSUMPTIONS','理想跑单：按常驻阵容正常获取订单；完成瞬间应用已配置的但书/龙舌兰效果。不临时进驻、不等待、不消耗跑单干员心情或无人机，忽略跑单干员占位冲突；普通排班与订单资源规则仍保留。')
   else diagnostic('PRODUCTION_TIMING_ASSUMPTIONS','生产按整数配方和固定种子抽单；基础单在开始抽取、特殊奖励在完成锁定为版本化假设。显式无人机跑单在提前窗口换人并消耗无人机完成订单；自然跑单已禁用。')
-  diagnostic('DRONE_ALLOCATION_POLICY',`剩余无人机采用满仓时批量加速${options.droneRoomId&&target!=='none'?`设施(${options.droneRoomId})`:target==='gold'?'赤金':target==='exp'?'作战记录':target==='trading'?`贸易站(${options.droneTradingRoomId??'默认'})`:'关闭'}、保留 ${reserve} 架策略；此分配策略可调整，不代表用户 Mower 全局配置。`)
+  diagnostic('DRONE_ALLOCATION_POLICY',`无人机采用满仓及每日彻底清空加速${options.droneRoomId&&target!=='none'?`设施(${options.droneRoomId})`:target==='gold'?'赤金':target==='exp'?'作战记录':target==='trading'?`贸易站(${options.droneTradingRoomId??'默认'})`:'关闭'}、保留 ${reserve} 架策略，以保证计算稳定。`)
   if(mode!=='ideal')diagnostic('RUN_ORDER_SOURCE_BED_POLICY','跑单只恢复目标站原阵容；借用的 Free 床腾空，跑单人完成后闲置至正常宿舍填充，不自动恢复来源床位。')
   return {settle,nextStep,advance,report,isRosterLocked:()=>Boolean(run)}
 }
