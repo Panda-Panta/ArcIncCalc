@@ -308,7 +308,7 @@ describe('ScheduleTimelineGantt.vue', () => {
     expect(scrubber.text()).toContain('支持拖拽滑块实时滑动预览')
   })
 
-  it('opens export modal for 12h facility swimlane gantt chart and handles download', async () => {
+  it('opens export modal for full sampling phase facility swimlane gantt chart and handles download', async () => {
     const wrapper = mount(ScheduleTimelineGantt, {
       props: { report: createSampleReport() },
     })
@@ -319,10 +319,12 @@ describe('ScheduleTimelineGantt.vue', () => {
     await exportBtn.trigger('click')
     const modal = wrapper.find('[data-test="gantt-export-modal"]')
     expect(modal.exists()).toBe(true)
-    expect(modal.text()).toContain('导出设施甘特图 (12h标准视窗)')
+    expect(modal.text()).toContain('导出设施甘特图 (采样阶段完整长图)')
+    expect(modal.text()).toContain('全周期共 48 小时')
 
-    const windowSelect = wrapper.find('[data-test="export-window-select"]')
-    expect(windowSelect.exists()).toBe(true)
+    const scaleBtn = wrapper.find('[data-test="scale-btn-compact"]')
+    expect(scaleBtn.exists()).toBe(true)
+    await scaleBtn.trigger('click')
 
     const downloadBtn = wrapper.find('[data-test="download-gantt-btn"]')
     expect(downloadBtn.exists()).toBe(true)

@@ -37,14 +37,25 @@ const isDraggingOverview = ref(false)
 let overviewDragStartX = 0
 let overviewDragStartWindowStart = 0
 
-// Export modal and state
+// Export modal and state (Full Sampling Phase)
 const showExportModal = ref(false)
 const isExporting = ref(false)
 const exportStatus = ref<{ type: 'success' | 'error'; message: string } | null>(null)
 const exportCanvasRef = ref<HTMLDivElement | null>(null)
-const exportWindowStart = ref(0)
-const exportWindowDuration = 12
-const exportWindowEnd = computed(() => exportWindowStart.value + exportWindowDuration)
+const exportScaleMode = ref<'standard' | 'compact'>('standard')
+
+const exportPixelsPerHour = computed(() => {
+  const base = exportScaleMode.value === 'compact' ? 50 : 100
+  const maxTrackWidth = 15000
+  const total = totalObservedHours.value
+  if (total * base > maxTrackWidth) {
+    return Math.max(30, Math.floor(maxTrackWidth / total))
+  }
+  return base
+})
+
+const exportTrackWidthPx = computed(() => Math.round(totalObservedHours.value * exportPixelsPerHour.value))
+const exportTotalWidthPx = computed(() => 190 + exportTrackWidthPx.value)
 
 // Hover inspector state
 const hoveredInterval = ref<TimelineInterval | null>(null)
@@ -304,52 +315,32 @@ function handleOverviewTrackMouseDown(e: MouseEvent): void {
   window.addEventListener('mouseup', onMouseUp)
 }
 
-// Export 12h facility gantt helpers
-interface ExportWindowOption {
-  start: number
-  label: string
-}
-
-const exportWindowOptions = computed<ExportWindowOption[]>(() => {
-  const total = totalObservedHours.value
-  const options: ExportWindowOption[] = []
-  const count = Math.ceil(total / 12)
-  for (let i = 0; i < count; i++) {
-    const s = i * 12
-    const e = Math.min(total, s + 12)
-    const day = Math.floor(s / 24) + 1
-    const period = s % 24 < 12 ? '前半天' : '后半天'
-    options.push({
-      start: s,
-      label: `第 ${day} 天 ${period} (T+${s}h ~ T+${e}h)`,
-    })
-  }
-  return options
-})
-
+// Export facility gantt for the complete sampling phase
 function getExportOffsetPercent(time: number): number {
-  const rel = time - exportWindowStart.value
-  return Math.max(0, Math.min(100, (rel / exportWindowDuration) * 100))
+  const total = totalObservedHours.value
+  if (total <= 0) return 0
+  return Math.max(0, Math.min(100, (time / total) * 100))
 }
 
 function getExportWidthPercent(start: number, end: number): number {
-  const s = Math.max(exportWindowStart.value, start)
-  const e = Math.min(exportWindowEnd.value, end)
+  const total = totalObservedHours.value
+  if (total <= 0) return 0
+  const s = Math.max(0, start)
+  const e = Math.min(total, end)
   if (e <= s) return 0
-  return ((e - s) / exportWindowDuration) * 100
+  return ((e - s) / total) * 100
 }
 
 function isExportIntervalVisible(interval: TimelineInterval): boolean {
-  return interval.end > exportWindowStart.value && interval.start < exportWindowEnd.value
+  return interval.end > 0 && interval.start < totalObservedHours.value && interval.duration > 0
 }
 
 const exportRulerTicks = computed<RulerTick[]>(() => {
-  const start = exportWindowStart.value
-  const end = exportWindowEnd.value
+  const total = totalObservedHours.value
+  if (total <= 0) return []
   const ticks: RulerTick[] = []
-  const step = 2
-  const firstTick = Math.ceil(start / step) * step
-  for (let t = firstTick; t <= end; t += step) {
+  const step = total <= 72 ? 2 : total <= 144 ? 4 : 6
+  for (let t = 0; t <= total; t += step) {
     const isMajor = t % 24 === 0
     const day = Math.floor(t / 24) + 1
     const hourInDay = t % 24
@@ -361,9 +352,18 @@ const exportRulerTicks = computed<RulerTick[]>(() => {
     }
     ticks.push({
       time: t,
-      percent: getExportOffsetPercent(t),
+      percent: (t / total) * 100,
       label,
       isMajorDay: isMajor,
+    })
+  }
+  const lastTick = ticks[ticks.length - 1]
+  if (lastTick && total - lastTick.time > 0.5) {
+    ticks.push({
+      time: total,
+      percent: 100,
+      label: `T+${total.toFixed(0)}h`,
+      isMajorDay: total % 24 === 0,
     })
   }
   return ticks
@@ -371,10 +371,6 @@ const exportRulerTicks = computed<RulerTick[]>(() => {
 
 function openExportModal(): void {
   viewMode.value = 'facility'
-  const cur = customWindowStart.value
-  const snapped = Math.floor(cur / 12) * 12
-  const maxStart = Math.max(0, totalObservedHours.value - 12)
-  exportWindowStart.value = Math.min(maxStart, snapped)
   exportStatus.value = null
   showExportModal.value = true
 }
@@ -389,16 +385,18 @@ async function handleDownloadGanttImage(): Promise<void> {
   isExporting.value = true
   exportStatus.value = null
   try {
+    const totalW = exportTotalWidthPx.value
+    const pixelRatio = totalW * 2 <= 16000 ? 2 : totalW * 1.5 <= 16000 ? 1.5 : 1
     const dataUrl = await toPng(exportCanvasRef.value, {
-      pixelRatio: 2,
+      pixelRatio,
       cacheBust: true,
       backgroundColor: '#0e1319',
     })
     const link = document.createElement('a')
-    link.download = `基建排班甘特图_设施分道_T+${exportWindowStart.value}h-${exportWindowEnd.value}h.png`
+    link.download = `基建排班甘特图_设施分道_采样全周期_0h-${totalObservedHours.value.toFixed(0)}h.png`
     link.href = dataUrl
     link.click()
-    exportStatus.value = { type: 'success', message: '甘特图已成功导出下载！' }
+    exportStatus.value = { type: 'success', message: '甘特图全周期长图已成功导出下载！' }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     exportStatus.value = { type: 'error', message: `导出失败: ${msg}` }
@@ -412,15 +410,17 @@ async function handleCopyGanttImage(): Promise<void> {
   isExporting.value = true
   exportStatus.value = null
   try {
+    const totalW = exportTotalWidthPx.value
+    const pixelRatio = totalW * 2 <= 16000 ? 2 : totalW * 1.5 <= 16000 ? 1.5 : 1
     const blob = await toBlob(exportCanvasRef.value, {
-      pixelRatio: 2,
+      pixelRatio,
       cacheBust: true,
       backgroundColor: '#0e1319',
     })
     if (!blob) throw new Error('无法生成图片数据')
     if (typeof navigator !== 'undefined' && navigator.clipboard?.write) {
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
-      exportStatus.value = { type: 'success', message: '已成功将甘特图图片复制到剪贴板！' }
+      exportStatus.value = { type: 'success', message: '已成功将甘特图长图复制到剪贴板！' }
     } else {
       throw new Error('当前浏览器不支持直接写入剪贴板图片')
     }
@@ -1172,7 +1172,7 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
       </div>
     </div>
 
-    <!-- Export Modal for Facility Swimlane Gantt (12h window) -->
+    <!-- Export Modal for Facility Swimlane Gantt (Full Sampling Phase) -->
     <div
       v-if="showExportModal"
       class="gantt-export-modal-overlay"
@@ -1182,26 +1182,33 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
       <div class="gantt-export-modal-card">
         <div class="export-modal-header">
           <div class="export-header-left">
-            <h3 class="export-modal-title">📷 导出设施甘特图 (12h标准视窗)</h3>
-            <span class="export-modal-subtitle">以 12 小时黄金视窗比例渲染并导出高清晰度设施分道排班图</span>
+            <h3 class="export-modal-title">📷 导出设施甘特图 (采样阶段完整长图)</h3>
+            <span class="export-modal-subtitle">
+              全周期共 {{ totalObservedHours.toFixed(0) }} 小时（T+0h 至 T+{{ totalObservedHours.toFixed(0) }}h），以 12h 视窗标准尺度生成高清晰度设施分道排班长图
+            </span>
           </div>
           <div class="export-header-actions">
-            <label class="export-select-label">
-              <span>选择 12h 时段：</span>
-              <select
-                v-model.number="exportWindowStart"
-                class="export-select"
-                data-test="export-window-select"
+            <div class="scale-mode-selector">
+              <span class="scale-title">图像比例:</span>
+              <button
+                type="button"
+                class="scale-btn"
+                :class="{ active: exportScaleMode === 'standard' }"
+                data-test="scale-btn-standard"
+                @click="exportScaleMode = 'standard'"
               >
-                <option
-                  v-for="opt in exportWindowOptions"
-                  :key="opt.start"
-                  :value="opt.start"
-                >
-                  {{ opt.label }}
-                </option>
-              </select>
-            </label>
+                标准 (12h视窗基准 · 100px/h)
+              </button>
+              <button
+                type="button"
+                class="scale-btn"
+                :class="{ active: exportScaleMode === 'compact' }"
+                data-test="scale-btn-compact"
+                @click="exportScaleMode = 'compact'"
+              >
+                紧凑 (50px/h)
+              </button>
+            </div>
 
             <button
               type="button"
@@ -1210,7 +1217,7 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
               data-test="download-gantt-btn"
               @click="handleDownloadGanttImage"
             >
-              {{ isExporting ? '生成中...' : '📥 下载 PNG 图片' }}
+              {{ isExporting ? '生成中...' : '📥 下载 PNG 长图' }}
             </button>
             <button
               type="button"
@@ -1219,7 +1226,7 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
               data-test="copy-gantt-btn"
               @click="handleCopyGanttImage"
             >
-              📋 复制图片
+              📋 复制长图
             </button>
             <button type="button" class="export-close-btn" @click="closeExportModal">✕</button>
           </div>
@@ -1230,112 +1237,118 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
         </div>
 
         <div class="export-modal-body">
-          <div ref="exportCanvasRef" class="export-canvas">
-            <div class="export-banner">
-              <div class="banner-title-group">
-                <h2 class="banner-title">罗德岛基建排班甘特图 · 设施分道</h2>
-                <span class="banner-time-badge">
-                  时段：T+{{ exportWindowStart.toFixed(1) }}h 至 T+{{ exportWindowEnd.toFixed(1) }}h（第 {{ Math.floor(exportWindowStart / 24) + 1 }} 天）· 12h 视窗
-                </span>
-              </div>
-              <div class="banner-legend">
-                <span class="legend-item"><span class="legend-dot status-working" />在岗工作</span>
-                <span class="legend-item"><span class="legend-dot status-resting" />宿舍休整</span>
-                <span class="legend-item"><span class="legend-dot status-exhausted" />疲劳溢出</span>
-              </div>
-            </div>
-
-            <!-- 12h Ruler -->
-            <div class="export-ruler-row">
-              <div class="export-axis-col">
-                <span>设施 / 槽位</span>
-              </div>
-              <div class="export-timeline-track">
-                <div
-                  v-for="tick in exportRulerTicks"
-                  :key="tick.time"
-                  class="ruler-tick"
-                  :class="{ 'major-day': tick.isMajorDay }"
-                  :style="{ left: `${tick.percent}%` }"
-                >
-                  <div class="tick-line" />
-                  <span class="tick-label">{{ tick.label }}</span>
+          <div class="export-canvas-scroll-container">
+            <div
+              ref="exportCanvasRef"
+              class="export-canvas"
+              :style="{ width: `${exportTotalWidthPx}px`, minWidth: `${exportTotalWidthPx}px` }"
+            >
+              <div class="export-banner">
+                <div class="banner-title-group">
+                  <h2 class="banner-title">罗德岛基建排班甘特图 · 设施分道</h2>
+                  <span class="banner-time-badge">
+                    采样阶段全周期：T+0.0h 至 T+{{ totalObservedHours.toFixed(1) }}h（共 {{ totalObservedHours.toFixed(0) }} 小时 / {{ (totalObservedHours / 24).toFixed(1) }} 天）· 比例尺：{{ exportPixelsPerHour }}px/h（以 12h 视窗为基准）
+                  </span>
+                </div>
+                <div class="banner-legend">
+                  <span class="legend-item"><span class="legend-dot status-working" />在岗工作</span>
+                  <span class="legend-item"><span class="legend-dot status-resting" />宿舍休整</span>
+                  <span class="legend-item"><span class="legend-dot status-exhausted" />疲劳溢出</span>
                 </div>
               </div>
-            </div>
 
-            <!-- 12h Tracks Body -->
-            <div class="export-tracks-body">
-              <div class="gantt-grid-overlay">
-                <div
-                  v-for="tick in exportRulerTicks"
-                  :key="tick.time"
-                  class="grid-line"
-                  :class="{ 'major-grid': tick.isMajorDay }"
-                  :style="{ left: `${tick.percent}%` }"
-                />
+              <!-- Ruler Row -->
+              <div class="export-ruler-row">
+                <div class="export-axis-col">
+                  <span>设施 / 槽位</span>
+                </div>
+                <div class="export-timeline-track" :style="{ width: `${exportTrackWidthPx}px` }">
+                  <div
+                    v-for="tick in exportRulerTicks"
+                    :key="tick.time"
+                    class="ruler-tick"
+                    :class="{ 'major-day': tick.isMajorDay }"
+                    :style="{ left: `${tick.percent}%` }"
+                  >
+                    <div class="tick-line" />
+                    <span class="tick-label">{{ tick.label }}</span>
+                  </div>
+                </div>
               </div>
 
-              <!-- Facilities -->
-              <div
-                v-for="facility in filteredFacilityTracks"
-                :key="facility.roomId"
-                class="facility-group"
-                :class="`room-${facility.roomType}`"
-              >
-                <div class="facility-group-header">
-                  <div class="group-title-col">
-                    <span class="facility-tag" :class="facility.roomType">{{ facility.roomType }}</span>
-                    <span class="facility-name">{{ facility.roomName }}</span>
-                    <span class="facility-eff">+{{ facility.averageEfficiency.toFixed(1) }}%</span>
-                  </div>
-                  <div class="group-track-spacer" />
+              <!-- Tracks Body -->
+              <div class="export-tracks-body">
+                <div class="gantt-grid-overlay">
+                  <div
+                    v-for="tick in exportRulerTicks"
+                    :key="tick.time"
+                    class="grid-line"
+                    :class="{ 'major-grid': tick.isMajorDay }"
+                    :style="{ left: `${tick.percent}%` }"
+                  />
                 </div>
 
+                <!-- Facilities -->
                 <div
-                  v-for="slot in facility.slots"
-                  :key="slot.slotKey"
-                  class="track-row"
+                  v-for="facility in filteredFacilityTracks"
+                  :key="facility.roomId"
+                  class="facility-group"
+                  :class="`room-${facility.roomType}`"
                 >
-                  <div class="track-label-col slot-label-col">
-                    <span class="slot-badge">槽位 {{ slot.slotIndex + 1 }}</span>
-                    <span v-if="slot.role === 'dorm-keeper'" class="role-badge keeper">宿管</span>
-                    <span v-else-if="slot.role === 'fiammetta'" class="role-badge fiammetta">互换</span>
+                  <div class="facility-group-header">
+                    <div class="group-title-col">
+                      <span class="facility-tag" :class="facility.roomType">{{ facility.roomType }}</span>
+                      <span class="facility-name">{{ facility.roomName }}</span>
+                      <span class="facility-eff">+{{ facility.averageEfficiency.toFixed(1) }}%</span>
+                    </div>
+                    <div class="group-track-spacer" />
                   </div>
 
-                  <div class="track-content-lane">
-                    <div
-                      v-for="interval in slot.intervals.filter(isExportIntervalVisible)"
-                      :key="interval.id"
-                      class="gantt-block"
-                      :class="getStatusBadgeClass(interval.status, interval.roomType)"
-                      :style="{
-                        left: `${getExportOffsetPercent(interval.start)}%`,
-                        width: `${getExportWidthPercent(interval.start, interval.end)}%`,
-                      }"
-                    >
-                      <div class="block-content">
-                        <img
-                          v-if="interval.avatarUrl"
-                          :src="interval.avatarUrl"
-                          :alt="interval.operatorName"
-                          class="block-avatar"
-                          onerror="this.style.display='none'"
-                        />
-                        <span class="block-name">{{ interval.operatorName || '空置' }}</span>
-                        <span v-if="interval.duration >= 1" class="block-duration">
-                          {{ formatHour(interval.duration) }}
-                        </span>
+                  <div
+                    v-for="slot in facility.slots"
+                    :key="slot.slotKey"
+                    class="track-row"
+                  >
+                    <div class="track-label-col slot-label-col">
+                      <span class="slot-badge">槽位 {{ slot.slotIndex + 1 }}</span>
+                      <span v-if="slot.role === 'dorm-keeper'" class="role-badge keeper">宿管</span>
+                      <span v-else-if="slot.role === 'fiammetta'" class="role-badge fiammetta">互换</span>
+                    </div>
+
+                    <div class="track-content-lane" :style="{ width: `${exportTrackWidthPx}px` }">
+                      <div
+                        v-for="interval in slot.intervals.filter(isExportIntervalVisible)"
+                        :key="interval.id"
+                        class="gantt-block"
+                        :class="getStatusBadgeClass(interval.status, interval.roomType)"
+                        :style="{
+                          left: `${getExportOffsetPercent(interval.start)}%`,
+                          width: `${getExportWidthPercent(interval.start, interval.end)}%`,
+                        }"
+                      >
+                        <div class="block-content">
+                          <img
+                            v-if="interval.avatarUrl"
+                            :src="interval.avatarUrl"
+                            :alt="interval.operatorName"
+                            class="block-avatar"
+                            onerror="this.style.display='none'"
+                          />
+                          <span class="block-name">{{ interval.operatorName || '空置' }}</span>
+                          <span v-if="interval.duration >= 0.8" class="block-duration">
+                            {{ formatHour(interval.duration) }}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div class="export-canvas-footer">
-              <span>明日方舟基建排班与全动态模拟测算器 · R.I.I.C-Calculator</span>
-              <span>导出标准：12 小时视窗</span>
+              <div class="export-canvas-footer">
+                <span>明日方舟基建排班与全动态模拟测算器 · R.I.I.C-Calculator</span>
+                <span>采样全周期完整甘特图 · 设施分道全景</span>
+              </div>
             </div>
           </div>
         </div>
@@ -2437,23 +2450,44 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
   flex-wrap: wrap;
 }
 
-.export-select-label {
-  display: inline-flex;
+.scale-mode-selector {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: #8da5ac;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 4px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.export-select {
+.scale-title {
+  font-size: 11px;
+  color: #8da5ac;
+  margin-right: 2px;
+}
+
+.scale-btn {
   padding: 4px 8px;
   font-size: 11px;
-  background: #0f141b;
-  border: 1px solid rgba(66, 214, 199, 0.4);
-  color: #42d6c7;
-  border-radius: 4px;
-  outline: none;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: #8da5ac;
+  border-radius: 3px;
   cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.scale-btn:hover {
+  color: #ffffff;
+}
+
+.scale-btn.active {
+  background: #42d6c7;
+  color: #0b1e1b;
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(66, 214, 199, 0.3);
 }
 
 .export-action-btn {
@@ -2531,16 +2565,17 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
 
 .export-modal-body {
   flex: 1;
-  overflow-y: auto;
+  overflow: auto;
   padding: 20px;
   background: #090c10;
-  display: flex;
-  justify-content: center;
+}
+
+.export-canvas-scroll-container {
+  display: inline-block;
+  min-width: 100%;
 }
 
 .export-canvas {
-  width: 1320px;
-  min-width: 1320px;
   background: #0e1319;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 6px;
@@ -2645,6 +2680,11 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
   position: relative;
   background: #111720;
   border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.export-tracks-body .major-grid {
+  background: rgba(66, 214, 199, 0.25);
+  width: 2px;
 }
 
 .export-canvas-footer {
