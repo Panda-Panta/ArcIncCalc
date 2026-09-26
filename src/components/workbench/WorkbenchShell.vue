@@ -25,6 +25,7 @@ import GlobalReplaceModal, { type GlobalReplacePayload } from './GlobalReplaceMo
 import SmartRosterConfigModal, { type SmartRosterConfig } from './SmartRosterConfigModal.vue'
 import RiicSkillsBrowser from './RiicSkillsBrowser.vue'
 import BackupPlanEditor from './BackupPlanEditor.vue'
+import RosterPosterModal from './RosterPosterModal.vue'
 import { NConfigProvider } from 'naive-ui'
 import { darkTheme, darkThemeOverrides } from '../../theme'
 import '../../workbench/styles.css'
@@ -114,6 +115,7 @@ const pickerSlotIndex = ref(0)
 const replaceModalOpen = ref(false)
 const replaceStatusMessage = ref<string | null>(null)
 const smartRosterConfigModalOpen = ref(false)
+const posterModalOpen = ref(false)
 
 // Operator inventory state
 const operatorInventory = ref<{
@@ -814,6 +816,7 @@ defineExpose({
           @auto-generate="handleAutoGenerate"
           @abort-generation="handleAbortAutoGenerate"
           @inventory-imported="handleInventoryImported"
+          @open-poster="posterModalOpen = true"
         />
       </div>
     </div>
@@ -1093,6 +1096,13 @@ defineExpose({
       :initial-seed="simSettings.seed"
       @close="smartRosterConfigModalOpen = false"
       @confirm="handleConfirmSmartRosterConfig"
+    />
+
+    <RosterPosterModal
+      :open="posterModalOpen"
+      :workspace="store.workspace"
+      :calculation-report="calculationReport"
+      @close="posterModalOpen = false"
     />
     </div>
   </n-config-provider>

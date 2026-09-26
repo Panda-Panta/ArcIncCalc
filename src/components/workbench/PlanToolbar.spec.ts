@@ -646,4 +646,16 @@ describe('PlanToolbar.vue', () => {
       expect(wrapper.find('[data-test="abort-roster-btn"]').exists()).toBe(false)
     })
   })
+
+  describe('Poster Export Action', () => {
+    it('renders export-poster-btn and emits open-poster event on click', async () => {
+      const wrapper = mount(PlanToolbar)
+      const posterBtn = wrapper.find('[data-test="export-poster-btn"]')
+      expect(posterBtn.exists()).toBe(true)
+      expect(posterBtn.text()).toContain('分享海报')
+
+      await posterBtn.trigger('click')
+      expect(wrapper.emitted('open-poster')).toHaveLength(1)
+    })
+  })
 })

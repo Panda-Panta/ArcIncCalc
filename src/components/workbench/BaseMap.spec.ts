@@ -430,4 +430,35 @@ describe('BaseMap.vue', () => {
     expect(store.workspace.mainPlan.facilities.room_1_1.type).toBe('')
     expect(store.workspace.mainPlan.facilities.room_1_2.type).toBe('manufacture')
   })
+
+  it('provides responsive adaptive scaling for mobile and small screens', async () => {
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 480 })
+    window.dispatchEvent(new Event('resize'))
+
+    const wrapper = mount(BaseMap)
+    expect(wrapper.find('[data-test="base-map-zoom-bar"]').exists()).toBe(true)
+
+    const fitBtn = wrapper.find('[data-test="zoom-fit-btn"]')
+    const originalBtn = wrapper.find('[data-test="zoom-100-btn"]')
+    expect(fitBtn.exists()).toBe(true)
+    expect(originalBtn.exists()).toBe(true)
+
+    // Initially 100%
+    expect(wrapper.vm.zoomMode).toBe('100')
+    expect(wrapper.vm.computedScale).toBe(1)
+
+    // Switch to fit mode
+    await fitBtn.trigger('click')
+    expect(wrapper.vm.zoomMode).toBe('fit')
+    expect(wrapper.vm.computedScale).toBeLessThan(1)
+    expect(wrapper.vm.computedScale).toBeGreaterThan(0.2)
+
+    const planContainer = wrapper.find('.plan-container')
+    expect(planContainer.attributes('style')).toContain('scale')
+
+    // Switch back to 100%
+    await originalBtn.trigger('click')
+    expect(wrapper.vm.zoomMode).toBe('100')
+    expect(wrapper.vm.computedScale).toBe(1)
+  })
 })

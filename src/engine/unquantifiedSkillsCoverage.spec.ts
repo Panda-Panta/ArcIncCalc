@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { createDefaultConfig } from '../domain/defaults'
 import { OPERATORS } from '../domain/operators'
 import { evaluateOperators } from './operatorRules'
+import { currentMoraleRates } from './morale'
 
 const findOpId = (name: string) => OPERATORS.find(o => o.name === name)!.charId
 
@@ -110,5 +111,29 @@ describe('quantification of remaining operator skills (1.2)', () => {
       tradeRoom.operatorIds = [findOpId(name)]
       expect(evaluateOperators(tradeRoom, config).unquantifiedSkills).toEqual([])
     }
+  })
+
+  it('quantifies Hung Lee agency morale recovery skill in control center without unquantified warnings', () => {
+    const config = createDefaultConfig()
+    const hmau = findOpId('吽')
+    const amiya = findOpId('阿米娅')
+    config.controlOperatorIds = [hmau, amiya]
+    const result1 = currentMoraleRates(config)
+    expect(result1.unquantified).toEqual([])
+    // 2 operators in control -> base -0.10/h
+    // 1 Lee operator -> Hung all -0.05/h, Lee faction extra -0.20/h
+    expect(result1.rates[amiya]).toBeCloseTo(0.85)
+    expect(result1.rates[hmau]).toBeCloseTo(0.65)
+
+    // With Aak (who adds +1.5/h to all in control center)
+    const aak = findOpId('阿')
+    config.controlOperatorIds = [hmau, aak, amiya]
+    const result2 = currentMoraleRates(config)
+    expect(result2.unquantified).toEqual([])
+    // 3 operators in control -> base -0.15/h
+    // 2 Lee operators -> Hung all -0.10/h, Lee faction extra -0.40/h
+    // Aak adds +1.5/h to all
+    expect(result2.rates[amiya]).toBeCloseTo(2.25)
+    expect(result2.rates[hmau]).toBeCloseTo(1.85)
   })
 })

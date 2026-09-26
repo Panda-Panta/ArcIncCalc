@@ -97,6 +97,19 @@
             </svg>
             {{ isExportingImage ? '导出中...' : '导出图片' }}
           </button>
+          <button
+            type="button"
+            class="mower-btn btn-export-poster"
+            data-test="export-poster-btn"
+            :disabled="disabled || isExportingImage"
+            title="生成排班高清水印海报与收益长图"
+            @click="emit('open-poster')"
+          >
+            <svg class="mower-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zm-5-7l-3 3.72L9 13l-3 4h12l-4-5z"/>
+            </svg>
+            分享海报
+          </button>
         </div>
       </div>
 
@@ -290,6 +303,7 @@ const emit = defineEmits<{
   (e: 'imported', workspace: RosterWorkspace): void
   (e: 'exported-json'): void
   (e: 'exported-image'): void
+  (e: 'open-poster'): void
   (e: 'error', message: string): void
   (e: 'auto-generate'): void
   (e: 'abort-generation'): void

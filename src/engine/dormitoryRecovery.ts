@@ -62,11 +62,11 @@ export function evaluateDormitoryRecovery(config:AppConfig,roomIndex:number,mora
   if(!selfMatch&&!allMatch&&!singleMatch&&/恢复/.test(d))unquantified.push(`${label} (${b})：恢复文案未解析`)
  }
  for(const op of operators){
-  const central=Math.max(0,...centralEffects.filter(e=>!e.eliteOnly||matchesRiicIdentity(op,'groupId','elite')).map(e=>e.value))
-  if(central&&!op.skills.some(s=>s.buffId==='dorm_recExcludeOther[000]')){
-   if((all.get(op.charId)??0)>0)unquantified.push(`${op.name}：中枢群回+${central}/h与房内群回比较待核实；当前保留房内值，未计竞争的中枢增量`)
-   else all.set(op.charId,central)
-  }
-  const fixed=op.skills.some(s=>s.buffId==='dorm_recExcludeOther[000]');const rate=fixed?2:base+(all.get(op.charId)??0)+(single.get(op.charId)??0)+(self.get(op.charId)??0);rates.set(op.charId,rate);details.set(op.charId,fixed?['自律：固定 2/h，排除等级、氛围及其他恢复']:[`等级与氛围基础 ${base}/h`,...(details.get(op.charId)??[])])}
+  const fixed=op.skills.some(s=>s.buffId==='dorm_recExcludeOther[000]')
+  const central=fixed?0:Math.max(0,...centralEffects.filter(e=>!e.eliteOnly||matchesRiicIdentity(op,'groupId','elite')).map(e=>e.value))
+  if(central>0)details.set(op.charId,[...(details.get(op.charId)??[]),`中枢加成：+${central}/h`])
+  const rate=fixed?2:base+central+(all.get(op.charId)??0)+(single.get(op.charId)??0)+(self.get(op.charId)??0)
+  rates.set(op.charId,rate)
+  details.set(op.charId,fixed?['自律：固定 2/h，排除等级、氛围及其他恢复']:[`等级与氛围基础 ${base}/h`,...(details.get(op.charId)??[])])}
  return {rates,details,unquantified}
 }

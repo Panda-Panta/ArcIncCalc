@@ -378,6 +378,22 @@ const visibleEvents = computed<TimelineMarkerEvent[]>(() => {
   )
 })
 
+// All backup plan and task events across the entire simulation
+const backupEvents = computed<TimelineMarkerEvent[]>(() => {
+  if (!dataset.value) return []
+  return dataset.value.events.filter(e => e.type === 'backup-plan' || e.type === 'backup-task')
+})
+
+function jumpToNextBackupEvent(): void {
+  const events = backupEvents.value
+  if (!events.length) return
+  const cur = customWindowStart.value
+  const next = events.find(e => e.time > cur + 0.1) ?? events[0]
+  if (next) {
+    panWindowTo(Math.max(0, next.time - windowDuration.value / 3))
+  }
+}
+
 // Track mouse cursor over timeline
 function handleMouseMove(e: MouseEvent): void {
   const container = (e.currentTarget as HTMLElement)
@@ -506,6 +522,18 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
           <input v-model="showEventMarkers" type="checkbox" />
           <span>事件标记</span>
         </label>
+
+        <!-- Jump to backup plan events -->
+        <button
+          v-if="backupEvents.length > 0"
+          type="button"
+          class="backup-events-pill"
+          data-test="jump-backup-event-btn"
+          :title="`共检测到 ${backupEvents.length} 次副表调度事件，点击跳转至下一个副表事件`"
+          @click="jumpToNextBackupEvent"
+        >
+          🔄 副表事件 ({{ backupEvents.length }}次) →
+        </button>
       </div>
 
       <!-- Window Navigation Toolbar -->
@@ -1895,5 +1923,26 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
   margin-left: auto;
   color: #f0bd5b;
   font-family: Consolas, monospace;
+}
+
+.backup-events-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: rgba(139, 92, 246, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 12px;
+  color: #c4b5fd;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.backup-events-pill:hover {
+  background: rgba(139, 92, 246, 0.35);
+  border-color: #8b5cf6;
+  color: #fff;
 }
 </style>

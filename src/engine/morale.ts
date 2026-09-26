@@ -261,8 +261,10 @@ function computeRates(
   if (activeIds.has('char_226_hmau') && hasOperatorSkill(config,'char_226_hmau','control_mp_cost&faction2[000]')) {
     const leeOperators = activeControl.filter((item) => isFaction(item.operator, 'lee'))
     if (leeOperators.length) {
-      addAll(activeControl, -leeOperators.length * 0.2, `吽·坚毅随和：全员 -${(leeOperators.length * 0.2).toFixed(2)}/h`)
-      // The faction-only extra has no numeric value in the verified tooltip; diagnose it instead of inventing one.
+      addAll(activeControl, -leeOperators.length * 0.05, `吽·坚毅随和：全员 -${(leeOperators.length * 0.05).toFixed(2)}/h`)
+      for (const lee of leeOperators) {
+        add(lee, -leeOperators.length * 0.2, `吽·坚毅随和：鲤氏派系额外 -${(leeOperators.length * 0.2).toFixed(2)}/h`)
+      }
     }
   }
 
@@ -376,7 +378,6 @@ export function currentMoraleRates(config: AppConfig): CurrentMoraleRates {
     .filter((id) => (morale.get(id) ?? 0) > 0))
   const snapshot = computeRates(config, all, activeIds, morale)
   const unquantified: string[] = []
-  if (all.some(a => a.roomType === 'control' && a.operator.charId === 'char_226_hmau' && activeIds.has(a.operator.charId))) unquantified.push('吽·坚毅随和 (control_mp_cost&faction2[000])：原文全员每鲤氏恢复+0.2/h，派系额外恢复量未量化；当前只计算原文明示的全员恢复，不计未知的派系额外值')
   return {
     unquantified,
     rates: Object.fromEntries(snapshot.rates),

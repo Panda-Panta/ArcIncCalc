@@ -398,6 +398,16 @@ export function buildTimelineData(report: ScheduleSimulationReport): TimelineDat
         icon: '🔄',
         color: '#8b5cf6',
       })
+    } else if (e.type === 'backup-task') {
+      events.push({
+        time: timeRel,
+        type: 'backup-task',
+        label: `副表任务: ${e.backupName || ''}`,
+        description: `副表【${e.backupName || ''}】在 ${e.timing || ''} 阶段执行任务：${opNames.join('、') || '指定干员'}`,
+        operatorIds: e.operators || [],
+        icon: '⚡',
+        color: '#a855f7',
+      })
     } else if (e.type === 'shift-on') {
       events.push({
         time: timeRel,

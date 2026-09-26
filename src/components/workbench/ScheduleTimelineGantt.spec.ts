@@ -286,4 +286,32 @@ describe('ScheduleTimelineGantt.vue', () => {
     await endInput.trigger('change')
     expect(wrapper.find('.time-window-info').text()).toContain('T+10.0h 至 T+35.0h')
   })
+
+  it('renders backup plan event markers and allows jumping to backup events', async () => {
+    const report = createSampleReport()
+    report.events.push({
+      time: 18.5,
+      type: 'backup-plan' as any,
+      operators: ['char_002_amiya'],
+      active: true,
+      backupName: '测试副表A',
+      timing: 'AFTER_PLANNING',
+    } as any)
+
+    const wrapper = mount(ScheduleTimelineGantt, {
+      props: { report },
+    })
+
+    const jumpBtn = wrapper.find('[data-test="jump-backup-event-btn"]')
+    expect(jumpBtn.exists()).toBe(true)
+    expect(jumpBtn.text()).toContain('副表事件 (1次)')
+
+    // Click jump to backup event
+    await jumpBtn.trigger('click')
+    expect(wrapper.find('.time-window-info').exists()).toBe(true)
+
+    // Ruler marker exists
+    const markers = wrapper.findAll('.event-marker')
+    expect(markers.some(m => m.text().includes('🔄'))).toBe(true)
+  })
 })
