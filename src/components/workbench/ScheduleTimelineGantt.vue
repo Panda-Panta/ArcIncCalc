@@ -37,24 +37,84 @@ const isDraggingOverview = ref(false)
 let overviewDragStartX = 0
 let overviewDragStartWindowStart = 0
 
-// Export modal and state (Full Sampling Phase)
+// Export modal and state (Supports Full Sampling Phase & Multi-Day Volumes for 14+ days)
 const showExportModal = ref(false)
 const isExporting = ref(false)
 const exportStatus = ref<{ type: 'success' | 'error'; message: string } | null>(null)
 const exportCanvasRef = ref<HTMLDivElement | null>(null)
 const exportScaleMode = ref<'standard' | 'compact'>('standard')
 
-const exportPixelsPerHour = computed(() => {
-  const base = exportScaleMode.value === 'compact' ? 50 : 100
-  const maxTrackWidth = 15000
+// Export scope modes for long timelines (<=72h defaults to full, >72h supports volumes/custom)
+const exportScopeMode = ref<'full' | 'volume' | 'custom'>('full')
+const exportVolumeDays = ref<number>(3)
+const exportSelectedVolumeIndex = ref<number>(0)
+const exportCustomStart = ref<number>(0)
+const exportCustomEnd = ref<number>(72)
+
+interface ExportVolume {
+  index: number
+  start: number
+  end: number
+  label: string
+}
+
+const exportVolumes = computed<ExportVolume[]>(() => {
   const total = totalObservedHours.value
-  if (total * base > maxTrackWidth) {
-    return Math.max(30, Math.floor(maxTrackWidth / total))
+  const volHours = Math.max(12, exportVolumeDays.value * 24)
+  const count = Math.ceil(total / volHours)
+  const list: ExportVolume[] = []
+  for (let i = 0; i < count; i++) {
+    const s = i * volHours
+    const e = Math.min(total, s + volHours)
+    const startDay = Math.floor(s / 24) + 1
+    const endDay = Math.ceil(e / 24)
+    list.push({
+      index: i,
+      start: s,
+      end: e,
+      label: `第 ${i + 1} 卷：第 ${startDay}~${endDay} 天 (T+${s.toFixed(0)}h ~ T+${e.toFixed(0)}h)`,
+    })
+  }
+  return list
+})
+
+const activeExportStart = computed(() => {
+  if (exportScopeMode.value === 'volume') {
+    const vol = exportVolumes.value[exportSelectedVolumeIndex.value]
+    return vol ? vol.start : 0
+  }
+  if (exportScopeMode.value === 'custom') {
+    return Math.max(0, exportCustomStart.value)
+  }
+  return 0
+})
+
+const activeExportEnd = computed(() => {
+  if (exportScopeMode.value === 'volume') {
+    const vol = exportVolumes.value[exportSelectedVolumeIndex.value]
+    return vol ? vol.end : totalObservedHours.value
+  }
+  if (exportScopeMode.value === 'custom') {
+    return Math.min(totalObservedHours.value, Math.max(activeExportStart.value + 1, exportCustomEnd.value))
+  }
+  return totalObservedHours.value
+})
+
+const activeExportDuration = computed(() => {
+  return Math.max(0.1, activeExportEnd.value - activeExportStart.value)
+})
+
+const exportPixelsPerHour = computed(() => {
+  const dur = activeExportDuration.value
+  const base = exportScaleMode.value === 'compact' ? 50 : 100
+  const maxTrackWidth = 14000
+  if (dur * base > maxTrackWidth) {
+    return Math.max(20, Math.floor(maxTrackWidth / dur))
   }
   return base
 })
 
-const exportTrackWidthPx = computed(() => Math.round(totalObservedHours.value * exportPixelsPerHour.value))
+const exportTrackWidthPx = computed(() => Math.round(activeExportDuration.value * exportPixelsPerHour.value))
 const exportTotalWidthPx = computed(() => 190 + exportTrackWidthPx.value)
 
 // Hover inspector state
@@ -315,32 +375,39 @@ function handleOverviewTrackMouseDown(e: MouseEvent): void {
   window.addEventListener('mouseup', onMouseUp)
 }
 
-// Export facility gantt for the complete sampling phase
+// Export facility gantt (Supports Full Sampling Phase & Multi-Day Volumes)
 function getExportOffsetPercent(time: number): number {
-  const total = totalObservedHours.value
-  if (total <= 0) return 0
-  return Math.max(0, Math.min(100, (time / total) * 100))
+  const dur = activeExportDuration.value
+  if (dur <= 0) return 0
+  const rel = time - activeExportStart.value
+  return Math.max(0, Math.min(100, (rel / dur) * 100))
 }
 
 function getExportWidthPercent(start: number, end: number): number {
-  const total = totalObservedHours.value
-  if (total <= 0) return 0
-  const s = Math.max(0, start)
-  const e = Math.min(total, end)
+  const dur = activeExportDuration.value
+  if (dur <= 0) return 0
+  const s = Math.max(activeExportStart.value, start)
+  const e = Math.min(activeExportEnd.value, end)
   if (e <= s) return 0
-  return ((e - s) / total) * 100
+  return ((e - s) / dur) * 100
 }
 
 function isExportIntervalVisible(interval: TimelineInterval): boolean {
-  return interval.end > 0 && interval.start < totalObservedHours.value && interval.duration > 0
+  return interval.end > activeExportStart.value && interval.start < activeExportEnd.value && interval.duration > 0
 }
 
 const exportRulerTicks = computed<RulerTick[]>(() => {
-  const total = totalObservedHours.value
-  if (total <= 0) return []
+  const start = activeExportStart.value
+  const end = activeExportEnd.value
+  const dur = activeExportDuration.value
+  if (dur <= 0) return []
   const ticks: RulerTick[] = []
-  const step = total <= 72 ? 2 : total <= 144 ? 4 : 6
-  for (let t = 0; t <= total; t += step) {
+
+  // Adapt tick step based on export window duration
+  const step = dur <= 72 ? 2 : dur <= 168 ? 4 : dur <= 336 ? 8 : 12
+  const firstTick = Math.ceil(start / step) * step
+
+  for (let t = firstTick; t <= end; t += step) {
     const isMajor = t % 24 === 0
     const day = Math.floor(t / 24) + 1
     const hourInDay = t % 24
@@ -352,18 +419,19 @@ const exportRulerTicks = computed<RulerTick[]>(() => {
     }
     ticks.push({
       time: t,
-      percent: (t / total) * 100,
+      percent: getExportOffsetPercent(t),
       label,
       isMajorDay: isMajor,
     })
   }
+
   const lastTick = ticks[ticks.length - 1]
-  if (lastTick && total - lastTick.time > 0.5) {
+  if (lastTick && end - lastTick.time > 0.5) {
     ticks.push({
-      time: total,
+      time: end,
       percent: 100,
-      label: `T+${total.toFixed(0)}h`,
-      isMajorDay: total % 24 === 0,
+      label: `T+${end.toFixed(0)}h`,
+      isMajorDay: end % 24 === 0,
     })
   }
   return ticks
@@ -372,12 +440,26 @@ const exportRulerTicks = computed<RulerTick[]>(() => {
 function openExportModal(): void {
   viewMode.value = 'facility'
   exportStatus.value = null
+  if (totalObservedHours.value > 72) {
+    // For long schedules (e.g. 14 days), start at full or volume mode
+    exportSelectedVolumeIndex.value = 0
+  }
   showExportModal.value = true
 }
 
 function closeExportModal(): void {
   showExportModal.value = false
   exportStatus.value = null
+}
+
+function getExportFilename(): string {
+  if (exportScopeMode.value === 'volume') {
+    return `基建排班甘特图_设施分道_第${exportSelectedVolumeIndex.value + 1}卷_T+${activeExportStart.value.toFixed(0)}h-${activeExportEnd.value.toFixed(0)}h.png`
+  }
+  if (exportScopeMode.value === 'custom') {
+    return `基建排班甘特图_设施分道_时段_T+${activeExportStart.value.toFixed(0)}h-${activeExportEnd.value.toFixed(0)}h.png`
+  }
+  return `基建排班甘特图_设施分道_采样全周期_0h-${totalObservedHours.value.toFixed(0)}h.png`
 }
 
 async function handleDownloadGanttImage(): Promise<void> {
@@ -393,10 +475,10 @@ async function handleDownloadGanttImage(): Promise<void> {
       backgroundColor: '#0e1319',
     })
     const link = document.createElement('a')
-    link.download = `基建排班甘特图_设施分道_采样全周期_0h-${totalObservedHours.value.toFixed(0)}h.png`
+    link.download = getExportFilename()
     link.href = dataUrl
     link.click()
-    exportStatus.value = { type: 'success', message: '甘特图全周期长图已成功导出下载！' }
+    exportStatus.value = { type: 'success', message: '甘特图长图已成功导出下载！' }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     exportStatus.value = { type: 'error', message: `导出失败: ${msg}` }
@@ -1188,6 +1270,64 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
             </span>
           </div>
           <div class="export-header-actions">
+            <!-- Scope selector for long timelines (>72h) -->
+            <div v-if="totalObservedHours > 72" class="scale-mode-selector scope-selector" data-test="scope-mode-selector">
+              <span class="scale-title">范围:</span>
+              <button
+                type="button"
+                class="scale-btn"
+                :class="{ active: exportScopeMode === 'full' }"
+                data-test="scope-btn-full"
+                @click="exportScopeMode = 'full'"
+              >
+                全周期总览
+              </button>
+              <button
+                type="button"
+                class="scale-btn"
+                :class="{ active: exportScopeMode === 'volume' }"
+                data-test="scope-btn-volume"
+                @click="exportScopeMode = 'volume'"
+              >
+                分卷超清 (推荐)
+              </button>
+              <button
+                type="button"
+                class="scale-btn"
+                :class="{ active: exportScopeMode === 'custom' }"
+                data-test="scope-btn-custom"
+                @click="exportScopeMode = 'custom'"
+              >
+                自定义
+              </button>
+            </div>
+
+            <!-- Volume Picker -->
+            <div v-if="exportScopeMode === 'volume'" class="volume-picker-wrap">
+              <select
+                v-model.number="exportSelectedVolumeIndex"
+                class="volume-select"
+                data-test="volume-select"
+              >
+                <option v-for="vol in exportVolumes" :key="vol.index" :value="vol.index">
+                  {{ vol.label }}
+                </option>
+              </select>
+              <select v-model.number="exportVolumeDays" class="volume-select mini" data-test="volume-days-select">
+                <option :value="2">每卷 2 天</option>
+                <option :value="3">每卷 3 天</option>
+                <option :value="7">每卷 7 天</option>
+              </select>
+            </div>
+
+            <!-- Custom Range -->
+            <div v-if="exportScopeMode === 'custom'" class="custom-range-wrap">
+              <input v-model.number="exportCustomStart" type="number" min="0" :max="totalObservedHours - 1" class="custom-range-input" />
+              <span class="range-sep">~</span>
+              <input v-model.number="exportCustomEnd" type="number" min="1" :max="totalObservedHours" class="custom-range-input" />
+              <span class="range-unit">h</span>
+            </div>
+
             <div class="scale-mode-selector">
               <span class="scale-title">图像比例:</span>
               <button
@@ -1247,7 +1387,8 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
                 <div class="banner-title-group">
                   <h2 class="banner-title">罗德岛基建排班甘特图 · 设施分道</h2>
                   <span class="banner-time-badge">
-                    采样阶段全周期：T+0.0h 至 T+{{ totalObservedHours.toFixed(1) }}h（共 {{ totalObservedHours.toFixed(0) }} 小时 / {{ (totalObservedHours / 24).toFixed(1) }} 天）· 比例尺：{{ exportPixelsPerHour }}px/h（以 12h 视窗为基准）
+                    {{ exportScopeMode === 'volume' ? `分卷排班（第 ${exportSelectedVolumeIndex + 1} / ${exportVolumes.length} 卷）：` : exportScopeMode === 'custom' ? '自定义时段排班：' : '采样阶段全周期：' }}
+                    T+{{ activeExportStart.toFixed(1) }}h 至 T+{{ activeExportEnd.toFixed(1) }}h（共 {{ activeExportDuration.toFixed(0) }} 小时 / {{ (activeExportDuration / 24).toFixed(1) }} 天）· 比例尺：{{ exportPixelsPerHour }}px/h（以 12h 视窗为基准）
                   </span>
                 </div>
                 <div class="banner-legend">
@@ -2488,6 +2629,54 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
   color: #0b1e1b;
   font-weight: 600;
   box-shadow: 0 1px 4px rgba(66, 214, 199, 0.3);
+}
+
+.volume-picker-wrap,
+.custom-range-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 11px;
+  color: #8da5ac;
+}
+
+.volume-select {
+  padding: 3px 6px;
+  font-size: 11px;
+  background: #0f141b;
+  border: 1px solid rgba(66, 214, 199, 0.4);
+  color: #42d6c7;
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+}
+
+.volume-select.mini {
+  max-width: 90px;
+}
+
+.custom-range-input {
+  width: 54px;
+  padding: 2px 4px;
+  font-size: 11px;
+  background: #0f141b;
+  border: 1px solid rgba(66, 214, 199, 0.4);
+  color: #42d6c7;
+  border-radius: 3px;
+  text-align: center;
+  outline: none;
+}
+
+.range-sep {
+  color: #8da5ac;
+}
+
+.range-unit {
+  color: #42d6c7;
 }
 
 .export-action-btn {

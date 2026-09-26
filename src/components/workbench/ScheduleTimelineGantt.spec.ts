@@ -358,4 +358,36 @@ describe('ScheduleTimelineGantt.vue', () => {
     const markers = wrapper.findAll('.event-marker')
     expect(markers.some(m => m.text().includes('🔄'))).toBe(true)
   })
+
+  it('supports volume mode and adaptive scaling for 14-day (336h) long timelines', async () => {
+    const report = createSampleReport()
+    report.observedHours = 336
+    report.elapsedHours = 336
+
+    const wrapper = mount(ScheduleTimelineGantt, {
+      props: { report },
+    })
+
+    const exportBtn = wrapper.find('[data-test="export-gantt-btn"]')
+    await exportBtn.trigger('click')
+
+    const modal = wrapper.find('[data-test="gantt-export-modal"]')
+    expect(modal.exists()).toBe(true)
+    expect(modal.text()).toContain('全周期共 336 小时')
+
+    // Long cycle scope selector exists (>72h)
+    const scopeSelector = wrapper.find('[data-test="scope-mode-selector"]')
+    expect(scopeSelector.exists()).toBe(true)
+
+    // Switch to volume mode (分卷超清)
+    const volumeBtn = wrapper.find('[data-test="scope-btn-volume"]')
+    await volumeBtn.trigger('click')
+
+    const volumeSelect = wrapper.find('[data-test="volume-select"]')
+    expect(volumeSelect.exists()).toBe(true)
+
+    // Change volume
+    await volumeSelect.setValue('1')
+    expect(modal.text()).toContain('第 2 卷')
+  })
 })
